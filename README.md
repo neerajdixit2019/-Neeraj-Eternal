@@ -2,6 +2,7 @@
 
 A mobile-first emotional flow for youth: check in with a feeling, write what is present, and receive a gentle reflection.
 It also includes Healing Journeys, a local 7-day writing flow for letting go, self worth, and understanding love.
+The Museum of Unsaid Things lets users leave anonymous notes on a quiet local wall.
 
 ## Run
 
@@ -21,6 +22,7 @@ You can test the core flow at:
 - `http://127.0.0.1:5180/pause`
 - `http://127.0.0.1:5180/journeys`
 - `http://127.0.0.1:5180/journeys/letting-go`
+- `http://127.0.0.1:5180/museum`
 
 If `node` is not available on PATH in this Codex environment, use:
 
@@ -31,6 +33,8 @@ If `node` is not available on PATH in this Codex environment, use:
 The app loads React, Babel, and Tailwind from CDNs. Journal, pause, and journey progress are stored in `localStorage`; there is no backend yet.
 
 Healing Journeys progress is stored under `neeraj-eternal-healing-journeys` by journey id, with `currentDay` and saved daily `entries`.
+
+Museum notes are stored under `museum_unsaid_notes` as anonymous `{ id, category, text, createdAt }` entries. Seed notes are added when the wall is empty.
 
 ## Deploy to Vercel
 
