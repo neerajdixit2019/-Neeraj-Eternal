@@ -16,6 +16,14 @@
     {
       "source": "/pause",
       "destination": "/index.html"
+    },
+    {
+      "source": "/journeys",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/journeys/:path*",
+      "destination": "/index.html"
     }
   ]
 }
