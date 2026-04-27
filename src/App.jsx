@@ -1489,7 +1489,22 @@ function WisdomChatScreen() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const handleSend = () => {
+  const buildLocalFallback = (userText, allMessages) => {
+    const theme = detectThemeFromText(userText);
+    const themeData = WISDOM_BY_THEME[theme] || WISDOM_BY_THEME.longing;
+    const scripture = getRandomWisdom(theme);
+    const reflection = WISDOM_REFLECTIONS_BY_THEME[theme] || WISDOM_REFLECTIONS_BY_THEME.longing;
+    return {
+      id: `w-${Date.now()}`,
+      role: "wisdom",
+      acknowledgment: themeData.acknowledgment,
+      scripture,
+      reflection,
+      createdAt: new Date().toISOString()
+    };
+  };
+
+  const handleSend = async () => {
     if (!input.trim() || isTyping) return;
 
     const userMsg = {
@@ -1504,26 +1519,35 @@ function WisdomChatScreen() {
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const theme = detectThemeFromText(userMsg.text);
-      const themeData = WISDOM_BY_THEME[theme] || WISDOM_BY_THEME.longing;
-      const scripture = getRandomWisdom(theme);
-      const reflection = WISDOM_REFLECTIONS_BY_THEME[theme] || WISDOM_REFLECTIONS_BY_THEME.longing;
+    let wisdomMsg;
 
-      const wisdomMsg = {
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: withUser })
+      });
+
+      if (!response.ok) throw new Error("API unavailable");
+
+      const data = await response.json();
+
+      wisdomMsg = {
         id: `w-${Date.now()}`,
         role: "wisdom",
-        acknowledgment: themeData.acknowledgment,
-        scripture,
-        reflection,
+        acknowledgment: data.acknowledgment || "",
+        scripture: data.scripture || null,
+        reflection: data.reflection || "",
         createdAt: new Date().toISOString()
       };
+    } catch {
+      wisdomMsg = buildLocalFallback(userMsg.text, withUser);
+    }
 
-      const final = [...withUser, wisdomMsg];
-      setMessages(final);
-      saveStoredWisdomChat({ messages: final });
-      setIsTyping(false);
-    }, 1400);
+    const final = [...withUser, wisdomMsg];
+    setMessages(final);
+    saveStoredWisdomChat({ messages: final });
+    setIsTyping(false);
   };
 
   const handleKeyDown = (e) => {

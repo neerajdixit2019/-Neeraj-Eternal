@@ -28,6 +28,10 @@
     {
       "source": "/museum",
       "destination": "/index.html"
+    },
+    {
+      "source": "/wisdom",
+      "destination": "/index.html"
     }
   ]
 }
