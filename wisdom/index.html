@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wisdom - Neeraj Eternal</title>
+    <link rel="icon" href="data:," />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react">
+      const { useEffect, useRef, useState } = React;
+
+      const STORAGE_KEY = "neeraj-eternal-wisdom-chat";
+
+      const WISDOM_GREETING =
+        "This space is only yours. Whatever brought you here — a breakup, losing someone, something you can't put words to — you can share it. I am not going to judge you, advise you, or rush you. I am just here to listen. Start wherever feels right.";
+
+      const FALLBACK_QUESTIONS = {
+        longing: "When does the missing hit you hardest — mornings, or the quiet at night?",
+        anxiety: "What is the thought that keeps looping right now?",
+        rejection: "Was it the rejection itself, or the silence after, that hurt more?",
+        heavy: "What has felt too heavy to say out loud to anyone?",
+        numb: "If you could feel one thing right now, what would you want it to be?",
+        lost: "When did you last feel clear about who you were?"
+      };
+
+      const WISDOM_BY_THEME = {
+        longing: {
+          words: "You are holding a connection that mattered deeply. Missing someone is not weakness.",
+          question: "When does the missing hit you hardest — mornings, or the quiet at night?",
+          scripture: {
+            source: "Bhagavad Gita",
+            reference: "2.48",
+            text: "Inspired by Krishna's teaching: return to balance, then act from steadiness instead of panic."
+          },
+          reflection: "Let the feeling be real without letting it command your next action."
+        },
+        anxiety: {
+          words: "Your mind is trying to protect you from a future it cannot fully know.",
+          question: "What is the thought that keeps looping right now?",
+          scripture: {
+            source: "Bhagavad Gita",
+            reference: "2.47",
+            text: "Inspired by Krishna's teaching: focus on your action, not on controlling every result."
+          },
+          reflection: "A small right action is kinder than a thousand fearful predictions."
+        },
+        rejection: {
+          words: "That kind of hurt can shake how you see yourself, but it does not define your value.",
+          question: "Was it the rejection itself, or the silence after, that hurt more?",
+          scripture: {
+            source: "Buddha",
+            reference: "Teaching on self-kindness",
+            text: "Let your own heart be included in the kindness you offer others."
+          },
+          reflection: "Someone's choice is information about a relationship, not a verdict on your soul."
+        },
+        heavy: {
+          words: "You have been carrying more than you should carry alone.",
+          question: "What has felt too heavy to say out loud to anyone?",
+          scripture: {
+            source: "Bhagavad Gita",
+            reference: "6.5",
+            text: "Inspired by Krishna's teaching: lift yourself gently; do not turn your own mind into an enemy."
+          },
+          reflection: "Rest is not failure. It is part of returning to strength."
+        },
+        numb: {
+          words: "Sometimes feeling nothing is the mind's way of protecting itself after too much.",
+          question: "If you could feel one thing right now, what would you want it to be?",
+          scripture: {
+            source: "Kabir",
+            reference: "Devotional poetry",
+            text: "The sacred is not far away; begin with the breath already inside you."
+          },
+          reflection: "Numb does not mean empty. It can mean your system needs gentleness."
+        },
+        lost: {
+          words: "Feeling lost often means an old direction no longer fits you.",
+          question: "When did you last feel clear about who you were?",
+          scripture: {
+            source: "Marcus Aurelius",
+            reference: "Meditations",
+            text: "Return to what is in your control: your conduct, your effort, your next honest step."
+          },
+          reflection: "You do not need the whole map. You need the next true step."
+        }
+      };
+
+      function readChat() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+          return {};
+        }
+      }
+
+      function saveChat(messages) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages }));
+      }
+
+      function detectTheme(text) {
+        const value = text.toLowerCase();
+        if (/(miss|missing|remember|text|reply|come back|longing|yaad)/.test(value)) return "longing";
+        if (/(anxious|worry|worried|fear|afraid|panic|exam|future|what if)/.test(value)) return "anxiety";
+        if (/(reject|rejected|not enough|unwanted|left|ignored|chosen)/.test(value)) return "rejection";
+        if (/(heavy|tired|burden|overwhelmed|pressure|family|alone|can't handle)/.test(value)) return "heavy";
+        if (/(numb|empty|blank|nothing|can't feel|hollow)/.test(value)) return "numb";
+        if (/(lost|purpose|direction|confused|meaning|career|who am i)/.test(value)) return "lost";
+        return "heavy";
+      }
+
+      function buildReply(userText, allMessages) {
+        const theme = detectTheme(userText);
+        const wisdom = WISDOM_BY_THEME[theme] || WISDOM_BY_THEME.heavy;
+        const userTurns = allMessages.filter((message) => message.role === "user").length;
+
+        if (userTurns <= 1) {
+          return {
+            id: `w-${Date.now()}`,
+            role: "wisdom",
+            acknowledgment: wisdom.words,
+            question: FALLBACK_QUESTIONS[theme] || wisdom.question,
+            createdAt: new Date().toISOString()
+          };
+        }
+
+        return {
+          id: `w-${Date.now()}`,
+          role: "wisdom",
+          acknowledgment: wisdom.words,
+          scripture: wisdom.scripture,
+          reflection: wisdom.reflection,
+          createdAt: new Date().toISOString()
+        };
+      }
+
+      function ScriptureBlock({ scripture }) {
+        if (!scripture) return null;
+        return (
+          <div className="mt-4 rounded-3xl bg-violet-50/80 p-4 ring-1 ring-violet-100">
+            <p className="text-sm font-semibold text-violet-700">{scripture.source}</p>
+            <p className="mt-1 text-xs font-medium text-violet-500">{scripture.reference}</p>
+            <p className="mt-3 leading-7 text-slate-700">{scripture.text}</p>
+          </div>
+        );
+      }
+
+      function WisdomBubble({ message }) {
+        return (
+          <div className="mb-4 flex justify-start">
+            <div className="max-w-[88%] rounded-3xl rounded-tl-md bg-white/80 p-5 shadow-[0_14px_35px_rgba(88,82,120,0.10)] ring-1 ring-white/80">
+              {message.text && <p className="leading-7 text-slate-700">{message.text}</p>}
+              {message.acknowledgment && <p className="leading-7 text-slate-800">{message.acknowledgment}</p>}
+              {message.question && <p className="mt-4 font-medium leading-7 text-violet-800">{message.question}</p>}
+              <ScriptureBlock scripture={message.scripture} />
+              {message.reflection && <p className="mt-3 leading-7 text-slate-600">{message.reflection}</p>}
+            </div>
+          </div>
+        );
+      }
+
+      function UserBubble({ message }) {
+        return (
+          <div className="mb-4 flex justify-end">
+            <div className="max-w-[80%] rounded-3xl rounded-tr-md bg-slate-800 px-5 py-4">
+              <p className="whitespace-pre-wrap leading-7 text-white">{message.text}</p>
+            </div>
+          </div>
+        );
+      }
+
+      function ThinkingBubble() {
+        return (
+          <div className="mb-3 flex justify-start">
+            <div className="rounded-3xl rounded-tl-md bg-white/80 px-5 py-4 shadow-[0_14px_35px_rgba(88,82,120,0.10)] ring-1 ring-white/80">
+              <div className="flex h-5 items-center gap-1.5">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-violet-300" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-violet-300 [animation-delay:160ms]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-violet-300 [animation-delay:320ms]" />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function WisdomApp() {
+        const [messages, setMessages] = useState([]);
+        const [input, setInput] = useState("");
+        const [isTyping, setIsTyping] = useState(false);
+        const endRef = useRef(null);
+
+        useEffect(() => {
+          const stored = readChat();
+          if (Array.isArray(stored.messages) && stored.messages.length > 0) {
+            setMessages(stored.messages);
+            return;
+          }
+          setMessages([
+            {
+              id: "greeting",
+              role: "wisdom",
+              text: WISDOM_GREETING,
+              createdAt: new Date().toISOString()
+            }
+          ]);
+        }, []);
+
+        useEffect(() => {
+          endRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, [messages, isTyping]);
+
+        const send = async () => {
+          const clean = input.trim();
+          if (!clean || isTyping) return;
+
+          const userMessage = {
+            id: `u-${Date.now()}`,
+            role: "user",
+            text: clean,
+            createdAt: new Date().toISOString()
+          };
+          const withUser = [...messages, userMessage];
+          setMessages(withUser);
+          setInput("");
+          setIsTyping(true);
+
+          let wisdomMessage;
+
+          try {
+            const response = await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages: withUser })
+            });
+            if (!response.ok) throw new Error("API unavailable");
+            const data = await response.json();
+            wisdomMessage = {
+              id: `w-${Date.now()}`,
+              role: "wisdom",
+              acknowledgment: data.acknowledgment || "",
+              question: data.question || null,
+              scripture: data.scripture || null,
+              reflection: data.reflection || "",
+              createdAt: new Date().toISOString()
+            };
+          } catch {
+            wisdomMessage = buildReply(clean, withUser);
+          }
+
+          const nextMessages = [...withUser, wisdomMessage];
+          setMessages(nextMessages);
+          saveChat(nextMessages);
+          setIsTyping(false);
+        };
+
+        const clearChat = () => {
+          const nextMessages = [
+            {
+              id: `greeting-${Date.now()}`,
+              role: "wisdom",
+              text: WISDOM_GREETING,
+              createdAt: new Date().toISOString()
+            }
+          ];
+          setMessages(nextMessages);
+          localStorage.removeItem(STORAGE_KEY);
+        };
+
+        const handleKeyDown = (event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            send();
+          }
+        };
+
+        return (
+          <div className="flex min-h-screen flex-col bg-[linear-gradient(145deg,#f0ebe8_0%,#ece8ff_50%,#e5f5ff_100%)] text-slate-800">
+            <header className="shrink-0 px-4 pb-3 pt-5">
+              <div className="mx-auto max-w-md">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">A quiet companion</p>
+                    <h1 className="mt-1 text-3xl font-semibold text-slate-900">Wisdom</h1>
+                  </div>
+                  <a href="/" className="rounded-2xl bg-white/70 px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-white/80 transition hover:bg-white">Home</a>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-500">Private. Saved only on this device for now.</p>
+              </div>
+            </header>
+
+            <main className="flex-1 overflow-y-auto px-4 py-3">
+              <div className="mx-auto max-w-md">
+                {messages.map((message) =>
+                  message.role === "user" ? <UserBubble key={message.id} message={message} /> : <WisdomBubble key={message.id} message={message} />
+                )}
+                {isTyping && <ThinkingBubble />}
+                <div ref={endRef} />
+              </div>
+            </main>
+
+            <div className="shrink-0 border-t border-white/40 bg-white/20 px-4 pb-6 pt-3 backdrop-blur">
+              <div className="mx-auto max-w-md">
+                <div className="flex items-end gap-3">
+                  <textarea
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Write what is on your heart..."
+                    rows={2}
+                    className="flex-1 resize-none rounded-2xl bg-white/80 px-4 py-3 text-base leading-7 text-slate-800 outline-none ring-1 ring-white/80 placeholder:text-slate-400 focus:ring-2 focus:ring-violet-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={send}
+                    disabled={!input.trim() || isTyping}
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-slate-900 text-lg text-white shadow-lg shadow-slate-400/25 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Send"
+                  >
+                    ^
+                  </button>
+                </div>
+                <button type="button" onClick={clearChat} className="mt-3 w-full text-center text-sm font-medium text-slate-500 transition hover:text-slate-700">
+                  Start a new conversation
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<WisdomApp />);
+    </script>
+  </body>
+</html>

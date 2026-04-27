@@ -1417,6 +1417,20 @@ function MuseumScreen() {
 
 // ─── Wisdom Chat ──────────────────────────────────────────────────────────────
 
+const FALLBACK_QUESTIONS = {
+  longing: "When does the missing hit you hardest — mornings, or the quiet at night?",
+  anxiety: "What is the thought that keeps looping right now?",
+  rejection: "Was it the rejection itself, or the silence after, that hurt more?",
+  heavy: "What has felt too heavy to say out loud to anyone?",
+  numb: "If you could feel one thing right now, what would you want it to be?",
+  loss: "What's one ordinary moment that keeps reminding you it's over?",
+  "self-worth": "Where did you first start believing you weren't enough in this?",
+  "letting-go": "What are you most afraid of losing if you actually let go?",
+  hope: "What would things look like if they were even a little better?",
+  overthinking: "Which thought feels like it's on the loudest repeat right now?",
+  lost: "When did you last feel clear about who you were?"
+};
+
 const WISDOM_GREETING = "This space is only yours. Whatever brought you here — a breakup, losing someone, something you can't put words to — you can share it. I am not going to judge you, advise you, or rush you. I am just here to listen. Start wherever feels right.";
 
 function ThinkingBubble() {
@@ -1504,7 +1518,7 @@ function WisdomChatScreen() {
         id: `w-${Date.now()}`,
         role: "wisdom",
         acknowledgment: themeData.acknowledgment,
-        question: "What happened, if you'd like to share?",
+        question: FALLBACK_QUESTIONS[theme] || "What has been the hardest part to sit with?",
         createdAt: new Date().toISOString()
       };
     }
@@ -1554,6 +1568,7 @@ function WisdomChatScreen() {
         id: `w-${Date.now()}`,
         role: "wisdom",
         acknowledgment: data.acknowledgment || "",
+        question: data.question || null,
         scripture: data.scripture || null,
         reflection: data.reflection || "",
         createdAt: new Date().toISOString()

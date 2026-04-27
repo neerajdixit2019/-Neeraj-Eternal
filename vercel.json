@@ -27,11 +27,11 @@
     },
     {
       "source": "/museum",
-      "destination": "/index.html"
+      "destination": "/museum/index.html"
     },
     {
       "source": "/wisdom",
-      "destination": "/index.html"
+      "destination": "/wisdom/index.html"
     }
   ]
 }
