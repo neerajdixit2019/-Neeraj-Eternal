@@ -24,6 +24,10 @@
     {
       "source": "/journeys/:path*",
       "destination": "/index.html"
+    },
+    {
+      "source": "/museum",
+      "destination": "/index.html"
     }
   ]
 }
