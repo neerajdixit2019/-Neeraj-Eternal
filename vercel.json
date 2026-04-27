@@ -12,6 +12,10 @@
     {
       "source": "/reflect",
       "destination": "/index.html"
+    },
+    {
+      "source": "/pause",
+      "destination": "/index.html"
     }
   ]
 }
