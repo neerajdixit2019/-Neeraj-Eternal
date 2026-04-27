@@ -2,6 +2,52 @@ const { useEffect, useMemo, useState } = React;
 
 const STORAGE_KEY = "neeraj-eternal-emotional-flow";
 const PAUSE_STORAGE_KEY = "neeraj-eternal-pause-before-text";
+const JOURNEY_STORAGE_KEY = "neeraj-eternal-healing-journeys";
+
+const HEALING_JOURNEYS = [
+  {
+    id: "letting-go",
+    title: "Letting Go",
+    subtitle: "Release what you can't hold anymore",
+    prompts: [
+      "What I wish I had said",
+      "What I cannot control",
+      "What I gave honestly",
+      "What hurt me the most",
+      "What I forgive myself for",
+      "What I release now",
+      "A letter I will never send"
+    ]
+  },
+  {
+    id: "self-worth",
+    title: "Self Worth",
+    subtitle: "Come back to your own value",
+    prompts: [
+      "What I deserve in love",
+      "Where I accepted less",
+      "What makes me valuable",
+      "My strengths I ignore",
+      "How I want to be treated",
+      "What I will not tolerate again",
+      "A promise to myself"
+    ]
+  },
+  {
+    id: "understanding-love",
+    title: "Understanding Love",
+    subtitle: "Make sense of what you felt",
+    prompts: [
+      "What I felt was real",
+      "What I imagined vs what was real",
+      "Where I lost myself",
+      "What I learned about love",
+      "What I need in future",
+      "What I misunderstood",
+      "What I carry forward"
+    ]
+  }
+];
 
 const EMOTIONS = [
   {
@@ -73,7 +119,7 @@ function saveStoredFlow(nextValue) {
 
 function getRoute() {
   const path = window.location.pathname;
-  if (path === "/journal" || path === "/reflect" || path === "/check-in" || path === "/pause") return path;
+  if (path === "/journal" || path === "/reflect" || path === "/check-in" || path === "/pause" || path === "/journeys" || path.startsWith("/journeys/")) return path;
   return "/check-in";
 }
 
@@ -136,6 +182,36 @@ function saveStoredPause(nextValue) {
   localStorage.setItem(PAUSE_STORAGE_KEY, JSON.stringify(nextValue));
 }
 
+function readStoredJourneys() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(JOURNEY_STORAGE_KEY));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredJourneys(nextValue) {
+  localStorage.setItem(JOURNEY_STORAGE_KEY, JSON.stringify(nextValue));
+}
+
+function getJourney(id) {
+  return HEALING_JOURNEYS.find((journey) => journey.id === id) || null;
+}
+
+function getJourneyState(storedJourneys, journey) {
+  const stored = storedJourneys[journey.id];
+  return {
+    journeyId: journey.id,
+    currentDay: Math.min(Math.max(Number(stored?.currentDay) || 1, 1), journey.prompts.length),
+    entries: Array.isArray(stored?.entries) ? stored.entries : []
+  };
+}
+
+function getJourneyEntry(journeyState, day) {
+  return journeyState.entries.find((entry) => entry.day === day) || null;
+}
+
 function EmotionCard({ emotion, onSelect }) {
   return (
     <button
@@ -160,6 +236,7 @@ function CheckInScreen({ onSelect }) {
           <EmotionCard key={emotion.id} emotion={emotion} onSelect={onSelect} />
         ))}
       </section>
+      <Button variant="quiet" className="mb-4 w-full" onClick={() => navigate("/journeys")}>Explore Healing Journeys</Button>
     </SoftShell>
   );
 }
@@ -265,6 +342,7 @@ function ReflectionScreen({ emotion, journalText, onWriteMore, onSaveAgain }) {
         <Button onClick={onWriteMore}>Write more</Button>
         <Button variant="secondary" onClick={() => setCalming(true)}>Start calming exercise</Button>
         <Button variant="secondary" onClick={() => navigate("/pause")}>I feel like texting them</Button>
+        <Button variant="secondary" onClick={() => navigate("/journeys")}>Explore Healing Journeys</Button>
         <Button variant="quiet" onClick={saveReflection}>Save this</Button>
       </div>
     </SoftShell>
@@ -483,15 +561,197 @@ function PauseFlow() {
   return <PauseQuestions answers={answers} onChange={updateAnswer} onContinue={continueFromQuestions} />;
 }
 
+function JourneyProgress({ day, total }) {
+  const percent = Math.round((day / total) * 100);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm font-semibold text-slate-500">
+        <span>Day {day} of {total}</span>
+        <span>{percent}%</span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/70">
+        <div className="h-full rounded-full bg-slate-800 transition-all duration-500" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function JourneyCard({ journey, journeyState }) {
+  const hasStarted = journeyState.entries.length > 0 || journeyState.currentDay > 1;
+
+  return (
+    <Card className="p-5">
+      <div className="flex min-h-44 flex-col">
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Healing Journey</p>
+        <h2 className="mt-3 text-2xl font-semibold leading-snug text-slate-900">{journey.title}</h2>
+        <p className="mt-2 leading-7 text-slate-600">{journey.subtitle}</p>
+        <div className="mt-5">
+          <JourneyProgress day={journeyState.currentDay} total={journey.prompts.length} />
+        </div>
+        <Button className="mt-5 w-full" onClick={() => navigate(`/journeys/${journey.id}`)}>
+          {hasStarted ? "Continue" : "Start"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function JourneysListScreen({ storedJourneys }) {
+  return (
+    <SoftShell>
+      <PageHeader eyebrow="Healing Journeys" title="Take your time. Start where you are.">
+        Choose one path and move through it gently, one honest page at a time.
+      </PageHeader>
+      <section className="grid gap-4 pb-6">
+        {HEALING_JOURNEYS.map((journey) => (
+          <JourneyCard key={journey.id} journey={journey} journeyState={getJourneyState(storedJourneys, journey)} />
+        ))}
+      </section>
+      <Button variant="quiet" className="mb-4 w-full" onClick={() => navigate("/check-in")}>Back to check-in</Button>
+    </SoftShell>
+  );
+}
+
+function JourneyEntry({ journey, journeyState, text, onTextChange, onSave, onContinue, saved, gentleNote }) {
+  const currentPrompt = journey.prompts[journeyState.currentDay - 1];
+  const isFinalDay = journeyState.currentDay >= journey.prompts.length;
+
+  return (
+    <div className="grid gap-4">
+      <Card className="p-5">
+        <JourneyProgress day={journeyState.currentDay} total={journey.prompts.length} />
+      </Card>
+      <Card className="p-5">
+        <p className="text-sm font-semibold text-slate-500">Today's prompt</p>
+        <h2 className="mt-3 text-2xl font-semibold leading-snug text-slate-900">{currentPrompt}</h2>
+        <textarea
+          value={text}
+          onChange={(event) => onTextChange(event.target.value)}
+          placeholder="Write slowly. One true sentence is enough."
+          className="mt-5 min-h-[300px] w-full resize-none rounded-2xl bg-white/65 p-4 text-base leading-8 text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-blue-200"
+        />
+        <div className="mt-3 flex items-center justify-between px-1 text-sm text-slate-500">
+          <span>{text.length} characters</span>
+          <span>Saved on this device.</span>
+        </div>
+      </Card>
+      {saved && (
+        <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm">
+          You showed up for yourself today. That's enough.
+        </div>
+      )}
+      {gentleNote && (
+        <div className="rounded-2xl bg-white/65 px-4 py-3 text-sm font-semibold text-slate-600 shadow-sm">
+          This works best if you take one step at a time.
+        </div>
+      )}
+      <div className="grid gap-3 pb-6">
+        <Button onClick={onSave} disabled={!text.trim()}>Save</Button>
+        <Button variant="secondary" onClick={onContinue}>{isFinalDay ? "Return to journeys" : "Continue tomorrow"}</Button>
+        <Button variant="quiet" onClick={() => navigate("/journeys")}>All journeys</Button>
+      </div>
+    </div>
+  );
+}
+
+function JourneyDetailScreen({ journeyId, storedJourneys, onStoredJourneysChange }) {
+  const journey = getJourney(journeyId);
+  const activeJourney = journey || HEALING_JOURNEYS[0];
+  const activeJourneyState = getJourneyState(storedJourneys, activeJourney);
+  const activeEntry = getJourneyEntry(activeJourneyState, activeJourneyState.currentDay);
+  const [text, setText] = useState(activeEntry?.text || "");
+  const [saved, setSaved] = useState(false);
+  const [gentleNote, setGentleNote] = useState(false);
+
+  useEffect(() => {
+    if (!journey) navigate("/journeys");
+  }, [journey]);
+
+  useEffect(() => {
+    const nextState = getJourneyState(storedJourneys, activeJourney);
+    const nextEntry = getJourneyEntry(nextState, nextState.currentDay);
+    setText(nextEntry?.text || "");
+  }, [journeyId, storedJourneys[journeyId]?.currentDay]);
+
+  if (!journey) return null;
+
+  const journeyState = getJourneyState(storedJourneys, journey);
+
+  const saveEntry = () => {
+    const prompt = journey.prompts[journeyState.currentDay - 1];
+    const nextEntry = {
+      day: journeyState.currentDay,
+      prompt,
+      text: text.trim(),
+      savedAt: new Date().toISOString()
+    };
+    const entriesWithoutCurrentDay = journeyState.entries.filter((entry) => entry.day !== journeyState.currentDay);
+    const nextStoredJourneys = {
+      ...storedJourneys,
+      [journey.id]: {
+        journeyId: journey.id,
+        currentDay: journeyState.currentDay,
+        entries: [...entriesWithoutCurrentDay, nextEntry].sort((a, b) => a.day - b.day)
+      }
+    };
+    saveStoredJourneys(nextStoredJourneys);
+    onStoredJourneysChange(nextStoredJourneys);
+    setSaved(true);
+  };
+
+  const continueJourney = () => {
+    if (journeyState.currentDay >= journey.prompts.length) {
+      navigate("/journeys");
+      return;
+    }
+
+    const nextStoredJourneys = {
+      ...storedJourneys,
+      [journey.id]: {
+        ...journeyState,
+        currentDay: journeyState.currentDay + 1
+      }
+    };
+    saveStoredJourneys(nextStoredJourneys);
+    onStoredJourneysChange(nextStoredJourneys);
+    setSaved(false);
+    setGentleNote(true);
+  };
+
+  return (
+    <SoftShell>
+      <PageHeader eyebrow="Healing Journey" title={journey.title}>
+        {journey.subtitle}
+      </PageHeader>
+      <JourneyEntry
+        journey={journey}
+        journeyState={journeyState}
+        text={text}
+        onTextChange={(value) => {
+          setText(value);
+          setSaved(false);
+        }}
+        onSave={saveEntry}
+        onContinue={continueJourney}
+        saved={saved}
+        gentleNote={gentleNote}
+      />
+    </SoftShell>
+  );
+}
+
 function App() {
   const [route, setRoute] = useState(getRoute);
   const [selectedEmotionId, setSelectedEmotionId] = useState("");
   const [journalText, setJournalText] = useState("");
+  const [storedJourneys, setStoredJourneys] = useState({});
 
   useEffect(() => {
     const stored = readStoredFlow();
     setSelectedEmotionId(stored.emotionId || "");
     setJournalText(stored.journalText || "");
+    setStoredJourneys(readStoredJourneys());
   }, []);
 
   useEffect(() => {
@@ -563,6 +823,25 @@ function App() {
 
   if (route === "/pause") {
     return <PauseFlow />;
+  }
+
+  if (route === "/journeys") {
+    return <JourneysListScreen storedJourneys={storedJourneys} />;
+  }
+
+  if (route.startsWith("/journeys/")) {
+    const journeyId = route.replace("/journeys/", "");
+    if (!getJourney(journeyId)) {
+      return <JourneysListScreen storedJourneys={storedJourneys} />;
+    }
+
+    return (
+      <JourneyDetailScreen
+        journeyId={journeyId}
+        storedJourneys={storedJourneys}
+        onStoredJourneysChange={setStoredJourneys}
+      />
+    );
   }
 
   return <CheckInScreen onSelect={selectEmotion} />;
