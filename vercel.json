@@ -1,0 +1,33 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/check-in",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/journal",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/reflect",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/pause",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/journeys",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/journeys/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/museum",
+      "destination": "/index.html"
+    }
+  ]
+}
