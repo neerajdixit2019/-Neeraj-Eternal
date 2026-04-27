@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Neeraj Eternal</title>
+    <title>Museum of Unsaid Things</title>
     <link rel="icon" href="data:," />
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -11,8 +11,189 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   </head>
   <body>
-    <a href="/" class="fixed right-4 top-4 z-50 rounded-full bg-white/85 px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg ring-1 ring-white/80 backdrop-blur transition hover:bg-white">Home</a>
     <div id="root"></div>
-    <script type="text/babel" data-presets="react" src="/src/App.jsx"></script>
+    <script type="text/babel" data-presets="react">
+      const { useEffect, useState } = React;
+
+      const STORAGE_KEY = "museum_unsaid_notes";
+      const CATEGORIES = ["Love", "Regret", "Forgiveness", "Hope", "Self-respect", "Goodbye"];
+      const SEED_NOTES = [
+        { id: "seed-1", category: "Love", text: "I still miss the version of us that never happened.", createdAt: "2026-01-01T00:00:00.000Z" },
+        { id: "seed-2", category: "Regret", text: "I wanted closure, but maybe silence was the closure.", createdAt: "2026-01-02T00:00:00.000Z" },
+        { id: "seed-3", category: "Hope", text: "I hope one day I stop checking if you remember me.", createdAt: "2026-01-03T00:00:00.000Z" },
+        { id: "seed-4", category: "Love", text: "I loved honestly. That has to count for something.", createdAt: "2026-01-04T00:00:00.000Z" },
+        { id: "seed-5", category: "Self-respect", text: "I am learning not to beg for softness.", createdAt: "2026-01-05T00:00:00.000Z" },
+        { id: "seed-6", category: "Goodbye", text: "Goodbye, not because it stopped mattering, but because I started mattering too.", createdAt: "2026-01-06T00:00:00.000Z" }
+      ];
+
+      function readNotes() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch {
+          return SEED_NOTES;
+        }
+        return SEED_NOTES;
+      }
+
+      function saveNotes(notes) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+      }
+
+      function hasContactDetails(value) {
+        const emailPattern = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
+        const phonePattern = /(?:\+?\d[\s().-]*){8,}/;
+        return emailPattern.test(value) || phonePattern.test(value);
+      }
+
+      function formatDate(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Recently";
+        return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+      }
+
+      function Button({ children, variant = "primary", className = "", ...props }) {
+        const variants = {
+          primary: "bg-slate-900 text-white shadow-lg shadow-slate-300/30 hover:bg-slate-800",
+          secondary: "bg-white/75 text-slate-700 ring-1 ring-white/80 hover:bg-white",
+          quiet: "bg-transparent text-slate-600 hover:bg-white/50"
+        };
+        return <button type="button" className={`min-h-12 rounded-2xl px-5 py-3 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${className}`} {...props}>{children}</button>;
+      }
+
+      function CategoryFilter({ activeCategory, onChange }) {
+        return (
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
+            {["All", ...CATEGORIES].map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => onChange(category)}
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${activeCategory === category ? "bg-slate-900 text-white shadow-lg shadow-slate-300/40" : "bg-white/70 text-slate-600 ring-1 ring-white/80 hover:bg-white"}`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        );
+      }
+
+      function NoteComposer({ onAddNote, onCancel }) {
+        const [category, setCategory] = useState("Love");
+        const [text, setText] = useState("");
+        const [confirmed, setConfirmed] = useState(false);
+        const showWarning = hasContactDetails(text);
+
+        const submit = () => {
+          const cleanText = text.trim();
+          if (!cleanText || !confirmed) return;
+          onAddNote({ id: `note-${Date.now()}`, category, text: cleanText, createdAt: new Date().toISOString() });
+          setText("");
+          setCategory("Love");
+          setConfirmed(false);
+        };
+
+        return (
+          <section className="rounded-3xl bg-white/75 p-5 shadow-[0_18px_50px_rgba(88,82,120,0.14)] ring-1 ring-white/70 backdrop-blur">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Leave a note</p>
+                <h2 className="mt-2 text-2xl font-semibold leading-snug text-slate-900">Place your words softly.</h2>
+              </div>
+              <button type="button" onClick={onCancel} className="rounded-full bg-white/70 px-3 py-2 text-sm font-semibold text-slate-500">Close</button>
+            </div>
+
+            <label className="mt-5 block text-sm font-semibold text-slate-600" htmlFor="museum-category">Category</label>
+            <select id="museum-category" value={category} onChange={(event) => setCategory(event.target.value)} className="mt-2 h-12 w-full rounded-2xl border-0 bg-white/75 px-4 text-base font-medium text-slate-700 outline-none ring-1 ring-white/80 focus:ring-2 focus:ring-blue-200">
+              {CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+
+            <label className="mt-5 block text-sm font-semibold text-slate-600" htmlFor="museum-note">Unsaid note</label>
+            <textarea id="museum-note" value={text} onChange={(event) => setText(event.target.value)} placeholder="Write the words you never sent..." className="mt-2 min-h-[220px] w-full resize-none rounded-2xl bg-white/65 p-4 text-base leading-8 text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-blue-200" />
+
+            {showWarning && <div className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-700">For privacy, avoid adding contact details.</div>}
+
+            <label className="mt-4 flex items-start gap-3 rounded-2xl bg-white/60 p-4 text-sm leading-6 text-slate-600">
+              <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300" />
+              <span>I understand this is anonymous and saved only on this device for now.</span>
+            </label>
+
+            <Button className="mt-5 w-full" onClick={submit} disabled={!text.trim() || !confirmed}>Place it on the wall</Button>
+          </section>
+        );
+      }
+
+      function MuseumNoteCard({ note, index }) {
+        const tones = ["bg-rose-50", "bg-amber-50", "bg-blue-50", "bg-violet-50", "bg-emerald-50", "bg-stone-50"];
+        return (
+          <article className={`mb-4 inline-block w-full break-inside-avoid rounded-3xl ${tones[index % tones.length]} p-5 shadow-[0_14px_35px_rgba(88,82,120,0.12)] ring-1 ring-white/80 transition hover:-translate-y-1`}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-slate-600">{note.category}</span>
+              <span className="text-xs font-medium text-slate-400">{formatDate(note.createdAt)}</span>
+            </div>
+            <p className="mt-4 whitespace-pre-wrap text-lg leading-8 text-slate-800">{note.text}</p>
+            <p className="mt-5 text-sm font-semibold text-slate-500">Someone left this here.</p>
+          </article>
+        );
+      }
+
+      function MuseumWall({ notes }) {
+        if (notes.length === 0) {
+          return (
+            <section className="rounded-3xl bg-white/75 p-6 text-center shadow-[0_18px_50px_rgba(88,82,120,0.14)] ring-1 ring-white/70">
+              <p className="text-lg leading-8 text-slate-700">Nothing here yet. Maybe your words belong here first.</p>
+            </section>
+          );
+        }
+        return <section className="columns-1 gap-4 pb-6 sm:columns-2">{notes.map((note, index) => <MuseumNoteCard key={note.id} note={note} index={index} />)}</section>;
+      }
+
+      function MuseumApp() {
+        const [notes, setNotes] = useState([]);
+        const [activeCategory, setActiveCategory] = useState("All");
+        const [showComposer, setShowComposer] = useState(false);
+
+        useEffect(() => {
+          const storedNotes = readNotes();
+          setNotes(storedNotes);
+          if (!localStorage.getItem(STORAGE_KEY)) saveNotes(storedNotes);
+        }, []);
+
+        const addNote = (note) => {
+          const nextNotes = [note, ...notes];
+          setNotes(nextNotes);
+          saveNotes(nextNotes);
+          setActiveCategory("All");
+          setShowComposer(false);
+        };
+
+        const filteredNotes = activeCategory === "All" ? notes : notes.filter((note) => note.category === activeCategory);
+
+        return (
+          <main className="min-h-screen bg-[linear-gradient(145deg,#f8efe8_0%,#ece8ff_45%,#e5f5ff_100%)] px-4 py-5 text-slate-800 sm:px-6">
+            <div className="mx-auto w-full max-w-md">
+              <header className="pb-6 pt-4">
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">A quiet wall</p>
+                <h1 className="text-4xl font-semibold leading-tight text-slate-900">Museum of Unsaid Things</h1>
+                <p className="mt-4 text-base leading-7 text-slate-600">A quiet wall for the words people never sent.</p>
+              </header>
+
+              <div className="grid gap-4 pb-5">
+                <Button onClick={() => setShowComposer(true)}>Leave an unsaid note</Button>
+                <div className="rounded-2xl bg-white/60 px-4 py-3 text-sm leading-6 text-slate-600 shadow-sm">Please do not share personal details, threats, or anything that could identify someone.</div>
+              </div>
+
+              {showComposer && <div className="mb-5"><NoteComposer onAddNote={addNote} onCancel={() => setShowComposer(false)} /></div>}
+
+              <div className="mb-4"><CategoryFilter activeCategory={activeCategory} onChange={setActiveCategory} /></div>
+              <MuseumWall notes={filteredNotes} />
+              <a href="/" className="mb-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-white/50">Home</a>
+            </div>
+          </main>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<MuseumApp />);
+    </script>
   </body>
 </html>
