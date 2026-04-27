@@ -1,3 +1,17 @@
 {
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/check-in",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/journal",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/reflect",
+      "destination": "/index.html"
+    }
+  ]
 }
