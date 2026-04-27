@@ -15,7 +15,7 @@ const contentTypes = {
 
 const server = http.createServer((request, response) => {
   const requestPath = decodeURIComponent(new URL(request.url, `http://${request.headers.host}`).pathname);
-  const filePath = path.resolve(root, requestPath === "/" ? "index.html" : requestPath.slice(1));
+  let filePath = path.resolve(root, requestPath === "/" ? "index.html" : requestPath.slice(1));
 
   if (!filePath.startsWith(root)) {
     response.writeHead(403);
@@ -25,6 +25,21 @@ const server = http.createServer((request, response) => {
 
   fs.readFile(filePath, (error, data) => {
     if (error) {
+      if (!path.extname(filePath)) {
+        const fallbackPath = path.resolve(root, "index.html");
+        fs.readFile(fallbackPath, (fallbackError, fallbackData) => {
+          if (fallbackError) {
+            response.writeHead(404);
+            response.end("Not found");
+            return;
+          }
+
+          response.writeHead(200, { "Content-Type": contentTypes[".html"] });
+          response.end(fallbackData);
+        });
+        return;
+      }
+
       response.writeHead(404);
       response.end("Not found");
       return;
@@ -38,5 +53,5 @@ const server = http.createServer((request, response) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`Love School running at http://127.0.0.1:${port}`);
+  console.log(`Neeraj Eternal running at http://127.0.0.1:${port}`);
 });
