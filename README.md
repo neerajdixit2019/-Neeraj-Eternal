@@ -1,6 +1,6 @@
-# Youth Stress Wisdom
+# Neeraj Eternal
 
-A self-contained React page for youth stress support, devotional reflection, Bhagavad Gita wisdom, philosopher quotes, poetry excerpts, journaling, breathing practice, and growth missions.
+A mobile-first emotional flow for youth: check in with a feeling, write what is present, and receive a gentle reflection.
 
 ## Run
 
@@ -12,21 +12,19 @@ node server.js
 
 Then open `http://127.0.0.1:5180`.
 
+You can test the core flow at:
+
+- `http://127.0.0.1:5180/check-in`
+- `http://127.0.0.1:5180/journal`
+- `http://127.0.0.1:5180/reflect`
+
 If `node` is not available on PATH in this Codex environment, use:
 
 ```powershell
 & "C:\Users\neera\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" server.js
 ```
 
-The app loads React, Babel, and Tailwind from CDNs.
-
-## Live Wisdom Sources
-
-- Bhagavad Gita: https://vedicscriptures.github.io
-- Poetry: https://poetrydb.org
-- Philosophy: https://philosophersapi.com
-
-If a live source is unavailable, the app shows built-in fallback wisdom so the support experience does not go blank.
+The app loads React, Babel, and Tailwind from CDNs. Journal state is stored in `localStorage`; there is no backend yet.
 
 ## Deploy to Vercel
 
