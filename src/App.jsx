@@ -695,7 +695,7 @@ function CheckInScreen({ onSelect }) {
       </section>
       <div className="grid gap-3 mb-6">
         <Button variant="secondary" className="w-full" onClick={() => navigate("/wisdom")}>
-          Talk — get wisdom from scriptures
+          Talk — someone is here to listen
         </Button>
         <Button variant="quiet" className="w-full" onClick={() => navigate("/journeys")}>Explore Healing Journeys</Button>
         <Button variant="quiet" className="w-full" onClick={() => navigate("/museum")}>Visit Museum of Unsaid Things</Button>
@@ -831,7 +831,7 @@ function ReflectionScreen({ emotion, journalText, onWriteMore, onSaveAgain }) {
 
       <div className="mt-auto grid gap-3 py-6">
         <Button onClick={onWriteMore}>Write more</Button>
-        <Button variant="secondary" onClick={() => navigate("/wisdom")}>Talk — get wisdom from scriptures</Button>
+        <Button variant="secondary" onClick={() => navigate("/wisdom")}>Talk — someone is here to listen</Button>
         <Button variant="secondary" onClick={() => setCalming(true)}>Start calming exercise</Button>
         <Button variant="secondary" onClick={() => navigate("/pause")}>I feel like texting them</Button>
         <Button variant="secondary" onClick={() => navigate("/journeys")}>Explore Healing Journeys</Button>
@@ -1417,7 +1417,7 @@ function MuseumScreen() {
 
 // ─── Wisdom Chat ──────────────────────────────────────────────────────────────
 
-const WISDOM_GREETING = "This is a safe space. No one reads what you write here — not now, not ever. Share what you are carrying and I will offer you a word from the wisdom of ages. You are not judged here. You are only heard.";
+const WISDOM_GREETING = "This space is only yours. Whatever brought you here — a breakup, losing someone, something you can't put words to — you can share it. I am not going to judge you, advise you, or rush you. I am just here to listen. Start wherever feels right.";
 
 function ThinkingBubble() {
   return (
@@ -1441,7 +1441,10 @@ function WisdomBubble({ message }) {
           <p className="leading-7 text-slate-700">{message.text}</p>
         )}
         {message.acknowledgment && (
-          <p className="leading-7 text-slate-600 italic">{message.acknowledgment}</p>
+          <p className="leading-7 text-slate-800">{message.acknowledgment}</p>
+        )}
+        {message.question && (
+          <p className="mt-4 leading-7 text-violet-800 font-medium">{message.question}</p>
         )}
         {message.scripture && (
           <ScriptureBlock scripture={message.scripture} />
@@ -1492,6 +1495,21 @@ function WisdomChatScreen() {
   const buildLocalFallback = (userText, allMessages) => {
     const theme = detectThemeFromText(userText);
     const themeData = WISDOM_BY_THEME[theme] || WISDOM_BY_THEME.longing;
+    const userMessages = allMessages.filter((m) => m.role === "user");
+    const isEarlyTurn = userMessages.length <= 1;
+
+    // Early turns: just listen and ask a question
+    if (isEarlyTurn) {
+      return {
+        id: `w-${Date.now()}`,
+        role: "wisdom",
+        acknowledgment: themeData.acknowledgment,
+        question: "What happened, if you'd like to share?",
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    // Later turns: offer scripture
     const scripture = getRandomWisdom(theme);
     const reflection = WISDOM_REFLECTIONS_BY_THEME[theme] || WISDOM_REFLECTIONS_BY_THEME.longing;
     return {
