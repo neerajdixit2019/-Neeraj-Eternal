@@ -1,6 +1,7 @@
 # Neeraj Eternal
 
-A mobile-first emotional flow for youth: check in with a feeling, write what is present, receive a gentle reflection, and pause before sending an emotional text.
+A mobile-first emotional flow for youth: check in with a feeling, write what is present, and receive a gentle reflection.
+It also includes Healing Journeys, a local 7-day writing flow for letting go, self worth, and understanding love.
 
 ## Run
 
@@ -18,6 +19,8 @@ You can test the core flow at:
 - `http://127.0.0.1:5180/journal`
 - `http://127.0.0.1:5180/reflect`
 - `http://127.0.0.1:5180/pause`
+- `http://127.0.0.1:5180/journeys`
+- `http://127.0.0.1:5180/journeys/letting-go`
 
 If `node` is not available on PATH in this Codex environment, use:
 
@@ -25,7 +28,9 @@ If `node` is not available on PATH in this Codex environment, use:
 & "C:\Users\neera\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" server.js
 ```
 
-The app loads React, Babel, and Tailwind from CDNs. Journal and pause state are stored in `localStorage`; there is no backend yet.
+The app loads React, Babel, and Tailwind from CDNs. Journal, pause, and journey progress are stored in `localStorage`; there is no backend yet.
+
+Healing Journeys progress is stored under `neeraj-eternal-healing-journeys` by journey id, with `currentDay` and saved daily `entries`.
 
 ## Deploy to Vercel
 
