@@ -1,6 +1,6 @@
 # Neeraj Eternal
 
-A mobile-first emotional flow for youth: check in with a feeling, write what is present, and receive a gentle reflection.
+A mobile-first emotional flow for youth: check in with a feeling, write what is present, receive a gentle reflection, and pause before sending an emotional text.
 
 ## Run
 
@@ -17,6 +17,7 @@ You can test the core flow at:
 - `http://127.0.0.1:5180/check-in`
 - `http://127.0.0.1:5180/journal`
 - `http://127.0.0.1:5180/reflect`
+- `http://127.0.0.1:5180/pause`
 
 If `node` is not available on PATH in this Codex environment, use:
 
@@ -24,7 +25,7 @@ If `node` is not available on PATH in this Codex environment, use:
 & "C:\Users\neera\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" server.js
 ```
 
-The app loads React, Babel, and Tailwind from CDNs. Journal state is stored in `localStorage`; there is no backend yet.
+The app loads React, Babel, and Tailwind from CDNs. Journal and pause state are stored in `localStorage`; there is no backend yet.
 
 ## Deploy to Vercel
 
