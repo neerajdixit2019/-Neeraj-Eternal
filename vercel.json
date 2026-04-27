@@ -3,27 +3,27 @@
   "rewrites": [
     {
       "source": "/check-in",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/journal",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/reflect",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/pause",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/journeys",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/journeys/:path*",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/museum",
