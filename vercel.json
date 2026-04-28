@@ -1,12 +1,15 @@
 {
+  "cleanUrls": true,
   "rewrites": [
-    { "source": "/wisdom", "destination": "/wisdom/index.html" },
-    { "source": "/museum", "destination": "/museum/index.html" },
-    { "source": "/pause", "destination": "/pause/index.html" },
-    { "source": "/journeys", "destination": "/journeys/index.html" },
-    { "source": "/journeys/letting-go", "destination": "/journeys/letting-go/index.html" },
-    { "source": "/journeys/self-worth", "destination": "/journeys/self-worth/index.html" },
-    { "source": "/journeys/understanding-love", "destination": "/journeys/understanding-love/index.html" },
+    { "source": "/wisdom", "destination": "/index.html" },
+    { "source": "/today", "destination": "/index.html" },
+    { "source": "/calm", "destination": "/index.html" },
+    { "source": "/me", "destination": "/index.html" },
+    { "source": "/timeline", "destination": "/index.html" },
+    { "source": "/museum", "destination": "/index.html" },
+    { "source": "/pause", "destination": "/index.html" },
+    { "source": "/journeys", "destination": "/index.html" },
+    { "source": "/journeys/:path*", "destination": "/index.html" },
     { "source": "/check-in", "destination": "/index.html" },
     { "source": "/journal", "destination": "/index.html" },
     { "source": "/reflect", "destination": "/index.html" }
