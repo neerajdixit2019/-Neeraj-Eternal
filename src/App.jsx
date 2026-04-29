@@ -7,6 +7,7 @@ const MUSEUM_STORAGE_KEY = "museum_unsaid_notes";
 const WISDOM_CHAT_STORAGE_KEY = "neeraj-eternal-wisdom-chat";
 const DAILY_SANCTUARY_STORAGE_KEY = "neeraj-eternal-daily-sanctuary";
 const GUIDED_CALM_STORAGE_KEY = "neeraj-eternal-guided-calm";
+const PRESSURE_RESET_STORAGE_KEY = "neeraj-eternal-pressure-reset";
 
 const MUSEUM_CATEGORIES = ["Love", "Regret", "Forgiveness", "Hope", "Self-respect", "Goodbye"];
 
@@ -102,6 +103,51 @@ const SOS_STEPS = [
   {
     title: "Reach toward safety",
     text: "If you might hurt yourself or someone else, contact local emergency help now. If not, choose one trusted person or one calmer room."
+  }
+];
+
+const PRESSURE_AREAS = [
+  {
+    id: "exams",
+    label: "Exams or marks",
+    text: "When one result feels like your whole future.",
+    reframe: "Marks matter, but they are information, not your identity.",
+    action: "Choose one tiny topic and study it for 15 minutes. Stop when the timer ends."
+  },
+  {
+    id: "family",
+    label: "Family expectations",
+    text: "When love feels mixed with pressure.",
+    reframe: "You can respect your family without carrying every fear as a command.",
+    action: "Write the one expectation that feels loudest, then write one boundary your future self needs."
+  },
+  {
+    id: "career",
+    label: "Career pressure",
+    text: "When everyone seems ahead and your path feels late.",
+    reframe: "A future is built by repeated small steps, not by panic in one afternoon.",
+    action: "Pick one skill, application, or project task you can touch for 20 minutes."
+  },
+  {
+    id: "comparison",
+    label: "Comparison",
+    text: "When someone else's progress makes you doubt your own.",
+    reframe: "Their timeline is not evidence against yours.",
+    action: "Mute one comparison trigger for today, then do one action you would respect privately."
+  },
+  {
+    id: "future",
+    label: "Future anxiety",
+    text: "When tomorrow feels too big to enter.",
+    reframe: "You do not need the full map to take the next honest step.",
+    action: "Write the next three practical steps. Do only the first one today."
+  },
+  {
+    id: "money",
+    label: "Money stress",
+    text: "When needs, dreams, and fear all speak at once.",
+    reframe: "Pressure around money is real. Shame does not make planning easier.",
+    action: "List one expense, one possible saving, and one person or resource you can ask for guidance."
   }
 ];
 
@@ -701,6 +747,19 @@ function saveStoredGuidedCalm(nextValue) {
   localStorage.setItem(GUIDED_CALM_STORAGE_KEY, JSON.stringify(nextValue));
 }
 
+function readStoredPressureReset() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PRESSURE_RESET_STORAGE_KEY));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredPressureReset(nextValue) {
+  localStorage.setItem(PRESSURE_RESET_STORAGE_KEY, JSON.stringify(nextValue));
+}
+
 function getLocalDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -729,6 +788,10 @@ function getDailyActionSuggestion(emotion) {
 
 function getCalmExercise(exerciseId) {
   return CALM_EXERCISES.find((exercise) => exercise.id === exerciseId) || CALM_EXERCISES[0];
+}
+
+function getPressureArea(areaId) {
+  return PRESSURE_AREAS.find((area) => area.id === areaId) || PRESSURE_AREAS[0];
 }
 
 function hasContactDetails(value) {
@@ -819,7 +882,7 @@ function getRoute() {
     path === "/journal" || path === "/reflect" || path === "/check-in" ||
     path === "/pause" || path === "/journeys" || path === "/museum" ||
     path === "/wisdom" || path === "/today" || path === "/calm" || path === "/sos" ||
-    path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
+    path === "/pressure" || path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
   ) return path;
   return "/check-in";
 }
@@ -1278,6 +1341,121 @@ function SOSModeScreen() {
           50% { transform: scale(1.05); opacity: 1; }
         }
       `}</style>
+    </SoftShell>
+  );
+}
+
+function PressureAreaCard({ area, selected, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(area.id)}
+      className={`rounded-3xl p-4 text-left ring-1 transition duration-200 ${
+        selected
+          ? "bg-slate-900 text-white ring-slate-900 shadow-lg shadow-slate-300/30"
+          : "bg-white/75 text-slate-800 ring-white/80 hover:-translate-y-0.5 hover:bg-white"
+      }`}
+    >
+      <p className="font-semibold leading-snug">{area.label}</p>
+      <p className={`mt-2 text-sm leading-6 ${selected ? "text-slate-200" : "text-slate-600"}`}>{area.text}</p>
+    </button>
+  );
+}
+
+function PressureResetScreen() {
+  const [storedPressure, setStoredPressure] = useState(readStoredPressureReset);
+  const latest = storedPressure.latest || null;
+  const [areaId, setAreaId] = useState(latest?.areaId || "exams");
+  const [worry, setWorry] = useState("");
+  const [savedEntry, setSavedEntry] = useState(null);
+  const selectedArea = getPressureArea(areaId);
+  const history = Array.isArray(storedPressure.history) ? storedPressure.history : [];
+
+  const savePressureReset = () => {
+    const cleanWorry = worry.trim();
+    if (!cleanWorry) return;
+    const entry = {
+      id: `pressure-${Date.now()}`,
+      areaId,
+      worry: cleanWorry,
+      reframe: selectedArea.reframe,
+      action: selectedArea.action,
+      savedAt: new Date().toISOString()
+    };
+    const nextValue = {
+      latest: entry,
+      history: [entry, ...history].slice(0, 12)
+    };
+    saveStoredPressureReset(nextValue);
+    setStoredPressure(nextValue);
+    setSavedEntry(entry);
+    setWorry("");
+  };
+
+  return (
+    <SoftShell>
+      <PageHeader eyebrow="Pressure Reset" title="Make the pressure smaller.">
+        For exams, family expectations, comparison, career worry, money stress, and future fear. We will turn the big cloud into one next step.
+      </PageHeader>
+
+      {latest && !savedEntry && (
+        <Card className="mb-4 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Last reset</p>
+          <h2 className="mt-2 text-xl font-semibold text-slate-900">{getPressureArea(latest.areaId).label}</h2>
+          <p className="mt-2 leading-7 text-slate-600">{getPreviewText(latest.worry, 130)}</p>
+        </Card>
+      )}
+
+      <section className="grid gap-4">
+        <Card className="p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">01 Name it</p>
+          <h2 className="mt-2 text-2xl font-semibold leading-snug text-slate-900">What kind of pressure is loudest?</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {PRESSURE_AREAS.map((area) => (
+              <PressureAreaCard key={area.id} area={area} selected={area.id === areaId} onSelect={setAreaId} />
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">02 Empty the mind</p>
+          <label className="mt-3 block text-sm font-semibold text-slate-600" htmlFor="pressure-worry">Write the worry in one messy paragraph</label>
+          <textarea
+            id="pressure-worry"
+            value={worry}
+            onChange={(event) => setWorry(event.target.value)}
+            placeholder="I am scared that..."
+            className="mt-3 min-h-[200px] w-full resize-none rounded-2xl bg-white/65 p-4 text-base leading-8 text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-blue-200"
+          />
+          <p className="mt-3 text-sm text-slate-500">{worry.length} characters. One honest line is enough.</p>
+        </Card>
+
+        <Card className="p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">03 Return to one step</p>
+          <h2 className="mt-3 text-xl font-semibold leading-8 text-slate-900">{selectedArea.reframe}</h2>
+          <div className="mt-4 rounded-2xl bg-white/65 p-4">
+            <p className="text-sm font-semibold text-slate-500">One action for today</p>
+            <p className="mt-2 leading-7 text-slate-700">{selectedArea.action}</p>
+          </div>
+        </Card>
+      </section>
+
+      {savedEntry && (
+        <Card className="mt-5 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">Saved locally</p>
+          <h2 className="mt-2 text-2xl font-semibold leading-snug text-slate-900">Pressure is still real, but it is smaller now.</h2>
+          <p className="mt-3 leading-7 text-slate-600">{savedEntry.action}</p>
+        </Card>
+      )}
+
+      <div className="grid gap-3 py-6">
+        <Button onClick={savePressureReset} disabled={!worry.trim()}>Save my reset</Button>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Button variant="secondary" onClick={() => navigate("/calm")}>Calm my body</Button>
+          <Button variant="secondary" onClick={() => navigate("/today")}>Daily Sanctuary</Button>
+        </div>
+      </div>
+      <SafetyPanel className="mb-4" />
     </SoftShell>
   );
 }
@@ -2518,7 +2696,8 @@ const HOME_STORAGE_KEYS = {
   museum: "museum_unsaid_notes",
   wisdom: "neeraj-eternal-wisdom-chat",
   daily: "neeraj-eternal-daily-sanctuary",
-  calm: "neeraj-eternal-guided-calm"
+  calm: "neeraj-eternal-guided-calm",
+  pressure: "neeraj-eternal-pressure-reset"
 };
 
 function readHomeJson(key, fallback) {
@@ -2543,6 +2722,7 @@ function getCompanionSnapshot() {
   const wisdom = readHomeJson(HOME_STORAGE_KEYS.wisdom, {});
   const daily = readHomeJson(HOME_STORAGE_KEYS.daily, {});
   const calm = readHomeJson(HOME_STORAGE_KEYS.calm, {});
+  const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
   const pause = readHomeJson("neeraj-eternal-pause-before-text", {});
   const todayEntry = daily[getLocalDateKey()] || null;
   const latestDaily = getLatestBySavedAt(Object.values(daily || {}));
@@ -2559,6 +2739,7 @@ function getCompanionSnapshot() {
     wisdom,
     daily,
     calm,
+    pressure,
     pause,
     todayEntry,
     latestDaily,
@@ -2566,7 +2747,8 @@ function getCompanionSnapshot() {
     latestMuseumNote,
     emotion,
     journalTheme,
-    hasWisdomChat
+    hasWisdomChat,
+    latestPressure: pressure?.latest || null
   };
 }
 
@@ -2585,6 +2767,15 @@ function getCompanionNextStep(snapshot) {
       title: "Return to what helped your body",
       text: `Last time, ${exercise.title.toLowerCase()} gave you a pause. You can use that again.`,
       href: "/calm"
+    };
+  }
+
+  if (snapshot.latestPressure) {
+    const pressureArea = getPressureArea(snapshot.latestPressure.areaId);
+    return {
+      title: `Reset ${pressureArea.label.toLowerCase()}`,
+      text: "You named this pressure once. You can make it smaller again.",
+      href: "/pressure"
     };
   }
 
@@ -2617,6 +2808,7 @@ function hasCompanionMemory(snapshot) {
     snapshot.latestDaily ||
     snapshot.flow?.journalText ||
     snapshot.calm.latestExerciseId ||
+    snapshot.latestPressure ||
     snapshot.lastJourney ||
     snapshot.latestMuseumNote ||
     snapshot.hasWisdomChat ||
@@ -2655,6 +2847,7 @@ function CompanionMemoryScreen() {
 
   const nextStep = getCompanionNextStep(snapshot);
   const calmExercise = snapshot.calm.latestExerciseId ? getCalmExercise(snapshot.calm.latestExerciseId) : null;
+  const pressureArea = snapshot.latestPressure ? getPressureArea(snapshot.latestPressure.areaId) : null;
   const journeyDay = snapshot.lastJourney?.state.currentDay || 1;
   const journeyTotal = snapshot.lastJourney?.journey.prompts.length || 7;
   const memoryExists = hasCompanionMemory(snapshot);
@@ -2695,6 +2888,12 @@ function CompanionMemoryScreen() {
           href="/calm"
         />
         <CompanionMemoryCard
+          label="Pressure"
+          title={pressureArea ? pressureArea.label : "No pressure reset yet"}
+          text={snapshot.latestPressure ? getPreviewText(snapshot.latestPressure.worry, 118) : "For exams, family expectations, comparison, career, money, and future worry."}
+          href="/pressure"
+        />
+        <CompanionMemoryCard
           label="Journey"
           title={snapshot.lastJourney ? snapshot.lastJourney.journey.title : "No journey started yet"}
           text={snapshot.lastJourney ? `Day ${journeyDay} of ${journeyTotal}: ${snapshot.lastJourney.journey.prompts[journeyDay - 1]}` : "A 7-day path can hold what one page cannot."}
@@ -2718,7 +2917,7 @@ function CompanionMemoryScreen() {
   );
 }
 
-const TIMELINE_FILTERS = ["All", "Daily", "Journal", "Calm", "Journey"];
+const TIMELINE_FILTERS = ["All", "Daily", "Journal", "Calm", "Pressure", "Journey"];
 
 function getTimelineTimestamp(value) {
   const date = new Date(value);
@@ -2738,6 +2937,7 @@ function getTimelineItems() {
   const journeys = readHomeJson(HOME_STORAGE_KEYS.journeys, {});
   const daily = readHomeJson(HOME_STORAGE_KEYS.daily, {});
   const calm = readHomeJson(HOME_STORAGE_KEYS.calm, {});
+  const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
   const items = [];
 
   Object.values(daily || {}).forEach((entry) => {
@@ -2776,6 +2976,19 @@ function getTimelineItems() {
       href: "/calm"
     });
   }
+
+  const pressureHistory = Array.isArray(pressure?.history) ? pressure.history : [];
+  pressureHistory.forEach((entry) => {
+    const area = getPressureArea(entry.areaId);
+    items.push({
+      id: entry.id || `pressure-${entry.savedAt || area.id}`,
+      type: "Pressure",
+      title: `Pressure Reset: ${area.label}`,
+      text: `${entry.worry || "Pressure named."} - ${entry.action || area.action}`,
+      date: entry.savedAt || new Date().toISOString(),
+      href: "/pressure"
+    });
+  });
 
   HEALING_JOURNEYS.forEach((journey) => {
     const state = getJourneyState(journeys || {}, journey);
@@ -2885,6 +3098,7 @@ function getHomeStatus() {
   const wisdom = readHomeJson(HOME_STORAGE_KEYS.wisdom, {});
   const daily = readHomeJson(HOME_STORAGE_KEYS.daily, {});
   const calm = readHomeJson(HOME_STORAGE_KEYS.calm, {});
+  const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
   const timelineCount = getTimelineItems().length;
   const journeyValues = Object.values(journeys || {});
   const lastJourney = getLastJourneyProgress(journeys);
@@ -2901,7 +3115,8 @@ function getHomeStatus() {
     daily: todayEntry ? "Today checked in" : "One gentle ritual",
     calm: calm.latestExerciseId ? `Last calm: ${getCalmExercise(calm.latestExerciseId).shortTitle}` : "A one-minute reset",
     sos: "Fast grounding path",
-    companion: hasJournal || todayEntry || calm.latestExerciseId || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
+    pressure: pressure?.latest ? `Last reset: ${getPressureArea(pressure.latest.areaId).label}` : "Student stress reset",
+    companion: hasJournal || todayEntry || calm.latestExerciseId || pressure?.latest || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
     timeline: timelineCount > 0 ? `${timelineCount} saved moment${timelineCount === 1 ? "" : "s"}` : "Builds privately",
     primary: unfinishedJourney
       ? {
@@ -2923,7 +3138,7 @@ function getHomeStatus() {
             href: "/today",
             status: "Start today's check-in"
           },
-    hasAnyProgress: Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1)
+    hasAnyProgress: Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || Boolean(pressure?.latest) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1)
   };
 }
 
@@ -2971,6 +3186,7 @@ function HomeHubScreen() {
     { title: "I need help now", text: "A fast grounding path for intense moments.", status: status.sos, href: "/sos" },
     { title: "My quiet space", text: "See what helped before and choose the gentlest next step.", status: status.companion, href: "/me" },
     { title: "Emotion Timeline", text: "See your daily notes, calm resets, and journey pages by date.", status: status.timeline, href: "/timeline" },
+    { title: "Pressure Reset", text: "For exams, family expectations, comparison, career, and future worry.", status: status.pressure, href: "/pressure" },
     { title: "Check in with a feeling", text: "Name what you are carrying and write one honest page.", status: status.checkIn, href: "/check-in" },
     { title: "Calm my body", text: "A quick body-first reset for when writing feels too much.", status: status.calm, href: "/calm" },
     { title: "Talk to Wisdom", text: "A private companion for scripture, reflection, and calm words.", status: status.wisdom, href: "/wisdom" },
@@ -3087,6 +3303,8 @@ function App() {
   if (route === "/calm") return <GuidedCalmRoom />;
 
   if (route === "/sos") return <SOSModeScreen />;
+
+  if (route === "/pressure") return <PressureResetScreen />;
 
   if (route === "/me") return <CompanionMemoryScreen />;
 
