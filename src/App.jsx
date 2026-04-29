@@ -86,6 +86,25 @@ const KIND_VOICE_SCRIPTS = [
   { id: "heaviness", label: "Heaviness", text: "I do not have to carry the whole day at once. I can put down one small piece." }
 ];
 
+const SOS_STEPS = [
+  {
+    title: "Put both feet down",
+    text: "Feel the floor or the bed holding you. Let your body know: I am here, in this moment."
+  },
+  {
+    title: "Breathe out longer",
+    text: "Inhale gently. Exhale slower than you inhaled. Do this three times without forcing it."
+  },
+  {
+    title: "Name what is around you",
+    text: "Say five things you can see. This helps your mind return from fear into the room."
+  },
+  {
+    title: "Reach toward safety",
+    text: "If you might hurt yourself or someone else, contact local emergency help now. If not, choose one trusted person or one calmer room."
+  }
+];
+
 const MUSEUM_SEED_NOTES = [
   {
     id: "seed-1",
@@ -799,7 +818,8 @@ function getRoute() {
   if (
     path === "/journal" || path === "/reflect" || path === "/check-in" ||
     path === "/pause" || path === "/journeys" || path === "/museum" ||
-    path === "/wisdom" || path === "/today" || path === "/calm" || path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
+    path === "/wisdom" || path === "/today" || path === "/calm" || path === "/sos" ||
+    path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
   ) return path;
   return "/check-in";
 }
@@ -872,6 +892,7 @@ function SafetyPanel({ className = "" }) {
       <p className="mt-1">
         Pause, breathe, and reach out to one trusted person. If there is immediate danger, contact local emergency help now. This space is support for reflection, not medical care.
       </p>
+      <Button variant="secondary" className="mt-3 w-full" onClick={() => navigate("/sos")}>Open SOS mode</Button>
     </div>
   );
 }
@@ -1174,6 +1195,92 @@ function GuidedCalmRoom() {
 }
 
 // ─── Journal ──────────────────────────────────────────────────────────────────
+
+// SOS Mode
+
+function SOSModeScreen() {
+  const [stepIndex, setStepIndex] = useState(0);
+  const [finished, setFinished] = useState(false);
+  const currentStep = SOS_STEPS[stepIndex];
+  const progress = Math.round(((stepIndex + 1) / SOS_STEPS.length) * 100);
+  const isLastStep = stepIndex >= SOS_STEPS.length - 1;
+
+  const continueStep = () => {
+    if (isLastStep) {
+      setFinished(true);
+      return;
+    }
+    setStepIndex((value) => value + 1);
+  };
+
+  if (finished) {
+    return (
+      <SoftShell>
+        <PageHeader eyebrow="SOS Mode" title="You made it through this minute.">
+          Let that count. You do not have to become okay all at once.
+        </PageHeader>
+
+        <Card className="p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Right now</p>
+          <h2 className="mt-3 text-2xl font-semibold leading-snug text-slate-900">Choose the gentlest next room.</h2>
+          <p className="mt-2 leading-7 text-slate-600">If the danger is immediate, contact local emergency help now or move near a trusted person.</p>
+        </Card>
+
+        <div className="mt-5 grid gap-3">
+          <NextStepCard title="Calm my body" text="Stay body-first with breathing, grounding, or a kind voice." onClick={() => navigate("/calm")} tone="bg-blue-50/90" />
+          <NextStepCard title="Write one line" text="Use a private journal if words are starting to return." onClick={() => navigate("/journal")} />
+          <NextStepCard title="Talk to Wisdom" text="Receive a quiet response if you need steady words." onClick={() => navigate("/wisdom")} />
+          <Button variant="quiet" onClick={() => navigate("/")}>Return home</Button>
+        </div>
+      </SoftShell>
+    );
+  }
+
+  return (
+    <SoftShell>
+      <PageHeader eyebrow="SOS Mode" title="Stay with this minute.">
+        For intense moments when even writing feels too much. Do these steps slowly. This is support for pausing, not medical care.
+      </PageHeader>
+
+      <div className="rounded-3xl bg-rose-50/90 p-4 text-sm leading-6 text-rose-800 shadow-sm ring-1 ring-rose-100">
+        <p className="font-semibold">If there is immediate danger</p>
+        <p className="mt-1">Contact local emergency help now. If you can, move near another person or call someone trusted.</p>
+      </div>
+
+      <Card className="mt-5 p-5">
+        <div className="flex items-center justify-between gap-3 text-sm font-semibold text-slate-500">
+          <span>Step {stepIndex + 1} of {SOS_STEPS.length}</span>
+          <span>{progress}%</span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/75">
+          <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${progress}%` }} />
+        </div>
+
+        <div className="my-7 grid place-items-center">
+          <div className="grid h-36 w-36 animate-[sosPulse_5s_ease-in-out_infinite] place-items-center rounded-full bg-gradient-to-br from-blue-100 via-violet-100 to-rose-100 shadow-inner ring-1 ring-white/80">
+            <span className="text-5xl font-semibold text-slate-700">{stepIndex + 1}</span>
+          </div>
+        </div>
+
+        <h2 className="text-3xl font-semibold leading-tight text-slate-900">{currentStep.title}</h2>
+        <p className="mt-4 text-lg leading-8 text-slate-700">{currentStep.text}</p>
+        <Button className="mt-6 w-full" onClick={continueStep}>{isLastStep ? "I am here for this minute" : "Next step"}</Button>
+      </Card>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <NextStepCard title="Calm room" text="Try a longer body reset." onClick={() => navigate("/calm")} />
+        <NextStepCard title="Pause texting" text="Slow down an urgent message." onClick={() => navigate("/pause")} />
+      </div>
+
+      <style>{`
+        @keyframes sosPulse {
+          0%, 100% { transform: scale(0.95); opacity: 0.82; }
+          50% { transform: scale(1.05); opacity: 1; }
+        }
+      `}</style>
+    </SoftShell>
+  );
+}
 
 function JournalScreen({ emotion, draftText, onTextChange, onSave }) {
   const title = emotion ? `Let's sit with ${emotion.shortLabel.toLowerCase()}.` : "Let's write softly.";
@@ -2793,6 +2900,7 @@ function getHomeStatus() {
     pause: localStorage.getItem("neeraj-eternal-pause-before-text") ? "Pause answers saved" : "Slow down before acting",
     daily: todayEntry ? "Today checked in" : "One gentle ritual",
     calm: calm.latestExerciseId ? `Last calm: ${getCalmExercise(calm.latestExerciseId).shortTitle}` : "A one-minute reset",
+    sos: "Fast grounding path",
     companion: hasJournal || todayEntry || calm.latestExerciseId || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
     timeline: timelineCount > 0 ? `${timelineCount} saved moment${timelineCount === 1 ? "" : "s"}` : "Builds privately",
     primary: unfinishedJourney
@@ -2860,6 +2968,7 @@ function HomeHubScreen() {
   };
 
   const cards = [
+    { title: "I need help now", text: "A fast grounding path for intense moments.", status: status.sos, href: "/sos" },
     { title: "My quiet space", text: "See what helped before and choose the gentlest next step.", status: status.companion, href: "/me" },
     { title: "Emotion Timeline", text: "See your daily notes, calm resets, and journey pages by date.", status: status.timeline, href: "/timeline" },
     { title: "Check in with a feeling", text: "Name what you are carrying and write one honest page.", status: status.checkIn, href: "/check-in" },
@@ -2976,6 +3085,8 @@ function App() {
   if (route === "/today") return <DailySanctuaryScreen />;
 
   if (route === "/calm") return <GuidedCalmRoom />;
+
+  if (route === "/sos") return <SOSModeScreen />;
 
   if (route === "/me") return <CompanionMemoryScreen />;
 
