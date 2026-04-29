@@ -8,6 +8,7 @@ const WISDOM_CHAT_STORAGE_KEY = "neeraj-eternal-wisdom-chat";
 const DAILY_SANCTUARY_STORAGE_KEY = "neeraj-eternal-daily-sanctuary";
 const GUIDED_CALM_STORAGE_KEY = "neeraj-eternal-guided-calm";
 const PRESSURE_RESET_STORAGE_KEY = "neeraj-eternal-pressure-reset";
+const CARE_KIT_STORAGE_KEY = "neeraj-eternal-care-kit";
 
 const MUSEUM_CATEGORIES = ["Love", "Regret", "Forgiveness", "Hope", "Self-respect", "Goodbye"];
 
@@ -149,6 +150,41 @@ const PRESSURE_AREAS = [
     reframe: "Pressure around money is real. Shame does not make planning easier.",
     action: "List one expense, one possible saving, and one person or resource you can ask for guidance."
   }
+];
+
+const CARE_KIT_PROMPTS = [
+  {
+    id: "person",
+    label: "Trusted person",
+    placeholder: "Example: my cousin, my best friend, my teacher",
+    helper: "Use a name or role only. Avoid phone numbers or private details."
+  },
+  {
+    id: "place",
+    label: "Safe place",
+    placeholder: "Example: terrace, temple corner, library, my room with lights on",
+    helper: "Pick somewhere your body feels a little less alone."
+  },
+  {
+    id: "action",
+    label: "Small calming action",
+    placeholder: "Example: drink water, shower, walk outside, open notes app",
+    helper: "Make it simple enough for a hard day."
+  },
+  {
+    id: "reminder",
+    label: "Words I need to hear",
+    placeholder: "Example: This moment is not my whole life.",
+    helper: "Write it like you are speaking to someone you care about."
+  }
+];
+
+const CARE_KIT_IDEAS = [
+  "Put both feet on the floor.",
+  "Send one honest line to someone safe.",
+  "Drink water before deciding anything.",
+  "Step away from the screen for five minutes.",
+  "Read one saved reminder slowly."
 ];
 
 const MUSEUM_SEED_NOTES = [
@@ -760,6 +796,19 @@ function saveStoredPressureReset(nextValue) {
   localStorage.setItem(PRESSURE_RESET_STORAGE_KEY, JSON.stringify(nextValue));
 }
 
+function readStoredCareKit() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CARE_KIT_STORAGE_KEY));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredCareKit(nextValue) {
+  localStorage.setItem(CARE_KIT_STORAGE_KEY, JSON.stringify(nextValue));
+}
+
 function getLocalDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -882,7 +931,7 @@ function getRoute() {
     path === "/journal" || path === "/reflect" || path === "/check-in" ||
     path === "/pause" || path === "/journeys" || path === "/museum" ||
     path === "/wisdom" || path === "/today" || path === "/calm" || path === "/sos" ||
-    path === "/pressure" || path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
+    path === "/pressure" || path === "/care" || path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
   ) return path;
   return "/check-in";
 }
@@ -1292,6 +1341,7 @@ function SOSModeScreen() {
         <div className="mt-5 grid gap-3">
           <NextStepCard title="Calm my body" text="Stay body-first with breathing, grounding, or a kind voice." onClick={() => navigate("/calm")} tone="bg-blue-50/90" />
           <NextStepCard title="Write one line" text="Use a private journal if words are starting to return." onClick={() => navigate("/journal")} />
+          <NextStepCard title="Open Care Kit" text="Return to the people, places, and words that help you stay safe." onClick={() => navigate("/care")} />
           <NextStepCard title="Talk to Wisdom" text="Receive a quiet response if you need steady words." onClick={() => navigate("/wisdom")} />
           <Button variant="quiet" onClick={() => navigate("/")}>Return home</Button>
         </div>
@@ -1359,6 +1409,121 @@ function PressureAreaCard({ area, selected, onSelect }) {
       <p className="font-semibold leading-snug">{area.label}</p>
       <p className={`mt-2 text-sm leading-6 ${selected ? "text-slate-200" : "text-slate-600"}`}>{area.text}</p>
     </button>
+  );
+}
+
+function CareKitField({ prompt, value, onChange }) {
+  return (
+    <div className="rounded-3xl bg-white/65 p-4 ring-1 ring-white/80">
+      <label className="block text-sm font-semibold text-slate-600" htmlFor={`care-${prompt.id}`}>{prompt.label}</label>
+      <input
+        id={`care-${prompt.id}`}
+        value={value}
+        onChange={(event) => onChange(prompt.id, event.target.value)}
+        placeholder={prompt.placeholder}
+        className="mt-3 h-12 w-full rounded-2xl bg-white/75 px-4 text-base text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-blue-200"
+      />
+      <p className="mt-2 text-sm leading-6 text-slate-500">{prompt.helper}</p>
+    </div>
+  );
+}
+
+function CareKitScreen() {
+  const [kit, setKit] = useState(readStoredCareKit);
+  const [draft, setDraft] = useState({
+    person: kit.person || "",
+    place: kit.place || "",
+    action: kit.action || "",
+    reminder: kit.reminder || ""
+  });
+  const [saved, setSaved] = useState(false);
+  const hasKit = Boolean(kit.person || kit.place || kit.action || kit.reminder);
+  const showPrivacyWarning = hasContactDetails(Object.values(draft).join(" "));
+
+  const updateDraft = (key, value) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setSaved(false);
+  };
+
+  const saveCareKit = () => {
+    const nextKit = {
+      person: draft.person.trim(),
+      place: draft.place.trim(),
+      action: draft.action.trim(),
+      reminder: draft.reminder.trim(),
+      updatedAt: new Date().toISOString()
+    };
+    saveStoredCareKit(nextKit);
+    setKit(nextKit);
+    setDraft(nextKit);
+    setSaved(true);
+  };
+
+  return (
+    <SoftShell>
+      <PageHeader eyebrow="Care Kit" title="Keep your safe things close.">
+        Build a small local kit for hard moments: who helps, where you can go, what action steadies you, and what words you need.
+      </PageHeader>
+
+      {hasKit && (
+        <Card className="mb-4 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Your saved kit</p>
+          <div className="mt-4 grid gap-3">
+            {kit.person && <p className="rounded-2xl bg-white/60 p-3 text-sm leading-6 text-slate-700"><span className="font-semibold">Person:</span> {kit.person}</p>}
+            {kit.place && <p className="rounded-2xl bg-white/60 p-3 text-sm leading-6 text-slate-700"><span className="font-semibold">Place:</span> {kit.place}</p>}
+            {kit.action && <p className="rounded-2xl bg-white/60 p-3 text-sm leading-6 text-slate-700"><span className="font-semibold">Action:</span> {kit.action}</p>}
+            {kit.reminder && <p className="rounded-2xl bg-white/60 p-3 text-sm leading-6 text-slate-700"><span className="font-semibold">Reminder:</span> {kit.reminder}</p>}
+          </div>
+        </Card>
+      )}
+
+      <Card className="p-5">
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Make it personal</p>
+        <h2 className="mt-2 text-2xl font-semibold leading-snug text-slate-900">What helps you return to yourself?</h2>
+        <div className="mt-5 grid gap-4">
+          {CARE_KIT_PROMPTS.map((prompt) => (
+            <CareKitField key={prompt.id} prompt={prompt} value={draft[prompt.id] || ""} onChange={updateDraft} />
+          ))}
+        </div>
+      </Card>
+
+      {showPrivacyWarning && (
+        <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-700">
+          For privacy, avoid saving phone numbers, emails, or anything that identifies someone too clearly.
+        </div>
+      )}
+
+      <Card className="mt-5 p-5">
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">If you are blank</p>
+        <div className="mt-3 grid gap-2">
+          {CARE_KIT_IDEAS.map((idea) => (
+            <button
+              key={idea}
+              type="button"
+              onClick={() => updateDraft("action", idea)}
+              className="rounded-2xl bg-white/65 px-4 py-3 text-left text-sm font-semibold leading-6 text-slate-700 transition hover:bg-white"
+            >
+              {idea}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {saved && (
+        <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm">
+          Saved to this device. Your kit is ready when the moment gets loud.
+        </div>
+      )}
+
+      <div className="grid gap-3 py-6">
+        <Button onClick={saveCareKit} disabled={!Object.values(draft).some((value) => value.trim())}>Save Care Kit</Button>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Button variant="secondary" onClick={() => navigate("/sos")}>Open SOS mode</Button>
+          <Button variant="secondary" onClick={() => navigate("/calm")}>Calm my body</Button>
+        </div>
+      </div>
+      <SafetyPanel className="mb-4" />
+    </SoftShell>
   );
 }
 
@@ -2697,7 +2862,8 @@ const HOME_STORAGE_KEYS = {
   wisdom: "neeraj-eternal-wisdom-chat",
   daily: "neeraj-eternal-daily-sanctuary",
   calm: "neeraj-eternal-guided-calm",
-  pressure: "neeraj-eternal-pressure-reset"
+  pressure: "neeraj-eternal-pressure-reset",
+  care: "neeraj-eternal-care-kit"
 };
 
 function readHomeJson(key, fallback) {
@@ -2723,6 +2889,7 @@ function getCompanionSnapshot() {
   const daily = readHomeJson(HOME_STORAGE_KEYS.daily, {});
   const calm = readHomeJson(HOME_STORAGE_KEYS.calm, {});
   const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
+  const care = readHomeJson(HOME_STORAGE_KEYS.care, {});
   const pause = readHomeJson("neeraj-eternal-pause-before-text", {});
   const todayEntry = daily[getLocalDateKey()] || null;
   const latestDaily = getLatestBySavedAt(Object.values(daily || {}));
@@ -2740,6 +2907,7 @@ function getCompanionSnapshot() {
     daily,
     calm,
     pressure,
+    care,
     pause,
     todayEntry,
     latestDaily,
@@ -2748,7 +2916,8 @@ function getCompanionSnapshot() {
     emotion,
     journalTheme,
     hasWisdomChat,
-    latestPressure: pressure?.latest || null
+    latestPressure: pressure?.latest || null,
+    hasCareKit: Boolean(care?.person || care?.place || care?.action || care?.reminder)
   };
 }
 
@@ -2776,6 +2945,14 @@ function getCompanionNextStep(snapshot) {
       title: `Reset ${pressureArea.label.toLowerCase()}`,
       text: "You named this pressure once. You can make it smaller again.",
       href: "/pressure"
+    };
+  }
+
+  if (!snapshot.hasCareKit && (snapshot.calm.latestExerciseId || snapshot.todayEntry || snapshot.flow?.journalText)) {
+    return {
+      title: "Build your Care Kit",
+      text: "Save the people, places, actions, and words that help on hard days.",
+      href: "/care"
     };
   }
 
@@ -2809,6 +2986,7 @@ function hasCompanionMemory(snapshot) {
     snapshot.flow?.journalText ||
     snapshot.calm.latestExerciseId ||
     snapshot.latestPressure ||
+    snapshot.hasCareKit ||
     snapshot.lastJourney ||
     snapshot.latestMuseumNote ||
     snapshot.hasWisdomChat ||
@@ -2894,6 +3072,12 @@ function CompanionMemoryScreen() {
           href="/pressure"
         />
         <CompanionMemoryCard
+          label="Care Kit"
+          title={snapshot.hasCareKit ? "Your kit is ready" : "No care kit yet"}
+          text={snapshot.hasCareKit ? getPreviewText(snapshot.care.reminder || snapshot.care.action || snapshot.care.person || "Your saved supports are here.", 118) : "Save who helps, where to go, one action, and one reminder."}
+          href="/care"
+        />
+        <CompanionMemoryCard
           label="Journey"
           title={snapshot.lastJourney ? snapshot.lastJourney.journey.title : "No journey started yet"}
           text={snapshot.lastJourney ? `Day ${journeyDay} of ${journeyTotal}: ${snapshot.lastJourney.journey.prompts[journeyDay - 1]}` : "A 7-day path can hold what one page cannot."}
@@ -2917,7 +3101,7 @@ function CompanionMemoryScreen() {
   );
 }
 
-const TIMELINE_FILTERS = ["All", "Daily", "Journal", "Calm", "Pressure", "Journey"];
+const TIMELINE_FILTERS = ["All", "Daily", "Journal", "Calm", "Pressure", "Care", "Journey"];
 
 function getTimelineTimestamp(value) {
   const date = new Date(value);
@@ -2938,6 +3122,7 @@ function getTimelineItems() {
   const daily = readHomeJson(HOME_STORAGE_KEYS.daily, {});
   const calm = readHomeJson(HOME_STORAGE_KEYS.calm, {});
   const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
+  const care = readHomeJson(HOME_STORAGE_KEYS.care, {});
   const items = [];
 
   Object.values(daily || {}).forEach((entry) => {
@@ -2989,6 +3174,17 @@ function getTimelineItems() {
       href: "/pressure"
     });
   });
+
+  if (care?.updatedAt && (care.person || care.place || care.action || care.reminder)) {
+    items.push({
+      id: `care-${care.updatedAt}`,
+      type: "Care",
+      title: "Care Kit updated",
+      text: care.reminder || care.action || care.person || "Your saved supports are ready.",
+      date: care.updatedAt,
+      href: "/care"
+    });
+  }
 
   HEALING_JOURNEYS.forEach((journey) => {
     const state = getJourneyState(journeys || {}, journey);
@@ -3099,6 +3295,7 @@ function getHomeStatus() {
   const daily = readHomeJson(HOME_STORAGE_KEYS.daily, {});
   const calm = readHomeJson(HOME_STORAGE_KEYS.calm, {});
   const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
+  const care = readHomeJson(HOME_STORAGE_KEYS.care, {});
   const timelineCount = getTimelineItems().length;
   const journeyValues = Object.values(journeys || {});
   const lastJourney = getLastJourneyProgress(journeys);
@@ -3116,7 +3313,8 @@ function getHomeStatus() {
     calm: calm.latestExerciseId ? `Last calm: ${getCalmExercise(calm.latestExerciseId).shortTitle}` : "A one-minute reset",
     sos: "Fast grounding path",
     pressure: pressure?.latest ? `Last reset: ${getPressureArea(pressure.latest.areaId).label}` : "Student stress reset",
-    companion: hasJournal || todayEntry || calm.latestExerciseId || pressure?.latest || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
+    care: care?.updatedAt ? "Your supports are saved" : "Build your support kit",
+    companion: hasJournal || todayEntry || calm.latestExerciseId || pressure?.latest || care?.updatedAt || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
     timeline: timelineCount > 0 ? `${timelineCount} saved moment${timelineCount === 1 ? "" : "s"}` : "Builds privately",
     primary: unfinishedJourney
       ? {
@@ -3138,7 +3336,7 @@ function getHomeStatus() {
             href: "/today",
             status: "Start today's check-in"
           },
-    hasAnyProgress: Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || Boolean(pressure?.latest) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1)
+    hasAnyProgress: Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || Boolean(pressure?.latest) || Boolean(care?.updatedAt) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1)
   };
 }
 
@@ -3186,6 +3384,7 @@ function HomeHubScreen() {
     { title: "I need help now", text: "A fast grounding path for intense moments.", status: status.sos, href: "/sos" },
     { title: "My quiet space", text: "See what helped before and choose the gentlest next step.", status: status.companion, href: "/me" },
     { title: "Emotion Timeline", text: "See your daily notes, calm resets, and journey pages by date.", status: status.timeline, href: "/timeline" },
+    { title: "Care Kit", text: "Save your trusted person, safe place, steady action, and reminder.", status: status.care, href: "/care" },
     { title: "Pressure Reset", text: "For exams, family expectations, comparison, career, and future worry.", status: status.pressure, href: "/pressure" },
     { title: "Check in with a feeling", text: "Name what you are carrying and write one honest page.", status: status.checkIn, href: "/check-in" },
     { title: "Calm my body", text: "A quick body-first reset for when writing feels too much.", status: status.calm, href: "/calm" },
@@ -3305,6 +3504,8 @@ function App() {
   if (route === "/sos") return <SOSModeScreen />;
 
   if (route === "/pressure") return <PressureResetScreen />;
+
+  if (route === "/care") return <CareKitScreen />;
 
   if (route === "/me") return <CompanionMemoryScreen />;
 

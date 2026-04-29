@@ -6,6 +6,7 @@
     { "source": "/calm", "destination": "/index.html" },
     { "source": "/sos", "destination": "/index.html" },
     { "source": "/pressure", "destination": "/index.html" },
+    { "source": "/care", "destination": "/index.html" },
     { "source": "/me", "destination": "/index.html" },
     { "source": "/timeline", "destination": "/index.html" },
     { "source": "/museum", "destination": "/index.html" },

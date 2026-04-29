@@ -1,6 +1,6 @@
 # Neeraj Eternal
 
-A mobile-first emotional safe space for young people. No accounts; SOS mode, pressure reset, daily ritual, guided calm, quiet pattern, emotion timeline, journal, pause, journey, museum, and chat state stay in the current browser through `localStorage`.
+A mobile-first emotional safe space for young people. No accounts; SOS mode, care kit, pressure reset, daily ritual, guided calm, quiet pattern, emotion timeline, journal, pause, journey, museum, and chat state stay in the current browser through `localStorage`.
 
 **Features:**
 - **Home Hub** - a warmer main doorway with a primary next step, quick feeling chips, progress hints, and safety support.
@@ -9,6 +9,7 @@ A mobile-first emotional safe space for young people. No accounts; SOS mode, pre
 - **Daily Sanctuary** - one gentle daily ritual to name a feeling, receive a short wisdom line, release a note, and choose one calming action.
 - **Guided Calm** - body-first breathing, grounding, unclenching, and kind self-talk exercises for high-stress moments.
 - **SOS Mode** - a fast grounding path for intense moments, with emergency support language and gentle next steps.
+- **Care Kit** - a private support kit with trusted person, safe place, calming action, and a reminder.
 - **Pressure Reset** - a student-focused room for exams, family expectations, comparison, career, money, and future worry.
 - **Check-in** - choose a feeling, including "not sure", with real-life examples before writing.
 - **Journal + Reflection** - write privately, then receive a cleaner reflection based on both the chosen emotion and journal text.
@@ -35,6 +36,7 @@ You can test the core flow at:
 - `http://127.0.0.1:5180/today`
 - `http://127.0.0.1:5180/calm`
 - `http://127.0.0.1:5180/sos`
+- `http://127.0.0.1:5180/care`
 - `http://127.0.0.1:5180/pressure`
 - `http://127.0.0.1:5180/check-in`
 - `http://127.0.0.1:5180/journal`
@@ -67,6 +69,8 @@ Emotion Timeline at `/timeline` does not create a new storage key. It reads exis
 Daily Sanctuary entries are stored under `neeraj-eternal-daily-sanctuary` by local date, shaped like `{ date, emotionId, note, action, savedAt }`.
 
 Guided Calm history is stored under `neeraj-eternal-guided-calm` as `{ completedCount, latestExerciseId, latestCompletedAt }`.
+
+Care Kit is stored under `neeraj-eternal-care-kit` as `{ person, place, action, reminder, updatedAt }`. It is local-only and warns users not to save contact details.
 
 Pressure Reset history is stored under `neeraj-eternal-pressure-reset` as `{ latest, history }`, with local entries for pressure type, worry text, reframe, action, and saved time.
 
