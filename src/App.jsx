@@ -10,6 +10,7 @@ const GUIDED_CALM_STORAGE_KEY = "neeraj-eternal-guided-calm";
 const PRESSURE_RESET_STORAGE_KEY = "neeraj-eternal-pressure-reset";
 const CARE_KIT_STORAGE_KEY = "neeraj-eternal-care-kit";
 const WELCOME_STORAGE_KEY = "neeraj-eternal-welcome";
+const AFTERCARE_STORAGE_KEY = "neeraj-eternal-aftercare";
 
 const MUSEUM_CATEGORIES = ["Love", "Regret", "Forgiveness", "Hope", "Self-respect", "Goodbye"];
 
@@ -239,6 +240,65 @@ const WELCOME_REASONS = [
     text: "You do not need perfect language to begin.",
     href: "/today",
     action: "Start with one small daily ritual."
+  }
+];
+
+const AFTERCARE_ACTIONS = [
+  {
+    id: "calm",
+    title: "Calm my body",
+    text: "Let your body feel safe before you decide anything.",
+    href: "/calm",
+    tone: "bg-blue-50/90"
+  },
+  {
+    id: "journal",
+    title: "Write one honest line",
+    text: "Use the quieter moment to name what is still here.",
+    href: "/journal",
+    tone: "bg-white/80"
+  },
+  {
+    id: "wisdom",
+    title: "Talk to Wisdom",
+    text: "Receive steadier words for the feeling that remains.",
+    href: "/wisdom",
+    tone: "bg-violet-50/90"
+  },
+  {
+    id: "journey",
+    title: "Start a healing path",
+    text: "Take this slowly across seven days instead of forcing an answer tonight.",
+    href: "/journeys",
+    tone: "bg-emerald-50/90"
+  },
+  {
+    id: "museum",
+    title: "Visit the Museum",
+    text: "Read soft unsent notes when you need to feel less alone.",
+    href: "/museum",
+    tone: "bg-rose-50/90"
+  },
+  {
+    id: "pause",
+    title: "Pause before texting",
+    text: "Slow the urge down before it becomes a message.",
+    href: "/pause",
+    tone: "bg-amber-50/90"
+  },
+  {
+    id: "care",
+    title: "Open Care Kit",
+    text: "Return to your trusted person, safe place, and reminder.",
+    href: "/care",
+    tone: "bg-teal-50/90"
+  },
+  {
+    id: "pressure",
+    title: "Reset pressure",
+    text: "Turn exams, family, or future worry into one next step.",
+    href: "/pressure",
+    tone: "bg-yellow-50/90"
   }
 ];
 
@@ -877,6 +937,19 @@ function saveStoredWelcome(nextValue) {
   localStorage.setItem(WELCOME_STORAGE_KEY, JSON.stringify(nextValue));
 }
 
+function readStoredAftercare() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(AFTERCARE_STORAGE_KEY));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredAftercare(nextValue) {
+  localStorage.setItem(AFTERCARE_STORAGE_KEY, JSON.stringify(nextValue));
+}
+
 function getLocalDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -913,6 +986,44 @@ function getPressureArea(areaId) {
 
 function getWelcomeReason(reasonId) {
   return WELCOME_REASONS.find((reason) => reason.id === reasonId) || null;
+}
+
+function getAftercareAction(actionId) {
+  return AFTERCARE_ACTIONS.find((action) => action.id === actionId) || AFTERCARE_ACTIONS[0];
+}
+
+function getAftercareSuggestion({ source = "", emotionId = "", theme = "" } = {}) {
+  const emotion = getEmotion(emotionId);
+  const value = theme || emotion?.wisdomTheme || "";
+
+  if (source === "calm") return getAftercareAction("journal");
+  if (source === "daily" && value === "heavy") return getAftercareAction("care");
+  if (value === "pressure") return getAftercareAction("pressure");
+  if (value === "anxiety" || value === "overthinking") return getAftercareAction("calm");
+  if (value === "longing" || emotionId === "miss-someone") return getAftercareAction("pause");
+  if (value === "rejection" || emotionId === "rejected") return getAftercareAction("journey");
+  if (value === "numb" || value === "heavy") return getAftercareAction("care");
+  if (value === "lost") return getAftercareAction("wisdom");
+  if (source === "daily") return getAftercareAction("wisdom");
+  return getAftercareAction("museum");
+}
+
+function recordAftercareAction({ action, source = "", emotionId = "", theme = "" }) {
+  const stored = readStoredAftercare();
+  const nextEntry = {
+    actionId: action.id,
+    source,
+    emotionId,
+    theme,
+    savedAt: new Date().toISOString()
+  };
+  const previousHistory = Array.isArray(stored.history) ? stored.history : [];
+  const nextValue = {
+    latest: nextEntry,
+    history: [nextEntry, ...previousHistory].slice(0, 12)
+  };
+  saveStoredAftercare(nextValue);
+  return nextValue;
 }
 
 function hasContactDetails(value) {
@@ -1099,6 +1210,41 @@ function NextStepCard({ title, text, onClick, href, tone = "bg-white/75" }) {
     <button type="button" onClick={onClick} className={className}>
       {content}
     </button>
+  );
+}
+
+function AftercarePrompt({ source, emotion, text = "", title = "One gentle next step" }) {
+  const [saved, setSaved] = useState(false);
+  const theme = getTextTheme(text) || emotion?.wisdomTheme || "";
+  const suggestion = getAftercareSuggestion({ source, emotionId: emotion?.id, theme });
+
+  const rememberSuggestion = () => {
+    recordAftercareAction({
+      action: suggestion,
+      source,
+      emotionId: emotion?.id || "",
+      theme
+    });
+    setSaved(true);
+  };
+
+  const takeSuggestion = () => {
+    rememberSuggestion();
+    navigate(suggestion.href);
+  };
+
+  return (
+    <section className={`rounded-3xl ${suggestion.tone} p-5 shadow-[0_14px_35px_rgba(88,82,120,0.10)] ring-1 ring-white/75`}>
+      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Aftercare</p>
+      <h2 className="mt-2 text-xl font-semibold leading-snug text-slate-900">{title}</h2>
+      <p className="mt-3 text-base font-semibold text-slate-800">{suggestion.title}</p>
+      <p className="mt-2 leading-7 text-slate-600">{suggestion.text}</p>
+      <div className="mt-5 grid gap-2 sm:grid-cols-2">
+        <Button onClick={takeSuggestion}>Take this step</Button>
+        <Button variant="quiet" onClick={rememberSuggestion}>Save as helpful</Button>
+      </div>
+      {saved && <p className="mt-3 text-sm font-semibold text-slate-600">Saved for your home hub.</p>}
+    </section>
   );
 }
 
@@ -1379,6 +1525,7 @@ function GuidedCalmRoom() {
           <p className="mt-3 text-2xl font-semibold text-slate-900">{exercise.title}</p>
           <p className="mt-2 leading-7 text-slate-600">Completed calm sessions on this device: {history.completedCount || 1}</p>
         </Card>
+        <AftercarePrompt source="calm" title="Now choose one small next step." />
         <div className="mt-5 grid gap-3">
           <NextStepCard title="Write now" text="Use this quieter moment to name what is here." onClick={() => navigate("/journal")} />
           <NextStepCard title="Talk to Wisdom" text="Receive a calmer reflection if your heart still feels full." onClick={() => navigate("/wisdom")} />
@@ -1842,6 +1989,7 @@ function ReflectionScreen({ emotion, journalText, onWriteMore, onSaveAgain }) {
         <WrittenTextCard text={journalText} />
         <ReflectionMessage emotion={emotion} journalText={journalText} />
         <WisdomFromScripture emotion={emotion} />
+        <AftercarePrompt source="reflection" emotion={emotion} text={journalText} />
       </div>
 
       {saved && (
@@ -1968,6 +2116,7 @@ function DailySanctuaryScreen() {
             <p className="mt-1 text-sm leading-6 text-slate-600">{entryAction.text}</p>
           </div>
         </Card>
+        <AftercarePrompt source="daily" emotion={entryEmotion} text={todaysEntry.note || ""} title="What would care look like after this?" />
         <div className="mt-5 grid gap-3">
           <NextStepCard title="Talk to Wisdom" text="Share more if your heart still feels full." onClick={() => navigate("/wisdom")} />
           <NextStepCard title="Calm my body" text="Take one short body-first reset." onClick={() => navigate("/calm")} />
@@ -2982,7 +3131,8 @@ const HOME_STORAGE_KEYS = {
   calm: "neeraj-eternal-guided-calm",
   pressure: "neeraj-eternal-pressure-reset",
   care: "neeraj-eternal-care-kit",
-  welcome: "neeraj-eternal-welcome"
+  welcome: "neeraj-eternal-welcome",
+  aftercare: "neeraj-eternal-aftercare"
 };
 
 function readHomeJson(key, fallback) {
@@ -3416,6 +3566,7 @@ function getHomeStatus() {
   const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
   const care = readHomeJson(HOME_STORAGE_KEYS.care, {});
   const welcome = readHomeJson(HOME_STORAGE_KEYS.welcome, {});
+  const aftercare = readHomeJson(HOME_STORAGE_KEYS.aftercare, {});
   const timelineCount = getTimelineItems().length;
   const journeyValues = Object.values(journeys || {});
   const lastJourney = getLastJourneyProgress(journeys);
@@ -3423,7 +3574,8 @@ function getHomeStatus() {
   const todayEntry = daily[getLocalDateKey()] || null;
   const hasJournal = Boolean(flow?.journalText);
   const welcomeReason = getWelcomeReason(welcome.reasonId);
-  const hasAnyProgress = Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || Boolean(pressure?.latest) || Boolean(care?.updatedAt) || Boolean(welcome.reasonId) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1);
+  const aftercareAction = aftercare?.latest ? getAftercareAction(aftercare.latest.actionId) : null;
+  const hasAnyProgress = Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || Boolean(pressure?.latest) || Boolean(care?.updatedAt) || Boolean(welcome.reasonId) || Boolean(aftercareAction) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1);
 
   return {
     welcome: welcomeReason ? `Started with ${welcomeReason.label}` : "Find your first room",
@@ -3437,6 +3589,13 @@ function getHomeStatus() {
     sos: "Fast grounding path",
     pressure: pressure?.latest ? `Last reset: ${getPressureArea(pressure.latest.areaId).label}` : "Student stress reset",
     care: care?.updatedAt ? "Your supports are saved" : "Build your support kit",
+    aftercare: aftercareAction ? `Saved: ${aftercareAction.title}` : "Save what helps",
+    aftercareCard: aftercareAction ? {
+      title: "Last helpful step",
+      text: aftercareAction.text,
+      status: aftercareAction.title,
+      href: aftercareAction.href
+    } : null,
     companion: hasJournal || todayEntry || calm.latestExerciseId || pressure?.latest || care?.updatedAt || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
     timeline: timelineCount > 0 ? `${timelineCount} saved moment${timelineCount === 1 ? "" : "s"}` : "Builds privately",
     primary: !welcome.reasonId && !hasAnyProgress
@@ -3553,6 +3712,7 @@ function HomeHubScreen({ onQuickEmotion }) {
   ];
 
   const returnCards = [
+    ...(status.aftercareCard ? [status.aftercareCard] : []),
     { title: "My quiet space", text: "What helped before.", status: status.companion, href: "/me" },
     { title: "Timeline", text: "See saved moments.", status: status.timeline, href: "/timeline" },
     { title: "Pause texting", text: "Slow an urgent message.", status: status.pause, href: "/pause" }
