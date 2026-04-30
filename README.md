@@ -10,6 +10,7 @@ A premium sacred-modern emotional safe space for young people. The app is now a 
 - **Local Data Vault** - review local storage, export a private archive, or reset this browser's app data.
 - **Aftercare Suggestions** - one adaptive next step after writing, calming, or checking in, with a saved "helpful" step on Home.
 - **My Quiet Space** - a private local pattern page that shows what helped before and suggests a gentle next step.
+- **Personal Compass** - a private local insight mirror that reads existing browser data and suggests the next helpful room.
 - **Emotion Timeline** - a private date-based view of daily notes, journal reflections, calm sessions, and journey entries.
 - **Daily Sanctuary** - one gentle daily ritual to name a feeling, receive a short wisdom line, release a note, and choose one calming action.
 - **Guided Calm** - body-first breathing, grounding, unclenching, and kind self-talk exercises for high-stress moments.
@@ -39,6 +40,7 @@ You can test the core flow at:
 - `http://127.0.0.1:5180/`
 - `http://127.0.0.1:5180/welcome`
 - `http://127.0.0.1:5180/me`
+- `http://127.0.0.1:5180/compass`
 - `http://127.0.0.1:5180/timeline`
 - `http://127.0.0.1:5180/today`
 - `http://127.0.0.1:5180/calm`
@@ -77,6 +79,8 @@ Optional sync uses Supabase when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY
 Local Data Vault lives in `/me`. It reads the existing localStorage keys, shows category status and size, exports a private JSON archive on the current device, and lets the user deliberately clear Neeraj Eternal data from this browser.
 
 My Quiet Space at `/me` does not create a new storage key. It reads existing local data and summarizes it on the current device only.
+
+Personal Compass at `/compass` stores only lightweight metadata under `neeraj-eternal-compass` as `{ lastOpenedAt, dismissedTips }`. Its season, helped-before, recommendation, and pattern cards are rebuilt from existing localStorage data on this device only. It does not call `/api/chat`, Supabase, or any network service.
 
 Emotion Timeline at `/timeline` does not create a new storage key. It reads existing local data and groups saved moments by date.
 

@@ -5,6 +5,7 @@ export const appRoutes = [
   "/calm",
   "/sos",
   "/care",
+  "/compass",
   "/pressure",
   "/check-in",
   "/journal",

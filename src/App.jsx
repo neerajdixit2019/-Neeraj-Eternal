@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AppBottomNav, AppTopNav } from "./components/AppNavigation.jsx";
+import { CompassInsightCard, PrivatePatternPanel, RecommendedRoomCard } from "./components/CompassCards.jsx";
 import { LocalDataVault } from "./components/LocalDataVault.jsx";
 import { SyncPanel } from "./components/SyncPanel.jsx";
 import { isKnownAppRoute } from "./screens/routeManifest.js";
+import { getCompassInsights, readCompassState, saveCompassState } from "./storage/compassInsights.js";
 
 const STORAGE_KEY = "neeraj-eternal-emotional-flow";
 const PAUSE_STORAGE_KEY = "neeraj-eternal-pause-before-text";
@@ -3366,10 +3368,104 @@ function CompanionMemoryScreen() {
       </Card>
 
       <div className="mt-5 grid gap-3">
+        <NextStepCard title="Open Personal Compass" text="See your current emotional season and the room that may help next." onClick={() => navigate("/compass")} />
         <NextStepCard title="Visit the Museum" text={snapshot.latestMuseumNote ? getPreviewText(snapshot.latestMuseumNote.text, 82) : "Read soft anonymous words from this device."} onClick={() => navigate("/museum")} />
         <NextStepCard title="Pause Before You Text" text={snapshot.pause?.choice ? "Your pause choice is saved here when you need it again." : "Use this when urgency feels louder than clarity."} onClick={() => navigate("/pause")} />
       </div>
       <SafetyPanel className="my-5" />
+    </SoftShell>
+  );
+}
+
+function CompassScreen() {
+  const [insights, setInsights] = useState(getCompassInsights);
+
+  useEffect(() => {
+    const current = readCompassState();
+    saveCompassState({
+      ...current,
+      lastOpenedAt: new Date().toISOString()
+    });
+    setInsights(getCompassInsights());
+
+    const refresh = () => setInsights(getCompassInsights());
+    window.addEventListener("storage", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+
+  if (insights.isEmpty) {
+    return (
+      <SoftShell>
+        <PageHeader eyebrow="Personal Compass" title="Your compass is still quiet.">
+          Use one room first, then this page will become a softer mirror.
+        </PageHeader>
+
+        <Card className="mb-5 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Private mirror</p>
+          <h2 className="mt-3 text-2xl font-semibold leading-snug text-slate-900">Nothing is being scored.</h2>
+          <p className="mt-3 leading-7 text-slate-600">
+            Personal Compass reads only this browser. Start with a small room, and it will gently reflect what seems to help.
+          </p>
+        </Card>
+
+        <section className="grid gap-3">
+          <NextStepCard title="Find your first room" text="Answer one gentle question and begin where you are." href="/welcome" />
+          <NextStepCard title="Start Daily Sanctuary" text="Name one feeling, receive one wisdom line, and choose one small action." href="/today" />
+          <NextStepCard title="Calm my body" text="Use a short body-first reset if words feel too hard." href="/calm" />
+        </section>
+
+        <SafetyPanel className="my-5" />
+      </SoftShell>
+    );
+  }
+
+  const helpedBefore = insights.helpedBefore.length > 0 ? insights.helpedBefore : [
+    { title: "Daily Sanctuary", text: "A simple ritual can become your first signal.", href: "/today" },
+    { title: "Guided Calm", text: "A body-first reset is often enough to begin.", href: "/calm" }
+  ];
+
+  return (
+    <SoftShell>
+      <PageHeader eyebrow="Personal Compass" title="This is not a score. It is a mirror.">
+        Everything here is built from this browser only.
+      </PageHeader>
+
+      <section className="grid gap-4">
+        <CompassInsightCard eyebrow="Your current season" title={insights.seasonTitle} text={insights.seasonText} />
+
+        <CompassInsightCard
+          eyebrow="What has helped before"
+          title="Small things left a trail."
+          text="These are the rooms your local data says you have already touched."
+        >
+          <div className="grid gap-3">
+            {helpedBefore.map((item) => (
+              <a
+                key={`${item.href}-${item.title}`}
+                href={item.href}
+                className="block rounded-2xl bg-white/72 p-4 ring-1 ring-white/80 transition hover:-translate-y-0.5 hover:bg-white"
+              >
+                <p className="font-semibold leading-snug text-slate-900">{item.title}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p>
+              </a>
+            ))}
+          </div>
+        </CompassInsightCard>
+
+        <RecommendedRoomCard action={insights.recommendedAction} />
+        <PrivatePatternPanel stats={insights.patternStats} />
+      </section>
+
+      <div className="my-5 grid gap-3 sm:grid-cols-2">
+        <NextStepCard title="My quiet space" text="See your data vault, sync settings, and saved supports." onClick={() => navigate("/me")} />
+        <NextStepCard title="Emotion Timeline" text="Look back at saved moments by date." onClick={() => navigate("/timeline")} />
+      </div>
+
+      <SafetyPanel className="mb-5" />
     </SoftShell>
   );
 }
@@ -3571,6 +3667,7 @@ function getHomeStatus() {
   const care = readHomeJson(HOME_STORAGE_KEYS.care, {});
   const welcome = readHomeJson(HOME_STORAGE_KEYS.welcome, {});
   const aftercare = readHomeJson(HOME_STORAGE_KEYS.aftercare, {});
+  const compass = getCompassInsights();
   const timelineCount = getTimelineItems().length;
   const journeyValues = Object.values(journeys || {});
   const lastJourney = getLastJourneyProgress(journeys);
@@ -3601,6 +3698,7 @@ function getHomeStatus() {
       href: aftercareAction.href
     } : null,
     companion: hasJournal || todayEntry || calm.latestExerciseId || pressure?.latest || care?.updatedAt || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
+    compass: compass.isEmpty ? "Needs one signal" : compass.seasonTitle,
     timeline: timelineCount > 0 ? `${timelineCount} saved moment${timelineCount === 1 ? "" : "s"}` : "Builds privately",
     primary: !welcome.reasonId && !hasAnyProgress
       ? {
@@ -3718,6 +3816,7 @@ function HomeHubScreen({ onQuickEmotion }) {
   const returnCards = [
     ...(status.aftercareCard ? [status.aftercareCard] : []),
     { title: "My quiet space", text: "What helped before.", status: status.companion, href: "/me" },
+    { title: "Personal Compass", text: "Your private pattern and next room.", status: status.compass, href: "/compass" },
     { title: "Timeline", text: "See saved moments.", status: status.timeline, href: "/timeline" },
     { title: "Pause texting", text: "Slow an urgent message.", status: status.pause, href: "/pause" }
   ];
@@ -3899,6 +3998,8 @@ function App() {
   if (route === "/pressure") return <PressureResetScreen />;
 
   if (route === "/care") return <CareKitScreen />;
+
+  if (route === "/compass") return <CompassScreen />;
 
   if (route === "/me") return <CompanionMemoryScreen />;
 

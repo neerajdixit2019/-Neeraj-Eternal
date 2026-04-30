@@ -9,7 +9,8 @@ export const LOCAL_STORAGE_KEYS = {
   pressure: "neeraj-eternal-pressure-reset",
   care: "neeraj-eternal-care-kit",
   welcome: "neeraj-eternal-welcome",
-  aftercare: "neeraj-eternal-aftercare"
+  aftercare: "neeraj-eternal-aftercare",
+  compass: "neeraj-eternal-compass"
 };
 
 function readJson(key, fallback) {
