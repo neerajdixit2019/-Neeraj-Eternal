@@ -1,10 +1,12 @@
 # Neeraj Eternal
 
-A mobile-first emotional safe space for young people. No accounts; welcome flow, aftercare suggestions, SOS mode, care kit, pressure reset, daily ritual, guided calm, quiet pattern, emotion timeline, journal, pause, journey, museum, and chat state stay in the current browser through `localStorage`.
+A premium sacred-modern emotional safe space for young people. The app is now a Vite + React experience with local-first privacy, optional Supabase progress sync, and warm rooms for welcome, aftercare, SOS, care kit, pressure reset, daily ritual, guided calm, quiet pattern, emotion timeline, journal, pause, journey, museum, and wisdom chat.
 
 **Features:**
 - **Home Hub** - a warmer main doorway with a primary next step, quick feeling chips, progress hints, and safety support.
+- **Premium App Shell** - Vite, Tailwind, bottom mobile navigation, refined sacred-modern surfaces, and direct-route Vercel support.
 - **Welcome Flow** - one gentle first question that routes new users to the right room for their moment.
+- **Optional Sync** - Supabase-ready progress sync from My Quiet Space; private writing is not uploaded in this version.
 - **Aftercare Suggestions** - one adaptive next step after writing, calming, or checking in, with a saved "helpful" step on Home.
 - **My Quiet Space** - a private local pattern page that shows what helped before and suggests a gentle next step.
 - **Emotion Timeline** - a private date-based view of daily notes, journal reflections, calm sessions, and journey entries.
@@ -22,10 +24,11 @@ A mobile-first emotional safe space for young people. No accounts; welcome flow,
 
 ## Run
 
-Run:
+Install and run:
 
 ```powershell
-node server.js
+& "C:\Program Files\nodejs\npm.cmd" install
+& "C:\Program Files\nodejs\npm.cmd" run dev
 ```
 
 Then open `http://127.0.0.1:5180`.
@@ -50,24 +53,25 @@ You can test the core flow at:
 - `http://127.0.0.1:5180/journeys/letting-go`
 - `http://127.0.0.1:5180/museum`
 
-**Scripture API (local server only):**
-- `GET /api/scriptures` - all themes and scripture collections.
-- `GET /api/wisdom/:theme` - scriptures for a theme (longing, anxiety, rejection, heavy, numb, loss, self-worth, hope, letting-go, overthinking, lost).
-- `POST /api/wisdom` - send `{ text }` or `{ theme }`, receive a scripture response.
+**Wisdom API:**
+- `POST /api/chat` - Vercel serverless endpoint for Claude-backed wisdom chat.
+- If the API is unavailable locally, the app automatically uses its local wisdom fallback.
 
-If `node` is not available on PATH in this Codex environment, use:
+Build:
 
 ```powershell
-& "C:\Users\neera\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" server.js
+& "C:\Program Files\nodejs\npm.cmd" run build
 ```
 
-The app loads React, Babel, and Tailwind from CDNs. The canonical app experience lives in `src/App.jsx`; Vercel rewrites the main routes back to `index.html` so the React router handles them consistently. Route folders also include small `index.html` fallbacks so direct links like `/welcome`, `/care`, `/pressure`, and `/sos` keep working on static hosts.
+The app builds with Vite. The canonical app experience lives in `src/App.jsx` with supporting modules in `src/components`, `src/storage`, `src/sync`, and `src/design`. Vercel rewrites all routes back to `index.html` so the React router handles direct links consistently.
 
 Welcome choice, aftercare suggestions, journal, daily sanctuary, guided calm, pause, journey, museum, and wisdom chat progress are stored in `localStorage`; there is no backend account system.
 
 Welcome Flow stores the last selected starting reason under `neeraj-eternal-welcome` as `{ reasonId, route, selectedAt }`.
 
 Aftercare suggestions are stored under `neeraj-eternal-aftercare` as `{ latest, history }`, keeping only the last few locally saved helpful next steps.
+
+Optional sync uses Supabase when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured. The sync snapshot includes progress, counts, selected rooms, and settings only. Journal text, daily notes, care-kit text, museum notes, and pressure writing stay local in v1.
 
 My Quiet Space at `/me` does not create a new storage key. It reads existing local data and summarizes it on the current device only.
 
@@ -89,11 +93,11 @@ The safety/support panel is intentionally gentle: it encourages pausing, breathi
 
 ## Deploy to Vercel
 
-This is a static site. Deploy the project folder as-is with no build command.
+This is a Vite static app. Vercel should install dependencies, run the build, and serve `dist`.
 
-- Framework preset: `Other`
-- Build command: leave empty
-- Output directory: `.`
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Output directory: `dist`
 
 ## Repository
 

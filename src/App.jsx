@@ -1,4 +1,7 @@
-const { useEffect, useMemo, useRef, useState } = React;
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AppBottomNav } from "./components/AppNavigation.jsx";
+import { SyncPanel } from "./components/SyncPanel.jsx";
+import { isKnownAppRoute } from "./screens/routeManifest.js";
 
 const STORAGE_KEY = "neeraj-eternal-emotional-flow";
 const PAUSE_STORAGE_KEY = "neeraj-eternal-pause-before-text";
@@ -1109,14 +1112,7 @@ function getPreviewText(value, maxLength = 96) {
 
 function getRoute() {
   const path = window.location.pathname;
-  if (path === "/") return "/";
-  if (
-    path === "/journal" || path === "/reflect" || path === "/check-in" ||
-    path === "/pause" || path === "/journeys" || path === "/museum" ||
-    path === "/wisdom" || path === "/today" || path === "/calm" || path === "/sos" ||
-    path === "/pressure" || path === "/care" || path === "/welcome" ||
-    path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
-  ) return path;
+  if (isKnownAppRoute(path)) return path;
   return "/check-in";
 }
 
@@ -1129,19 +1125,20 @@ function navigate(path) {
 
 function SoftShell({ children }) {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(145deg,#f8efe8_0%,#ece8ff_45%,#e5f5ff_100%)] px-4 py-5 text-slate-800 sm:px-6">
-      <main className="mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "28rem" }}>
+    <div className="sacred-app-bg min-h-screen overflow-x-hidden px-4 pb-24 pt-5 text-slate-800 sm:px-6 sm:pb-8">
+      <main className="sacred-page-enter mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "30rem" }}>
         <div className="flex justify-end">
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="rounded-2xl bg-white/70 px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-white/80 transition hover:bg-white"
+            className="rounded-2xl bg-white/74 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm ring-1 ring-white/80 transition hover:bg-white"
           >
             Home
           </button>
         </div>
         {children}
       </main>
+      <AppBottomNav currentPath={window.location.pathname} onNavigate={navigate} />
     </div>
   );
 }
@@ -1158,7 +1155,7 @@ function PageHeader({ eyebrow, title, children }) {
 
 function Card({ children, className = "" }) {
   return (
-    <div className={`rounded-3xl bg-white/75 shadow-[0_18px_50px_rgba(88,82,120,0.14)] ring-1 ring-white/70 backdrop-blur ${className}`}>
+    <div className={`sacred-card rounded-3xl ${className}`}>
       {children}
     </div>
   );
@@ -1167,7 +1164,7 @@ function Card({ children, className = "" }) {
 function Button({ children, variant = "primary", className = "", ...props }) {
   const variants = {
     primary: "bg-slate-900 text-white shadow-lg shadow-slate-400/25 hover:bg-slate-800",
-    secondary: "bg-white/75 text-slate-800 ring-1 ring-slate-200 hover:bg-white",
+    secondary: "bg-white/78 text-slate-800 ring-1 ring-slate-200 hover:bg-white",
     quiet: "bg-transparent text-slate-600 hover:bg-white/50"
   };
   return (
@@ -3302,8 +3299,10 @@ function CompanionMemoryScreen() {
   return (
     <SoftShell>
       <PageHeader eyebrow="My quiet space" title="A small place that remembers what helped.">
-        Everything here is read from this device only. No account, no score, no pressure.
+        Everything here starts on this device. Sync is optional, and private writing stays local in this version.
       </PageHeader>
+
+      <SyncPanel />
 
       <div className="mb-4 rounded-3xl bg-slate-900 p-5 text-white shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-slate-800/20">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Your quiet pattern</p>
@@ -3719,15 +3718,23 @@ function HomeHubScreen({ onQuickEmotion }) {
   ];
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(145deg,#f8efe8_0%,#ece8ff_45%,#e5f5ff_100%)] px-4 py-5 text-slate-800 sm:px-6">
-      <div className="mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "28rem" }}>
-        <header className="pb-4 pt-4">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Neeraj Eternal</p>
-          <h1 className="text-4xl font-semibold leading-tight text-slate-900">You do not have to carry it alone.</h1>
-          <p className="mt-4 text-base leading-7 text-slate-600">Start with the room that matches this moment. No account. No pressure to explain everything.</p>
+    <main className="sacred-app-bg min-h-screen overflow-x-hidden px-4 pb-24 pt-5 text-slate-800 sm:px-6 sm:pb-8">
+      <div className="sacred-page-enter mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "30rem" }}>
+        <header className="sacred-hero rounded-[2rem] p-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Neeraj Eternal</p>
+            <a href="/me" className="rounded-2xl bg-white/70 px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-white/80">Profile</a>
+          </div>
+          <h1 className="mt-5 text-4xl font-semibold leading-tight text-slate-950">A calmer room for a louder world.</h1>
+          <p className="mt-4 text-base leading-7 text-slate-600">Start with the room that matches this moment. Sacred-modern care, Gita-inspired steadiness, and privacy-first reflection for youth.</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {["Local-first", "Sync optional", "Private writing stays here"].map((item) => (
+              <span key={item} className="rounded-full bg-white/70 px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-white/80">{item}</span>
+            ))}
+          </div>
         </header>
 
-        <div className="grid gap-3">
+        <div className="mt-4 grid gap-3">
           <a
             href="/sos"
             className="rounded-3xl bg-rose-50/95 p-4 text-left shadow-[0_14px_35px_rgba(88,82,120,0.10)] ring-1 ring-rose-100 transition hover:-translate-y-0.5 hover:bg-rose-50"
@@ -3780,9 +3787,10 @@ function HomeHubScreen({ onQuickEmotion }) {
         </HomeSection>
         <SafetyPanel className="mb-3" />
         <div className="mt-auto rounded-3xl bg-white/60 p-4 text-sm leading-6 text-slate-600 shadow-sm ring-1 ring-white/70">
-          Most spaces are saved only on this device for now.
+          Most writing stays only on this device. Sync is optional from My quiet space, and private text is not uploaded in this version.
         </div>
       </div>
+      <AppBottomNav currentPath={window.location.pathname} onNavigate={navigate} />
     </main>
   );
 }
@@ -3930,4 +3938,4 @@ function App() {
   return <CheckInScreen onSelect={selectEmotion} />;
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+export default App;
