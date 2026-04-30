@@ -1,9 +1,10 @@
 # Neeraj Eternal
 
-A mobile-first emotional safe space for young people. No accounts; SOS mode, care kit, pressure reset, daily ritual, guided calm, quiet pattern, emotion timeline, journal, pause, journey, museum, and chat state stay in the current browser through `localStorage`.
+A mobile-first emotional safe space for young people. No accounts; welcome flow, SOS mode, care kit, pressure reset, daily ritual, guided calm, quiet pattern, emotion timeline, journal, pause, journey, museum, and chat state stay in the current browser through `localStorage`.
 
 **Features:**
 - **Home Hub** - a warmer main doorway with a primary next step, quick feeling chips, progress hints, and safety support.
+- **Welcome Flow** - one gentle first question that routes new users to the right room for their moment.
 - **My Quiet Space** - a private local pattern page that shows what helped before and suggests a gentle next step.
 - **Emotion Timeline** - a private date-based view of daily notes, journal reflections, calm sessions, and journey entries.
 - **Daily Sanctuary** - one gentle daily ritual to name a feeling, receive a short wisdom line, release a note, and choose one calming action.
@@ -31,6 +32,7 @@ Then open `http://127.0.0.1:5180`.
 You can test the core flow at:
 
 - `http://127.0.0.1:5180/`
+- `http://127.0.0.1:5180/welcome`
 - `http://127.0.0.1:5180/me`
 - `http://127.0.0.1:5180/timeline`
 - `http://127.0.0.1:5180/today`
@@ -58,9 +60,11 @@ If `node` is not available on PATH in this Codex environment, use:
 & "C:\Users\neera\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" server.js
 ```
 
-The app loads React, Babel, and Tailwind from CDNs. The canonical app experience lives in `src/App.jsx`; Vercel rewrites the main routes back to `index.html` so the React router handles them consistently. Route folders also include small `index.html` fallbacks so direct links like `/care`, `/pressure`, and `/sos` keep working on static hosts.
+The app loads React, Babel, and Tailwind from CDNs. The canonical app experience lives in `src/App.jsx`; Vercel rewrites the main routes back to `index.html` so the React router handles them consistently. Route folders also include small `index.html` fallbacks so direct links like `/welcome`, `/care`, `/pressure`, and `/sos` keep working on static hosts.
 
-Journal, daily sanctuary, guided calm, pause, journey, museum, and wisdom chat progress are stored in `localStorage`; there is no backend account system.
+Welcome choice, journal, daily sanctuary, guided calm, pause, journey, museum, and wisdom chat progress are stored in `localStorage`; there is no backend account system.
+
+Welcome Flow stores the last selected starting reason under `neeraj-eternal-welcome` as `{ reasonId, route, selectedAt }`.
 
 My Quiet Space at `/me` does not create a new storage key. It reads existing local data and summarizes it on the current device only.
 

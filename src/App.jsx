@@ -9,6 +9,7 @@ const DAILY_SANCTUARY_STORAGE_KEY = "neeraj-eternal-daily-sanctuary";
 const GUIDED_CALM_STORAGE_KEY = "neeraj-eternal-guided-calm";
 const PRESSURE_RESET_STORAGE_KEY = "neeraj-eternal-pressure-reset";
 const CARE_KIT_STORAGE_KEY = "neeraj-eternal-care-kit";
+const WELCOME_STORAGE_KEY = "neeraj-eternal-welcome";
 
 const MUSEUM_CATEGORIES = ["Love", "Regret", "Forgiveness", "Hope", "Self-respect", "Goodbye"];
 
@@ -185,6 +186,60 @@ const CARE_KIT_IDEAS = [
   "Drink water before deciding anything.",
   "Step away from the screen for five minutes.",
   "Read one saved reminder slowly."
+];
+
+const WELCOME_REASONS = [
+  {
+    id: "overwhelmed",
+    label: "I feel overwhelmed",
+    text: "Your body needs safety before your mind needs answers.",
+    href: "/calm",
+    action: "Start with a body-first reset."
+  },
+  {
+    id: "heartbreak",
+    label: "Heartbreak or missing someone",
+    text: "There are words in you that need a safe place.",
+    href: "/journal",
+    emotionId: "miss-someone",
+    action: "Write without sending anything."
+  },
+  {
+    id: "overthinking",
+    label: "I cannot stop thinking",
+    text: "The loop can soften when it becomes one honest paragraph.",
+    href: "/journal",
+    emotionId: "overthinking",
+    action: "Name the thought that keeps repeating."
+  },
+  {
+    id: "exams",
+    label: "Exams, career, or future",
+    text: "Pressure gets smaller when it becomes one next step.",
+    href: "/pressure",
+    action: "Turn the big cloud into a practical reset."
+  },
+  {
+    id: "lonely",
+    label: "I feel lonely",
+    text: "Loneliness needs warmth, not shame.",
+    href: "/wisdom",
+    action: "Talk through what feels hard to say."
+  },
+  {
+    id: "texting",
+    label: "I want to text them",
+    text: "The urge can be real without becoming immediate action.",
+    href: "/pause",
+    action: "Slow the moment before deciding."
+  },
+  {
+    id: "not-sure",
+    label: "I am not sure",
+    text: "You do not need perfect language to begin.",
+    href: "/today",
+    action: "Start with one small daily ritual."
+  }
 ];
 
 const MUSEUM_SEED_NOTES = [
@@ -809,6 +864,19 @@ function saveStoredCareKit(nextValue) {
   localStorage.setItem(CARE_KIT_STORAGE_KEY, JSON.stringify(nextValue));
 }
 
+function readStoredWelcome() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(WELCOME_STORAGE_KEY));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredWelcome(nextValue) {
+  localStorage.setItem(WELCOME_STORAGE_KEY, JSON.stringify(nextValue));
+}
+
 function getLocalDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -841,6 +909,10 @@ function getCalmExercise(exerciseId) {
 
 function getPressureArea(areaId) {
   return PRESSURE_AREAS.find((area) => area.id === areaId) || PRESSURE_AREAS[0];
+}
+
+function getWelcomeReason(reasonId) {
+  return WELCOME_REASONS.find((reason) => reason.id === reasonId) || null;
 }
 
 function hasContactDetails(value) {
@@ -931,7 +1003,8 @@ function getRoute() {
     path === "/journal" || path === "/reflect" || path === "/check-in" ||
     path === "/pause" || path === "/journeys" || path === "/museum" ||
     path === "/wisdom" || path === "/today" || path === "/calm" || path === "/sos" ||
-    path === "/pressure" || path === "/care" || path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
+    path === "/pressure" || path === "/care" || path === "/welcome" ||
+    path === "/me" || path === "/timeline" || path.startsWith("/journeys/")
   ) return path;
   return "/check-in";
 }
@@ -1087,6 +1160,51 @@ function CheckInScreen({ onSelect }) {
 }
 
 // ─── Calming card ─────────────────────────────────────────────────────────────
+
+// First-time welcome
+
+function WelcomeReasonCard({ reason, onStart }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onStart(reason)}
+      className="rounded-3xl bg-white/75 p-5 text-left shadow-[0_14px_35px_rgba(88,82,120,0.12)] ring-1 ring-white/80 transition duration-200 hover:-translate-y-0.5 hover:bg-white"
+    >
+      <p className="text-xl font-semibold leading-snug text-slate-900">{reason.label}</p>
+      <p className="mt-2 leading-7 text-slate-600">{reason.text}</p>
+      <p className="mt-4 rounded-2xl bg-slate-50/85 px-4 py-2 text-sm font-semibold leading-6 text-slate-600">{reason.action}</p>
+    </button>
+  );
+}
+
+function WelcomeScreen({ onStartReason }) {
+  const storedWelcome = readStoredWelcome();
+  const lastReason = getWelcomeReason(storedWelcome.reasonId);
+
+  return (
+    <SoftShell>
+      <PageHeader eyebrow="Start here" title="What brought you here today?">
+        Choose the closest truth. I will take you to the room that fits this moment.
+      </PageHeader>
+
+      {lastReason && (
+        <Card className="mb-4 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Last time</p>
+          <h2 className="mt-2 text-xl font-semibold leading-snug text-slate-900">{lastReason.label}</h2>
+          <p className="mt-2 leading-7 text-slate-600">You can choose it again, or start somewhere new.</p>
+        </Card>
+      )}
+
+      <section className="grid gap-4 pb-6">
+        {WELCOME_REASONS.map((reason) => (
+          <WelcomeReasonCard key={reason.id} reason={reason} onStart={onStartReason} />
+        ))}
+      </section>
+
+      <SafetyPanel className="mb-4" />
+    </SoftShell>
+  );
+}
 
 function CalmExerciseCard({ exercise, onSelect }) {
   return (
@@ -2863,7 +2981,8 @@ const HOME_STORAGE_KEYS = {
   daily: "neeraj-eternal-daily-sanctuary",
   calm: "neeraj-eternal-guided-calm",
   pressure: "neeraj-eternal-pressure-reset",
-  care: "neeraj-eternal-care-kit"
+  care: "neeraj-eternal-care-kit",
+  welcome: "neeraj-eternal-welcome"
 };
 
 function readHomeJson(key, fallback) {
@@ -3296,14 +3415,18 @@ function getHomeStatus() {
   const calm = readHomeJson(HOME_STORAGE_KEYS.calm, {});
   const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
   const care = readHomeJson(HOME_STORAGE_KEYS.care, {});
+  const welcome = readHomeJson(HOME_STORAGE_KEYS.welcome, {});
   const timelineCount = getTimelineItems().length;
   const journeyValues = Object.values(journeys || {});
   const lastJourney = getLastJourneyProgress(journeys);
   const unfinishedJourney = getUnfinishedJourneyProgress(journeys);
   const todayEntry = daily[getLocalDateKey()] || null;
   const hasJournal = Boolean(flow?.journalText);
+  const welcomeReason = getWelcomeReason(welcome.reasonId);
+  const hasAnyProgress = Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || Boolean(pressure?.latest) || Boolean(care?.updatedAt) || Boolean(welcome.reasonId) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1);
 
   return {
+    welcome: welcomeReason ? `Started with ${welcomeReason.label}` : "Find your first room",
     checkIn: hasJournal ? "Continue your reflection" : "Start with one feeling",
     wisdom: Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Conversation waiting here" : "Private listening space",
     journeys: lastJourney ? `Day ${lastJourney.state.currentDay} waiting` : "Choose a 7-day path",
@@ -3316,7 +3439,14 @@ function getHomeStatus() {
     care: care?.updatedAt ? "Your supports are saved" : "Build your support kit",
     companion: hasJournal || todayEntry || calm.latestExerciseId || pressure?.latest || care?.updatedAt || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
     timeline: timelineCount > 0 ? `${timelineCount} saved moment${timelineCount === 1 ? "" : "s"}` : "Builds privately",
-    primary: unfinishedJourney
+    primary: !welcome.reasonId && !hasAnyProgress
+      ? {
+          title: "Find your first room",
+          text: "Answer one gentle question and I will take you to the best place to start.",
+          href: "/welcome",
+          status: "New here"
+        }
+      : unfinishedJourney
       ? {
           title: `Continue ${unfinishedJourney.journey.title}`,
           text: `Day ${unfinishedJourney.state.currentDay}: ${unfinishedJourney.journey.prompts[unfinishedJourney.state.currentDay - 1]}`,
@@ -3336,7 +3466,7 @@ function getHomeStatus() {
             href: "/today",
             status: "Start today's check-in"
           },
-    hasAnyProgress: Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || Boolean(pressure?.latest) || Boolean(care?.updatedAt) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1)
+    hasAnyProgress
   };
 }
 
@@ -3379,7 +3509,7 @@ function HomeSection({ title, children }) {
   );
 }
 
-function HomeHubScreen() {
+function HomeHubScreen({ onQuickEmotion }) {
   const [status, setStatus] = useState(getHomeStatus);
 
   useEffect(() => {
@@ -3394,6 +3524,11 @@ function HomeHubScreen() {
 
   const quickEmotions = ["overthinking", "anxious", "miss-someone", "heavy", "not-sure"].map(getEmotion).filter(Boolean);
   const startQuickEmotion = (emotion) => {
+    if (onQuickEmotion) {
+      onQuickEmotion(emotion);
+      return;
+    }
+
     saveStoredFlow({
       emotionId: emotion.id,
       journalText: "",
@@ -3410,6 +3545,7 @@ function HomeHubScreen() {
   ];
 
   const guidedCards = [
+    { title: "Start here", text: "Find the right room fast.", status: status.welcome, href: "/welcome" },
     { title: "Check in", text: "Name one feeling and write privately.", status: status.checkIn, href: "/check-in" },
     { title: "Wisdom", text: "Talk through what feels heavy.", status: status.wisdom, href: "/wisdom" },
     { title: "Journey", text: "A 7-day path for slower healing.", status: status.journeys, href: "/journeys" },
@@ -3551,7 +3687,27 @@ function App() {
     });
   };
 
-  if (route === "/") return <HomeHubScreen />;
+  const startWelcomeReason = (reason) => {
+    saveStoredWelcome({
+      reasonId: reason.id,
+      route: reason.href,
+      selectedAt: new Date().toISOString()
+    });
+
+    if (reason.emotionId) {
+      const emotion = getEmotion(reason.emotionId);
+      if (emotion) {
+        selectEmotion(emotion);
+        return;
+      }
+    }
+
+    navigate(reason.href);
+  };
+
+  if (route === "/") return <HomeHubScreen onQuickEmotion={selectEmotion} />;
+
+  if (route === "/welcome") return <WelcomeScreen onStartReason={startWelcomeReason} />;
 
   if (route === "/today") return <DailySanctuaryScreen />;
 
