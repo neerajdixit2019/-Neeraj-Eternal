@@ -58,7 +58,7 @@ If `node` is not available on PATH in this Codex environment, use:
 & "C:\Users\neera\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" server.js
 ```
 
-The app loads React, Babel, and Tailwind from CDNs. The canonical app experience lives in `src/App.jsx`; Vercel rewrites the main routes back to `index.html` so the React router handles them consistently.
+The app loads React, Babel, and Tailwind from CDNs. The canonical app experience lives in `src/App.jsx`; Vercel rewrites the main routes back to `index.html` so the React router handles them consistently. Route folders also include small `index.html` fallbacks so direct links like `/care`, `/pressure`, and `/sos` keep working on static hosts.
 
 Journal, daily sanctuary, guided calm, pause, journey, museum, and wisdom chat progress are stored in `localStorage`; there is no backend account system.
 
