@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Cloud, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Cloud, LockKeyhole, ShieldCheck, Smartphone, UploadCloud } from "lucide-react";
 import { getCurrentSession, getSyncSnapshot, getSyncStatus, signInWithEmail, signOut, syncProgressSnapshot } from "../sync/syncAdapter.js";
 
 export function SyncPanel() {
@@ -66,14 +66,36 @@ export function SyncPanel() {
 
   return (
     <section className="sacred-card rounded-3xl p-5">
-      <div className="flex items-start gap-3">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-900 text-white">
-          <Cloud size={20} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-900 text-white">
+            <Cloud size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Optional sync</p>
+            <h2 className="mt-1 text-2xl font-semibold leading-snug text-slate-900">Carry progress, not private pain.</h2>
+            <p className="mt-2 leading-7 text-slate-600">Most writing stays only on this device. Sync is optional. Private text is not uploaded in this version.</p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Optional sync</p>
-          <h2 className="mt-1 text-2xl font-semibold leading-snug text-slate-900">Carry progress, not private pain.</h2>
-          <p className="mt-2 leading-7 text-slate-600">Most writing stays only on this device. Sync is optional. Private text is not uploaded in this version.</p>
+        <div className={`rounded-2xl px-3 py-2 text-xs font-semibold ${status.configured ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100" : "bg-amber-50 text-amber-800 ring-1 ring-amber-100"}`}>
+          {status.configured ? "Supabase ready" : "Local-only now"}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-3xl bg-white/62 p-4 ring-1 ring-white/80">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <UploadCloud size={17} />
+            Syncs
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-600">Progress, counts, selected rooms, completed dates, and non-sensitive settings.</p>
+        </div>
+        <div className="rounded-3xl bg-white/62 p-4 ring-1 ring-white/80">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <Smartphone size={17} />
+            Stays local
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-600">Journal text, daily notes, care-kit text, museum notes, and pressure writing.</p>
         </div>
       </div>
 
@@ -95,7 +117,7 @@ export function SyncPanel() {
       <div className="mt-5 rounded-2xl bg-emerald-50/80 p-4 text-sm leading-6 text-emerald-900">
         <div className="flex gap-2">
           <ShieldCheck className="mt-0.5 shrink-0" size={18} />
-          <p>Sync snapshot includes progress, settings, counts, and selected rooms. It excludes journal text, daily notes, care-kit text, museum notes, and pressure writing.</p>
+          <p>Sync is designed as a trust feature, not a growth hack. You can use the whole app without signing in.</p>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AppBottomNav } from "./components/AppNavigation.jsx";
+import { AppBottomNav, AppTopNav } from "./components/AppNavigation.jsx";
 import { SyncPanel } from "./components/SyncPanel.jsx";
 import { isKnownAppRoute } from "./screens/routeManifest.js";
 
@@ -1126,8 +1126,9 @@ function navigate(path) {
 function SoftShell({ children }) {
   return (
     <div className="sacred-app-bg min-h-screen overflow-x-hidden px-4 pb-24 pt-5 text-slate-800 sm:px-6 sm:pb-8">
-      <main className="sacred-page-enter mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "30rem" }}>
-        <div className="flex justify-end">
+      <main className="sacred-page-enter mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "46rem" }}>
+        <AppTopNav currentPath={window.location.pathname} onNavigate={navigate} />
+        <div className="flex justify-end sm:hidden">
           <button
             type="button"
             onClick={() => navigate("/")}
@@ -3719,22 +3720,30 @@ function HomeHubScreen({ onQuickEmotion }) {
 
   return (
     <main className="sacred-app-bg min-h-screen overflow-x-hidden px-4 pb-24 pt-5 text-slate-800 sm:px-6 sm:pb-8">
-      <div className="sacred-page-enter mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "30rem" }}>
-        <header className="sacred-hero rounded-[2rem] p-5">
+      <div className="sacred-page-enter mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "64rem" }}>
+        <AppTopNav currentPath={window.location.pathname} onNavigate={navigate} />
+        <header className="sacred-hero rounded-[2rem] p-5 sm:p-7">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Neeraj Eternal</p>
-            <a href="/me" className="rounded-2xl bg-white/70 px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-white/80">Profile</a>
+            <a href="/me" className="rounded-2xl bg-white/70 px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-white/80 sm:hidden">Profile</a>
           </div>
-          <h1 className="mt-5 text-4xl font-semibold leading-tight text-slate-950">A calmer room for a louder world.</h1>
-          <p className="mt-4 text-base leading-7 text-slate-600">Start with the room that matches this moment. Sacred-modern care, Gita-inspired steadiness, and privacy-first reflection for youth.</p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {["Local-first", "Sync optional", "Private writing stays here"].map((item) => (
-              <span key={item} className="rounded-full bg-white/70 px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-white/80">{item}</span>
-            ))}
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <div>
+              <h1 className="mt-5 text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">A calmer room for a louder world.</h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">Start with the room that matches this moment. Sacred-modern care, Gita-inspired steadiness, and privacy-first reflection for youth.</p>
+            </div>
+            <div className="rounded-3xl bg-white/60 p-4 ring-1 ring-white/80">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Trust model</p>
+              <div className="mt-3 grid gap-2">
+                {["Local-first", "Sync optional", "Private writing stays here"].map((item) => (
+                  <span key={item} className="rounded-full bg-white/76 px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-white/80">{item}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </header>
 
-        <div className="mt-4 grid gap-3">
+        <div className="mt-4 grid gap-3 lg:grid-cols-[0.82fr_1.18fr]">
           <a
             href="/sos"
             className="rounded-3xl bg-rose-50/95 p-4 text-left shadow-[0_14px_35px_rgba(88,82,120,0.10)] ring-1 ring-rose-100 transition hover:-translate-y-0.5 hover:bg-rose-50"
@@ -3763,7 +3772,7 @@ function HomeHubScreen({ onQuickEmotion }) {
         </HomeSection>
 
         <HomeSection title="Need relief now">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {reliefCards.map((card) => (
               <HomeMiniCard key={card.href} {...card} />
             ))}
@@ -3771,7 +3780,7 @@ function HomeHubScreen({ onQuickEmotion }) {
         </HomeSection>
 
         <HomeSection title="Choose a guided room">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             {guidedCards.map((card) => (
               <HomeMiniCard key={card.href} {...card} />
             ))}
@@ -3779,7 +3788,7 @@ function HomeHubScreen({ onQuickEmotion }) {
         </HomeSection>
 
         <HomeSection title="Come back to yourself">
-          <div className="grid gap-3">
+          <div className="grid gap-3 lg:grid-cols-3">
             {returnCards.map((card) => (
               <HomeCard key={card.href} {...card} />
             ))}
