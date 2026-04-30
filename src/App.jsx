@@ -3357,6 +3357,28 @@ function HomeCard({ title, text, status, href, featured = false }) {
   );
 }
 
+function HomeMiniCard({ title, text, status, href, tone = "bg-white/75" }) {
+  return (
+    <a
+      href={href}
+      className={`flex min-h-36 flex-col rounded-3xl ${tone} p-4 text-left shadow-[0_14px_35px_rgba(88,82,120,0.10)] ring-1 ring-white/75 transition duration-200 hover:-translate-y-0.5 hover:bg-white/90`}
+    >
+      <h2 className="text-base font-semibold leading-snug text-slate-900">{title}</h2>
+      <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">{text}</p>
+      {status && <p className="mt-3 rounded-2xl bg-white/65 px-3 py-2 text-xs font-semibold leading-5 text-slate-500">{status}</p>}
+    </a>
+  );
+}
+
+function HomeSection({ title, children }) {
+  return (
+    <section className="py-4">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
 function HomeHubScreen() {
   const [status, setStatus] = useState(getHomeStatus);
 
@@ -3380,33 +3402,49 @@ function HomeHubScreen() {
     navigate("/journal");
   };
 
-  const cards = [
-    { title: "I need help now", text: "A fast grounding path for intense moments.", status: status.sos, href: "/sos" },
-    { title: "My quiet space", text: "See what helped before and choose the gentlest next step.", status: status.companion, href: "/me" },
-    { title: "Emotion Timeline", text: "See your daily notes, calm resets, and journey pages by date.", status: status.timeline, href: "/timeline" },
-    { title: "Care Kit", text: "Save your trusted person, safe place, steady action, and reminder.", status: status.care, href: "/care" },
-    { title: "Pressure Reset", text: "For exams, family expectations, comparison, career, and future worry.", status: status.pressure, href: "/pressure" },
-    { title: "Check in with a feeling", text: "Name what you are carrying and write one honest page.", status: status.checkIn, href: "/check-in" },
-    { title: "Calm my body", text: "A quick body-first reset for when writing feels too much.", status: status.calm, href: "/calm" },
-    { title: "Talk to Wisdom", text: "A private companion for scripture, reflection, and calm words.", status: status.wisdom, href: "/wisdom" },
-    { title: "Start a Healing Journey", text: "Move through letting go, self worth, or understanding love.", status: status.journeys, href: "/journeys" },
-    { title: "Visit the Museum", text: "Read and leave anonymous words people never sent.", status: status.museum, href: "/museum" },
-    { title: "Pause Before You Text", text: "Slow the moment down before sending an emotional message.", status: status.pause, href: "/pause" }
+  const reliefCards = [
+    { title: "SOS", text: "For intense moments.", status: status.sos, href: "/sos", tone: "bg-rose-50/90" },
+    { title: "Calm", text: "Body-first reset.", status: status.calm, href: "/calm", tone: "bg-blue-50/90" },
+    { title: "Care Kit", text: "Your saved supports.", status: status.care, href: "/care", tone: "bg-emerald-50/90" },
+    { title: "Pressure", text: "Exams, family, future.", status: status.pressure, href: "/pressure", tone: "bg-amber-50/90" }
+  ];
+
+  const guidedCards = [
+    { title: "Check in", text: "Name one feeling and write privately.", status: status.checkIn, href: "/check-in" },
+    { title: "Wisdom", text: "Talk through what feels heavy.", status: status.wisdom, href: "/wisdom" },
+    { title: "Journey", text: "A 7-day path for slower healing.", status: status.journeys, href: "/journeys" },
+    { title: "Museum", text: "Read soft unsent notes.", status: status.museum, href: "/museum" }
+  ];
+
+  const returnCards = [
+    { title: "My quiet space", text: "What helped before.", status: status.companion, href: "/me" },
+    { title: "Timeline", text: "See saved moments.", status: status.timeline, href: "/timeline" },
+    { title: "Pause texting", text: "Slow an urgent message.", status: status.pause, href: "/pause" }
   ];
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(145deg,#f8efe8_0%,#ece8ff_45%,#e5f5ff_100%)] px-4 py-5 text-slate-800 sm:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-40px)] min-w-0 flex-col" style={{ width: "calc(100vw - 2rem)", maxWidth: "28rem" }}>
-        <header className="pb-5 pt-4">
+        <header className="pb-4 pt-4">
           <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Neeraj Eternal</p>
           <h1 className="text-4xl font-semibold leading-tight text-slate-900">You do not have to carry it alone.</h1>
-          <p className="mt-4 text-base leading-7 text-slate-600">A calm, private space for stress, heartbreak, pressure, overthinking, and the words you cannot say out loud yet.</p>
+          <p className="mt-4 text-base leading-7 text-slate-600">Start with the room that matches this moment. No account. No pressure to explain everything.</p>
         </header>
 
-        <HomeCard featured title={status.primary.title} text={status.primary.text} status={status.primary.status} href={status.primary.href} />
+        <div className="grid gap-3">
+          <a
+            href="/sos"
+            className="rounded-3xl bg-rose-50/95 p-4 text-left shadow-[0_14px_35px_rgba(88,82,120,0.10)] ring-1 ring-rose-100 transition hover:-translate-y-0.5 hover:bg-rose-50"
+          >
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-rose-700">If it feels urgent</p>
+            <h2 className="mt-2 text-xl font-semibold leading-snug text-slate-900">Open SOS Mode first.</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">A fast grounding path for moments when thinking is too much.</p>
+          </a>
 
-        <section className="py-5">
-          <p className="mb-3 text-sm font-semibold text-slate-500">How are you arriving today?</p>
+          <HomeCard featured title={status.primary.title} text={status.primary.text} status={status.primary.status} href={status.primary.href} />
+        </div>
+
+        <HomeSection title="How are you arriving?">
           <div className="flex flex-wrap gap-2">
             {quickEmotions.map((emotion) => (
               <button
@@ -3419,13 +3457,31 @@ function HomeHubScreen() {
               </button>
             ))}
           </div>
-        </section>
+        </HomeSection>
 
-        <section className="grid gap-3 pb-5">
-          {cards.map((card) => (
-            <HomeCard key={card.href} {...card} />
-          ))}
-        </section>
+        <HomeSection title="Need relief now">
+          <div className="grid grid-cols-2 gap-3">
+            {reliefCards.map((card) => (
+              <HomeMiniCard key={card.href} {...card} />
+            ))}
+          </div>
+        </HomeSection>
+
+        <HomeSection title="Choose a guided room">
+          <div className="grid grid-cols-2 gap-3">
+            {guidedCards.map((card) => (
+              <HomeMiniCard key={card.href} {...card} />
+            ))}
+          </div>
+        </HomeSection>
+
+        <HomeSection title="Come back to yourself">
+          <div className="grid gap-3">
+            {returnCards.map((card) => (
+              <HomeCard key={card.href} {...card} />
+            ))}
+          </div>
+        </HomeSection>
         <SafetyPanel className="mb-3" />
         <div className="mt-auto rounded-3xl bg-white/60 p-4 text-sm leading-6 text-slate-600 shadow-sm ring-1 ring-white/70">
           Most spaces are saved only on this device for now.
