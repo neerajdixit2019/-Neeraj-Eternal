@@ -23,6 +23,18 @@ function readJson(key, fallback) {
   }
 }
 
+function readRaw(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function byteSize(value) {
+  return new Blob([value || ""]).size;
+}
+
 function latestByTime(values) {
   return values
     .filter(Boolean)
@@ -108,4 +120,55 @@ export function getSyncableProgressSnapshot() {
       savedCount: Array.isArray(aftercare.history) ? aftercare.history.length : 0
     }
   };
+}
+
+export function getLocalDataVaultSnapshot() {
+  const rawEntries = Object.entries(LOCAL_STORAGE_KEYS).map(([id, key]) => {
+    const rawValue = readRaw(key);
+    return {
+      id,
+      key,
+      exists: rawValue !== null,
+      bytes: byteSize(rawValue || "")
+    };
+  });
+
+  const progress = getSyncableProgressSnapshot();
+  const totalBytes = rawEntries.reduce((sum, entry) => sum + entry.bytes, 0);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    totalBytes,
+    totalKeys: rawEntries.filter((entry) => entry.exists).length,
+    entries: rawEntries,
+    summary: {
+      dailyDays: progress.daily.completedDates.length,
+      calmSessions: progress.calm.completedCount,
+      journeyCount: Object.keys(progress.journeys).length,
+      museumNotes: progress.museum.noteCount,
+      wisdomMessages: progress.wisdom.messageCount,
+      hasJournalText: progress.emotionalFlow.hasJournalText,
+      hasCareKit: progress.care.hasTrustedPerson || progress.care.hasSafePlace || progress.care.hasAction || progress.care.hasReminder
+    }
+  };
+}
+
+export function getLocalDataArchive() {
+  return {
+    exportedAt: new Date().toISOString(),
+    app: "Neeraj Eternal",
+    warning: "This export can include private local writing. Keep it somewhere safe.",
+    storage: Object.fromEntries(
+      Object.entries(LOCAL_STORAGE_KEYS).map(([id, key]) => [id, {
+        key,
+        value: readRaw(key)
+      }])
+    )
+  };
+}
+
+export function clearLocalAppData() {
+  Object.values(LOCAL_STORAGE_KEYS).forEach((key) => {
+    window.localStorage.removeItem(key);
+  });
 }

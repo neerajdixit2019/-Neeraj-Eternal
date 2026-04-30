@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AppBottomNav, AppTopNav } from "./components/AppNavigation.jsx";
+import { LocalDataVault } from "./components/LocalDataVault.jsx";
 import { SyncPanel } from "./components/SyncPanel.jsx";
 import { isKnownAppRoute } from "./screens/routeManifest.js";
 
@@ -3304,6 +3305,9 @@ function CompanionMemoryScreen() {
       </PageHeader>
 
       <SyncPanel />
+      <div className="mt-5">
+        <LocalDataVault />
+      </div>
 
       <div className="mb-4 rounded-3xl bg-slate-900 p-5 text-white shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-slate-800/20">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Your quiet pattern</p>

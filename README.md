@@ -7,6 +7,7 @@ A premium sacred-modern emotional safe space for young people. The app is now a 
 - **Premium App Shell** - Vite, Tailwind, bottom mobile navigation, refined sacred-modern surfaces, and direct-route Vercel support.
 - **Welcome Flow** - one gentle first question that routes new users to the right room for their moment.
 - **Optional Sync** - Supabase-ready progress sync from My Quiet Space; private writing is not uploaded in this version.
+- **Local Data Vault** - review local storage, export a private archive, or reset this browser's app data.
 - **Aftercare Suggestions** - one adaptive next step after writing, calming, or checking in, with a saved "helpful" step on Home.
 - **My Quiet Space** - a private local pattern page that shows what helped before and suggests a gentle next step.
 - **Emotion Timeline** - a private date-based view of daily notes, journal reflections, calm sessions, and journey entries.
@@ -72,6 +73,8 @@ Welcome Flow stores the last selected starting reason under `neeraj-eternal-welc
 Aftercare suggestions are stored under `neeraj-eternal-aftercare` as `{ latest, history }`, keeping only the last few locally saved helpful next steps.
 
 Optional sync uses Supabase when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured. The sync snapshot includes progress, counts, selected rooms, and settings only. Journal text, daily notes, care-kit text, museum notes, and pressure writing stay local in v1.
+
+Local Data Vault lives in `/me`. It reads the existing localStorage keys, shows category status and size, exports a private JSON archive on the current device, and lets the user deliberately clear Neeraj Eternal data from this browser.
 
 My Quiet Space at `/me` does not create a new storage key. It reads existing local data and summarizes it on the current device only.
 
