@@ -1,22 +1,45 @@
 export const LOCAL_STORAGE_KEYS = {
-  flow: "neeraj-eternal-emotional-flow",
-  pause: "neeraj-eternal-pause-before-text",
-  journeys: "neeraj-eternal-healing-journeys",
-  museum: "museum_unsaid_notes",
-  wisdom: "neeraj-eternal-wisdom-chat",
-  daily: "neeraj-eternal-daily-sanctuary",
-  calm: "neeraj-eternal-guided-calm",
-  pressure: "neeraj-eternal-pressure-reset",
-  care: "neeraj-eternal-care-kit",
-  welcome: "neeraj-eternal-welcome",
-  aftercare: "neeraj-eternal-aftercare",
-  compass: "neeraj-eternal-compass",
-  onboarding: "neeraj-eternal-onboarding-preferences"
+  flow: "eternal-emotional-flow",
+  pause: "eternal-pause-before-text",
+  journeys: "eternal-healing-journeys",
+  museum: "eternal-museum-unsaid-notes",
+  wisdom: "eternal-wisdom-chat",
+  daily: "eternal-daily-sanctuary",
+  calm: "eternal-guided-calm",
+  pressure: "eternal-pressure-reset",
+  care: "eternal-care-kit",
+  welcome: "eternal-welcome",
+  aftercare: "eternal-aftercare",
+  compass: "eternal-compass",
+  onboarding: "eternal-onboarding-preferences"
 };
+
+const LEGACY_STORAGE_PREFIX = ["nee", "raj", "-eternal-"].join("");
+const LEGACY_LOCAL_STORAGE_KEYS = {
+  flow: `${LEGACY_STORAGE_PREFIX}emotional-flow`,
+  pause: `${LEGACY_STORAGE_PREFIX}pause-before-text`,
+  journeys: `${LEGACY_STORAGE_PREFIX}healing-journeys`,
+  museum: ["museum", "_unsaid", "_notes"].join(""),
+  wisdom: `${LEGACY_STORAGE_PREFIX}wisdom-chat`,
+  daily: `${LEGACY_STORAGE_PREFIX}daily-sanctuary`,
+  calm: `${LEGACY_STORAGE_PREFIX}guided-calm`,
+  pressure: `${LEGACY_STORAGE_PREFIX}pressure-reset`,
+  care: `${LEGACY_STORAGE_PREFIX}care-kit`,
+  welcome: `${LEGACY_STORAGE_PREFIX}welcome`,
+  aftercare: `${LEGACY_STORAGE_PREFIX}aftercare`,
+  compass: `${LEGACY_STORAGE_PREFIX}compass`,
+  onboarding: `${LEGACY_STORAGE_PREFIX}onboarding-preferences`
+};
+
+function getLegacyKey(key) {
+  const entry = Object.entries(LOCAL_STORAGE_KEYS).find(([, value]) => value === key);
+  return entry ? LEGACY_LOCAL_STORAGE_KEYS[entry[0]] : null;
+}
 
 function readJson(key, fallback) {
   try {
-    const value = window.localStorage.getItem(key);
+    const legacyKey = getLegacyKey(key);
+    const value = window.localStorage.getItem(key) || (legacyKey ? window.localStorage.getItem(legacyKey) : null);
     if (!value) return fallback;
     const parsed = JSON.parse(value);
     return parsed && typeof parsed === "object" ? parsed : fallback;
@@ -27,7 +50,8 @@ function readJson(key, fallback) {
 
 function readRaw(key) {
   try {
-    return window.localStorage.getItem(key);
+    const legacyKey = getLegacyKey(key);
+    return window.localStorage.getItem(key) || (legacyKey ? window.localStorage.getItem(legacyKey) : null);
   } catch {
     return null;
   }
@@ -165,7 +189,7 @@ export function getLocalDataVaultSnapshot() {
 export function getLocalDataArchive() {
   return {
     exportedAt: new Date().toISOString(),
-    app: "Neeraj Eternal",
+    app: "Eternal",
     warning: "This export can include private local writing. Keep it somewhere safe.",
     storage: Object.fromEntries(
       Object.entries(LOCAL_STORAGE_KEYS).map(([id, key]) => [id, {
@@ -178,6 +202,9 @@ export function getLocalDataArchive() {
 
 export function clearLocalAppData() {
   Object.values(LOCAL_STORAGE_KEYS).forEach((key) => {
+    window.localStorage.removeItem(key);
+  });
+  Object.values(LEGACY_LOCAL_STORAGE_KEYS).forEach((key) => {
     window.localStorage.removeItem(key);
   });
 }

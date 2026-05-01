@@ -1,9 +1,9 @@
-# Neeraj Eternal
+# Eternal
 
-A premium sacred-modern emotional safe space for young people. The app is now a Vite + React experience with local-first privacy, optional Supabase progress sync, and warm rooms for welcome, aftercare, SOS, care kit, pressure reset, daily ritual, guided calm, quiet pattern, emotion timeline, journal, pause, journey, museum, and wisdom chat.
+A beautifully calm, sacred-modern emotional sanctuary for anyone carrying too much. Eternal is a Vite + React experience with private reflection, optional progress sync, and warm rooms for guided start, SOS, care kit, pressure reset, daily ritual, guided calm, personal compass, emotion timeline, journal, pause, journeys, museum, and wisdom chat.
 
 **Features:**
-- **Home Hub** - a warmer main doorway with a primary next step, quick feeling chips, progress hints, and safety support.
+- **Home Hub** - a graceful main doorway with a personal next step, quick feeling chips, progress hints, and safety support.
 - **Premium App Shell** - Vite, Tailwind, bottom mobile navigation, refined sacred-modern surfaces, and direct-route Vercel support.
 - **Guided Start** - a warm 3-step onboarding flow that helps new users choose the right room without overwhelm.
 - **Optional Sync** - Supabase-ready progress sync from My Quiet Space; private writing is not uploaded in this version.
@@ -68,33 +68,33 @@ Build:
 
 The app builds with Vite. The canonical app experience lives in `src/App.jsx` with supporting modules in `src/components`, `src/storage`, `src/sync`, and `src/design`. Vercel rewrites all routes back to `index.html` so the React router handles direct links consistently.
 
-Guided Start, welcome choice, aftercare suggestions, journal, daily sanctuary, guided calm, pause, journey, museum, and wisdom chat progress are stored in `localStorage`; there is no backend account system.
+Guided Start, welcome choice, aftercare suggestions, journal, daily sanctuary, guided calm, pause, journey, museum, and wisdom chat progress are stored in `localStorage`; there is no required account system.
 
-Guided Start at `/welcome` saves light preferences under `neeraj-eternal-onboarding-preferences` as `{ version, arrivalId, supportStyleId, recommendedRoute, completedAt }`. It also keeps the compatibility welcome key `neeraj-eternal-welcome` as `{ reasonId, route, selectedAt }`.
+Guided Start at `/welcome` saves light preferences under `eternal-onboarding-preferences` as `{ version, arrivalId, supportStyleId, recommendedRoute, completedAt }`. It also keeps the compatibility welcome key `eternal-welcome` as `{ reasonId, route, selectedAt }`.
 
-Aftercare suggestions are stored under `neeraj-eternal-aftercare` as `{ latest, history }`, keeping only the last few locally saved helpful next steps.
+Aftercare suggestions are stored under `eternal-aftercare` as `{ latest, history }`, keeping only the last few locally saved helpful next steps.
 
 Optional sync uses Supabase when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured. The sync snapshot includes progress, counts, selected rooms, and settings only. Journal text, daily notes, care-kit text, museum notes, and pressure writing stay local in v1.
 
-Local Data Vault lives in `/me`. It reads the existing localStorage keys, shows category status and size, exports a private JSON archive on the current device, and lets the user deliberately clear Neeraj Eternal data from this browser.
+Local Data Vault lives in `/me`. It reads the existing localStorage keys, shows category status and size, exports a private JSON archive on the current device, and lets the user deliberately clear Eternal data from this browser.
 
 My Quiet Space at `/me` does not create a new storage key. It reads existing local data and summarizes it on the current device only.
 
-Personal Compass at `/compass` stores only lightweight metadata under `neeraj-eternal-compass` as `{ lastOpenedAt, dismissedTips }`. Its season, helped-before, recommendation, and pattern cards are rebuilt from existing localStorage data on this device only. It does not call `/api/chat`, Supabase, or any network service.
+Personal Compass at `/compass` stores only lightweight metadata under `eternal-compass` as `{ lastOpenedAt, dismissedTips }`. Its season, helped-before, recommendation, and pattern cards are rebuilt from existing localStorage data on this device only. It does not call `/api/chat`, Supabase, or any network service.
 
 Emotion Timeline at `/timeline` does not create a new storage key. It reads existing local data and groups saved moments by date.
 
-Daily Sanctuary entries are stored under `neeraj-eternal-daily-sanctuary` by local date, shaped like `{ date, emotionId, note, action, savedAt }`.
+Daily Sanctuary entries are stored under `eternal-daily-sanctuary` by local date, shaped like `{ date, emotionId, note, action, savedAt }`.
 
-Guided Calm history is stored under `neeraj-eternal-guided-calm` as `{ completedCount, latestExerciseId, latestCompletedAt }`.
+Guided Calm history is stored under `eternal-guided-calm` as `{ completedCount, latestExerciseId, latestCompletedAt }`.
 
-Care Kit is stored under `neeraj-eternal-care-kit` as `{ person, place, action, reminder, updatedAt }`. It is local-only and warns users not to save contact details.
+Care Kit is stored under `eternal-care-kit` as `{ person, place, action, reminder, updatedAt }`. It is local-only and warns users not to save contact details.
 
-Pressure Reset history is stored under `neeraj-eternal-pressure-reset` as `{ latest, history }`, with local entries for pressure type, worry text, reframe, action, and saved time.
+Pressure Reset history is stored under `eternal-pressure-reset` as `{ latest, history }`, with local entries for pressure type, worry text, reframe, action, and saved time.
 
-Healing Journeys progress is stored under `neeraj-eternal-healing-journeys` by journey id, with `currentDay` and saved daily `entries`.
+Healing Journeys progress is stored under `eternal-healing-journeys` by journey id, with `currentDay` and saved daily `entries`.
 
-Museum notes are stored under `museum_unsaid_notes` as anonymous `{ id, category, text, createdAt }` entries. Seed notes are added when the wall is empty.
+Museum notes are stored under `eternal-museum-unsaid-notes` as anonymous `{ id, category, text, createdAt }` entries. Seed notes are added when the wall is empty.
 
 The safety/support panel is intentionally gentle: it encourages pausing, breathing, contacting a trusted person, seeking local emergency help if there is immediate danger, and opening SOS Mode for a fast grounding path. The app is reflective support, not therapy or medical care.
 
@@ -105,7 +105,3 @@ This is a Vite static app. Vercel should install dependencies, run the build, an
 - Framework preset: `Vite`
 - Build command: `npm run build`
 - Output directory: `dist`
-
-## Repository
-
-Project source: https://github.com/neerajdixit2019/-Neeraj-Eternal

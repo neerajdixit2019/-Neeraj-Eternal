@@ -37,10 +37,10 @@ export function AppTopNav({ currentPath = "/", onNavigate }) {
           onClick={(event) => handleNavigate(event, "/", onNavigate)}
           className="flex min-w-0 items-center gap-3 rounded-2xl px-2 py-1 transition hover:bg-white/65"
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-900 text-sm font-semibold text-white">NE</span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-900 text-sm font-semibold text-white">E</span>
           <span className="min-w-0">
-            <span className="block text-sm font-semibold leading-tight text-slate-950">Neeraj Eternal</span>
-            <span className="block truncate text-xs font-medium text-slate-500">Local-first emotional sanctuary</span>
+            <span className="block text-sm font-semibold leading-tight text-slate-950">Eternal</span>
+            <span className="block truncate text-xs font-medium text-slate-500">A private sanctuary for your inner world</span>
           </span>
         </a>
 

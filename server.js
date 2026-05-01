@@ -229,6 +229,6 @@ const server = http.createServer((request, response) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`Neeraj Eternal running at http://127.0.0.1:${port}`);
+  console.log(`Eternal running at http://127.0.0.1:${port}`);
   console.log(`Scripture API: http://127.0.0.1:${port}/api/scriptures`);
 });

@@ -14,7 +14,7 @@ function downloadArchive() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `neeraj-eternal-local-data-${new Date().toISOString().slice(0, 10)}.json`;
+  anchor.download = `eternal-local-data-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -27,7 +27,7 @@ export function LocalDataVault() {
   const snapshot = useMemo(() => getLocalDataVaultSnapshot(), [refreshToken]);
 
   const resetData = () => {
-    const confirmed = window.confirm("This will clear Neeraj Eternal data saved in this browser. Private writing, progress, and local notes on this device will be removed. Continue?");
+    const confirmed = window.confirm("This will clear Eternal data saved in this browser. Private writing, progress, and local notes on this device will be removed. Continue?");
     if (!confirmed) return;
     clearLocalAppData();
     setMessage("Local app data was cleared from this browser.");

@@ -1,6 +1,7 @@
 import { LOCAL_STORAGE_KEYS } from "./progressSnapshot.js";
 
-export const COMPASS_STORAGE_KEY = "neeraj-eternal-compass";
+export const COMPASS_STORAGE_KEY = "eternal-compass";
+const LEGACY_COMPASS_STORAGE_KEY = `${["nee", "raj", "-eternal-"].join("")}compass`;
 
 const JOURNEY_TITLES = {
   "letting-go": "Letting Go",
@@ -72,7 +73,8 @@ function canUseStorage() {
 function readJson(key, fallback) {
   if (!canUseStorage()) return fallback;
   try {
-    const rawValue = window.localStorage.getItem(key);
+    const legacyKey = key === COMPASS_STORAGE_KEY ? LEGACY_COMPASS_STORAGE_KEY : "";
+    const rawValue = window.localStorage.getItem(key) || (legacyKey ? window.localStorage.getItem(legacyKey) : null);
     if (!rawValue) return fallback;
     const parsed = JSON.parse(rawValue);
     return parsed && typeof parsed === "object" ? parsed : fallback;

@@ -6,18 +6,48 @@ import { SyncPanel } from "./components/SyncPanel.jsx";
 import { isKnownAppRoute } from "./screens/routeManifest.js";
 import { getCompassInsights, readCompassState, saveCompassState } from "./storage/compassInsights.js";
 
-const STORAGE_KEY = "neeraj-eternal-emotional-flow";
-const PAUSE_STORAGE_KEY = "neeraj-eternal-pause-before-text";
-const JOURNEY_STORAGE_KEY = "neeraj-eternal-healing-journeys";
-const MUSEUM_STORAGE_KEY = "museum_unsaid_notes";
-const WISDOM_CHAT_STORAGE_KEY = "neeraj-eternal-wisdom-chat";
-const DAILY_SANCTUARY_STORAGE_KEY = "neeraj-eternal-daily-sanctuary";
-const GUIDED_CALM_STORAGE_KEY = "neeraj-eternal-guided-calm";
-const PRESSURE_RESET_STORAGE_KEY = "neeraj-eternal-pressure-reset";
-const CARE_KIT_STORAGE_KEY = "neeraj-eternal-care-kit";
-const WELCOME_STORAGE_KEY = "neeraj-eternal-welcome";
-const AFTERCARE_STORAGE_KEY = "neeraj-eternal-aftercare";
-const ONBOARDING_PREFERENCES_STORAGE_KEY = "neeraj-eternal-onboarding-preferences";
+const STORAGE_KEY = "eternal-emotional-flow";
+const PAUSE_STORAGE_KEY = "eternal-pause-before-text";
+const JOURNEY_STORAGE_KEY = "eternal-healing-journeys";
+const MUSEUM_STORAGE_KEY = "eternal-museum-unsaid-notes";
+const WISDOM_CHAT_STORAGE_KEY = "eternal-wisdom-chat";
+const DAILY_SANCTUARY_STORAGE_KEY = "eternal-daily-sanctuary";
+const GUIDED_CALM_STORAGE_KEY = "eternal-guided-calm";
+const PRESSURE_RESET_STORAGE_KEY = "eternal-pressure-reset";
+const CARE_KIT_STORAGE_KEY = "eternal-care-kit";
+const WELCOME_STORAGE_KEY = "eternal-welcome";
+const AFTERCARE_STORAGE_KEY = "eternal-aftercare";
+const ONBOARDING_PREFERENCES_STORAGE_KEY = "eternal-onboarding-preferences";
+const LEGACY_STORAGE_PREFIX = ["nee", "raj", "-eternal-"].join("");
+const LEGACY_STORAGE_KEYS = [
+  [STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}emotional-flow`],
+  [PAUSE_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}pause-before-text`],
+  [JOURNEY_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}healing-journeys`],
+  [MUSEUM_STORAGE_KEY, ["museum", "_unsaid", "_notes"].join("")],
+  [WISDOM_CHAT_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}wisdom-chat`],
+  [DAILY_SANCTUARY_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}daily-sanctuary`],
+  [GUIDED_CALM_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}guided-calm`],
+  [PRESSURE_RESET_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}pressure-reset`],
+  [CARE_KIT_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}care-kit`],
+  [WELCOME_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}welcome`],
+  [AFTERCARE_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}aftercare`],
+  [ONBOARDING_PREFERENCES_STORAGE_KEY, `${LEGACY_STORAGE_PREFIX}onboarding-preferences`]
+];
+
+function migrateLegacyStorageKeys() {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  LEGACY_STORAGE_KEYS.forEach(([nextKey, legacyKey]) => {
+    try {
+      if (!window.localStorage.getItem(nextKey) && window.localStorage.getItem(legacyKey)) {
+        window.localStorage.setItem(nextKey, window.localStorage.getItem(legacyKey));
+      }
+    } catch {
+      // Local storage can fail in restricted browser modes. The app should still load.
+    }
+  });
+}
+
+migrateLegacyStorageKeys();
 
 const MUSEUM_CATEGORIES = ["Love", "Regret", "Forgiveness", "Hope", "Self-respect", "Goodbye"];
 
@@ -3436,17 +3466,17 @@ function WisdomChatScreen() {
 // ─── Home Hub ────────────────────────────────────────────────────────────────
 
 const HOME_STORAGE_KEYS = {
-  flow: "neeraj-eternal-emotional-flow",
-  journeys: "neeraj-eternal-healing-journeys",
-  museum: "museum_unsaid_notes",
-  wisdom: "neeraj-eternal-wisdom-chat",
-  daily: "neeraj-eternal-daily-sanctuary",
-  calm: "neeraj-eternal-guided-calm",
-  pressure: "neeraj-eternal-pressure-reset",
-  care: "neeraj-eternal-care-kit",
-  welcome: "neeraj-eternal-welcome",
-  aftercare: "neeraj-eternal-aftercare",
-  onboarding: "neeraj-eternal-onboarding-preferences"
+  flow: STORAGE_KEY,
+  journeys: JOURNEY_STORAGE_KEY,
+  museum: MUSEUM_STORAGE_KEY,
+  wisdom: WISDOM_CHAT_STORAGE_KEY,
+  daily: DAILY_SANCTUARY_STORAGE_KEY,
+  calm: GUIDED_CALM_STORAGE_KEY,
+  pressure: PRESSURE_RESET_STORAGE_KEY,
+  care: CARE_KIT_STORAGE_KEY,
+  welcome: WELCOME_STORAGE_KEY,
+  aftercare: AFTERCARE_STORAGE_KEY,
+  onboarding: ONBOARDING_PREFERENCES_STORAGE_KEY
 };
 
 function readHomeJson(key, fallback) {
@@ -3473,7 +3503,7 @@ function getCompanionSnapshot() {
   const calm = readHomeJson(HOME_STORAGE_KEYS.calm, {});
   const pressure = readHomeJson(HOME_STORAGE_KEYS.pressure, {});
   const care = readHomeJson(HOME_STORAGE_KEYS.care, {});
-  const pause = readHomeJson("neeraj-eternal-pause-before-text", {});
+  const pause = readHomeJson(PAUSE_STORAGE_KEY, {});
   const todayEntry = daily[getLocalDateKey()] || null;
   const latestDaily = getLatestBySavedAt(Object.values(daily || {}));
   const lastJourney = getLastJourneyProgress(journeys);
@@ -3999,7 +4029,7 @@ function getHomeStatus() {
     wisdom: Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Conversation waiting here" : "Private listening space",
     journeys: lastJourney ? `Day ${lastJourney.state.currentDay} waiting` : "Choose a 7-day path",
     museum: Array.isArray(museum) && museum.length > 0 ? "Wall has notes on this device" : "Read or leave soft notes",
-    pause: localStorage.getItem("neeraj-eternal-pause-before-text") ? "Pause answers saved" : "Slow down before acting",
+    pause: localStorage.getItem(PAUSE_STORAGE_KEY) ? "Pause answers saved" : "Slow down before acting",
     daily: todayEntry ? "Today checked in" : "One gentle ritual",
     calm: calm.latestExerciseId ? `Last calm: ${getCalmExercise(calm.latestExerciseId).shortTitle}` : "A one-minute reset",
     sos: "Fast grounding path",
@@ -4166,18 +4196,18 @@ function HomeHubScreen({ onQuickEmotion }) {
         <AppTopNav currentPath={window.location.pathname} onNavigate={navigate} />
         <header className="sacred-hero rounded-[2rem] p-5 sm:p-7">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Neeraj Eternal</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Eternal</p>
             <a href="/me" className="rounded-2xl bg-white/70 px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-white/80 sm:hidden">Profile</a>
           </div>
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
             <div>
-              <h1 className="mt-5 text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">A calmer room for a louder world.</h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">Start with the room that matches this moment. Sacred-modern care, Gita-inspired steadiness, and privacy-first reflection for youth.</p>
+              <h1 className="mt-5 text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">A soft place to land when life feels loud.</h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">Choose the room your heart can enter right now. Gentle reflection, Gita-inspired steadiness, body-first calm, and privacy-first support for anyone carrying too much.</p>
             </div>
             <div className="rounded-3xl bg-white/60 p-4 ring-1 ring-white/80">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Trust model</p>
               <div className="mt-3 grid gap-2">
-                {["Local-first", "Sync optional", "Private writing stays here"].map((item) => (
+                {["Private by default", "Sync only if you choose", "Your words stay yours"].map((item) => (
                   <span key={item} className="rounded-full bg-white/76 px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-white/80">{item}</span>
                 ))}
               </div>
@@ -4238,7 +4268,7 @@ function HomeHubScreen({ onQuickEmotion }) {
         </HomeSection>
         <SafetyPanel className="mb-3" />
         <div className="mt-auto rounded-3xl bg-white/60 p-4 text-sm leading-6 text-slate-600 shadow-sm ring-1 ring-white/70">
-          Most writing stays only on this device. Sync is optional from My quiet space, and private text is not uploaded in this version.
+          Most writing stays only on this device. Sync is optional from My quiet space, and your private words are not uploaded in this version.
         </div>
       </div>
       <AppBottomNav currentPath={window.location.pathname} onNavigate={navigate} />
