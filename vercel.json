@@ -3,22 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/wisdom", "destination": "/index.html" },
-    { "source": "/today", "destination": "/index.html" },
-    { "source": "/calm", "destination": "/index.html" },
-    { "source": "/sos", "destination": "/index.html" },
-    { "source": "/pressure", "destination": "/index.html" },
-    { "source": "/care", "destination": "/index.html" },
-    { "source": "/compass", "destination": "/index.html" },
-    { "source": "/welcome", "destination": "/index.html" },
-    { "source": "/me", "destination": "/index.html" },
-    { "source": "/timeline", "destination": "/index.html" },
-    { "source": "/museum", "destination": "/index.html" },
-    { "source": "/pause", "destination": "/index.html" },
-    { "source": "/journeys", "destination": "/index.html" },
-    { "source": "/journeys/:path*", "destination": "/index.html" },
-    { "source": "/check-in", "destination": "/index.html" },
-    { "source": "/journal", "destination": "/index.html" },
-    { "source": "/reflect", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
