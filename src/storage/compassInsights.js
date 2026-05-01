@@ -19,6 +19,25 @@ const EMOTION_THEMES = {
   lost: "lost"
 };
 
+const ONBOARDING_THEMES = {
+  overwhelmed: "anxiety",
+  heartbreak: "longing",
+  exams: "pressure",
+  lonely: "heavy",
+  texting: "longing",
+  "not-sure": "lost"
+};
+
+const ONBOARDING_ROOM_TITLES = {
+  "/calm": "Guided Calm",
+  "/journal": "Private Journal",
+  "/wisdom": "Wisdom",
+  "/pressure": "Pressure Reset",
+  "/pause": "Pause Before You Text",
+  "/today": "Daily Sanctuary",
+  "/care": "Care Kit"
+};
+
 const CALM_TITLES = {
   breathing: "Breathing",
   grounding: "Grounding",
@@ -124,13 +143,14 @@ function getJourneySummary(journeys) {
   };
 }
 
-function getThemeFromLocalData({ flow, daily, pressure, pause }) {
+function getThemeFromLocalData({ flow, daily, pressure, pause, onboarding }) {
   const latestDaily = latestByTime(Object.values(daily || {}));
   const emotionTheme = EMOTION_THEMES[latestDaily?.emotionId] || EMOTION_THEMES[flow?.emotionId] || "";
   const textTheme = getTextTheme([flow?.journalText, latestDaily?.note, pressure?.latest?.worry, pause?.answers?.hope, pause?.answers?.expectation].filter(Boolean).join(" "));
+  const onboardingTheme = ONBOARDING_THEMES[onboarding?.arrivalId] || "";
 
   if (pressure?.latest?.areaId || textTheme === "pressure") return "pressure";
-  return textTheme || emotionTheme || "";
+  return textTheme || emotionTheme || onboardingTheme || "";
 }
 
 function getSeason(theme, hasAnyData) {
@@ -199,9 +219,17 @@ function getRecommendation({ theme, journeySummary, pause }) {
   return ACTION_ROOMS.wisdom;
 }
 
-function buildHelpedBefore({ daily, calm, pressure, care, aftercare, journeySummary, wisdom }) {
+function buildHelpedBefore({ daily, calm, pressure, care, aftercare, journeySummary, wisdom, onboarding }) {
   const latestDaily = latestByTime(Object.values(daily || {}));
   const helped = [];
+
+  if (onboarding?.completedAt) {
+    helped.push({
+      title: "Guided Start is saved",
+      text: `${ONBOARDING_ROOM_TITLES[onboarding.recommendedRoute] || "A starting room"} is your last chosen doorway.`,
+      href: onboarding.recommendedRoute || "/welcome"
+    });
+  }
 
   if (calm?.latestExerciseId) {
     helped.push({
@@ -262,7 +290,7 @@ function buildHelpedBefore({ daily, calm, pressure, care, aftercare, journeySumm
   return helped.slice(0, 4);
 }
 
-function buildPatternStats({ flow, daily, calm, museum, wisdom, journeySummary, pressure, care }) {
+function buildPatternStats({ flow, daily, calm, museum, wisdom, journeySummary, pressure, care, onboarding }) {
   const dailyCount = Object.keys(daily || {}).length;
   const wisdomMessages = Array.isArray(wisdom?.messages) ? wisdom.messages.length : 0;
   const museumNotes = Array.isArray(museum) ? museum.length : 0;
@@ -270,6 +298,7 @@ function buildPatternStats({ flow, daily, calm, museum, wisdom, journeySummary, 
   const careCount = care?.updatedAt ? [care.person, care.place, care.action, care.reminder].filter(Boolean).length : 0;
 
   return [
+    { label: "Guided start", value: onboarding?.completedAt ? "Saved" : "Quiet", text: "Light starting preference only." },
     { label: "Private journal", value: flow?.journalText ? "Saved" : "Quiet", text: flow?.journalText ? "One reflection exists here." : "No journal text yet." },
     { label: "Daily days", value: String(dailyCount), text: "Daily Sanctuary entries on this device." },
     { label: "Calm sessions", value: String(Number(calm?.completedCount || 0)), text: "Body-first resets completed." },
@@ -310,11 +339,12 @@ export function getCompassInsights() {
   const care = readJson(LOCAL_STORAGE_KEYS.care, {});
   const welcome = readJson(LOCAL_STORAGE_KEYS.welcome, {});
   const aftercare = readJson(LOCAL_STORAGE_KEYS.aftercare, {});
+  const onboarding = readJson(LOCAL_STORAGE_KEYS.onboarding, {});
   const compass = readCompassState();
   const journeySummary = getJourneySummary(journeys);
-  const theme = getThemeFromLocalData({ flow, daily, pressure, pause });
-  const helpedBefore = buildHelpedBefore({ daily, calm, pressure, care, aftercare, journeySummary, wisdom });
-  const patternStats = buildPatternStats({ flow, daily, calm, museum, wisdom, journeySummary, pressure, care });
+  const theme = getThemeFromLocalData({ flow, daily, pressure, pause, onboarding });
+  const helpedBefore = buildHelpedBefore({ daily, calm, pressure, care, aftercare, journeySummary, wisdom, onboarding });
+  const patternStats = buildPatternStats({ flow, daily, calm, museum, wisdom, journeySummary, pressure, care, onboarding });
 
   const hasAnyData = Boolean(
     flow?.journalText ||
@@ -324,6 +354,7 @@ export function getCompassInsights() {
     pressure?.latest ||
     care?.updatedAt ||
     welcome?.reasonId ||
+    onboarding?.completedAt ||
     aftercare?.latest ||
     journeySummary.started.length ||
     (Array.isArray(museum) && museum.length > 0) ||

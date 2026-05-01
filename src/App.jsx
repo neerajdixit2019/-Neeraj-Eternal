@@ -17,6 +17,7 @@ const PRESSURE_RESET_STORAGE_KEY = "neeraj-eternal-pressure-reset";
 const CARE_KIT_STORAGE_KEY = "neeraj-eternal-care-kit";
 const WELCOME_STORAGE_KEY = "neeraj-eternal-welcome";
 const AFTERCARE_STORAGE_KEY = "neeraj-eternal-aftercare";
+const ONBOARDING_PREFERENCES_STORAGE_KEY = "neeraj-eternal-onboarding-preferences";
 
 const MUSEUM_CATEGORIES = ["Love", "Regret", "Forgiveness", "Hope", "Self-respect", "Goodbye"];
 
@@ -246,6 +247,78 @@ const WELCOME_REASONS = [
     text: "You do not need perfect language to begin.",
     href: "/today",
     action: "Start with one small daily ritual."
+  }
+];
+
+const ONBOARDING_ARRIVALS = [
+  {
+    id: "overwhelmed",
+    label: "I feel overwhelmed",
+    text: "Everything feels too much and my body needs safety.",
+    emotionId: "anxious",
+    tone: "from-blue-100 to-violet-100"
+  },
+  {
+    id: "heartbreak",
+    label: "Heartbreak/missing someone",
+    text: "My heart keeps going back to someone or something.",
+    emotionId: "miss-someone",
+    tone: "from-rose-100 to-violet-100"
+  },
+  {
+    id: "exams",
+    label: "Study/future pressure",
+    text: "Exams, career, family, or tomorrow feels loud.",
+    tone: "from-amber-100 to-orange-100"
+  },
+  {
+    id: "lonely",
+    label: "Lonely/heavy",
+    text: "I feel alone, tired, numb, or emotionally heavy.",
+    emotionId: "heavy",
+    tone: "from-teal-100 to-emerald-100"
+  },
+  {
+    id: "texting",
+    label: "I want to text them",
+    text: "There is an urge to reach out before I feel clear.",
+    emotionId: "miss-someone",
+    tone: "from-pink-100 to-amber-100"
+  },
+  {
+    id: "not-sure",
+    label: "Not sure",
+    text: "I do not have the right words yet. I just want a start.",
+    emotionId: "not-sure",
+    tone: "from-fuchsia-100 to-sky-100"
+  }
+];
+
+const ONBOARDING_SUPPORT_STYLES = [
+  {
+    id: "calm",
+    label: "Calm my body",
+    text: "Breathing, grounding, and less pressure to explain."
+  },
+  {
+    id: "write",
+    label: "Write privately",
+    text: "A safe page for the thing I cannot say out loud."
+  },
+  {
+    id: "wisdom",
+    label: "Talk to Wisdom",
+    text: "Steady spiritual words and a listening space."
+  },
+  {
+    id: "plan",
+    label: "Make a small plan",
+    text: "Turn the big cloud into one next step."
+  },
+  {
+    id: "guide",
+    label: "Just guide me",
+    text: "Choose a gentle first room for me."
   }
 ];
 
@@ -943,6 +1016,19 @@ function saveStoredWelcome(nextValue) {
   localStorage.setItem(WELCOME_STORAGE_KEY, JSON.stringify(nextValue));
 }
 
+function readStoredOnboardingPreferences() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ONBOARDING_PREFERENCES_STORAGE_KEY));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredOnboardingPreferences(nextValue) {
+  localStorage.setItem(ONBOARDING_PREFERENCES_STORAGE_KEY, JSON.stringify(nextValue));
+}
+
 function readStoredAftercare() {
   try {
     const parsed = JSON.parse(localStorage.getItem(AFTERCARE_STORAGE_KEY));
@@ -992,6 +1078,112 @@ function getPressureArea(areaId) {
 
 function getWelcomeReason(reasonId) {
   return WELCOME_REASONS.find((reason) => reason.id === reasonId) || null;
+}
+
+function getOnboardingArrival(arrivalId) {
+  return ONBOARDING_ARRIVALS.find((arrival) => arrival.id === arrivalId) || null;
+}
+
+function getOnboardingSupportStyle(styleId) {
+  return ONBOARDING_SUPPORT_STYLES.find((style) => style.id === styleId) || null;
+}
+
+function getOnboardingRecommendation(arrivalId, supportStyleId) {
+  const arrival = getOnboardingArrival(arrivalId) || ONBOARDING_ARRIVALS[5];
+  const supportStyle = getOnboardingSupportStyle(supportStyleId);
+  const withBase = (value) => ({
+    arrival,
+    supportStyle,
+    ...value
+  });
+
+  if (arrival.id === "texting") {
+    return withBase({
+      title: "Pause Before You Text",
+      text: "The urge can be honest without becoming immediate action. Slow this moment before deciding.",
+      href: "/pause"
+    });
+  }
+
+  if (arrival.id === "exams") {
+    return withBase({
+      title: "Pressure Reset",
+      text: "You named pressure around study, future, or expectations. Let's make it smaller.",
+      href: "/pressure"
+    });
+  }
+
+  if (arrival.id === "not-sure" || supportStyle?.id === "guide") {
+    return withBase({
+      title: "Daily Sanctuary",
+      text: "Start with one feeling, one wisdom line, and one small action. That is enough.",
+      href: "/today"
+    });
+  }
+
+  if (supportStyle?.id === "calm") {
+    return withBase({
+      title: "Guided Calm",
+      text: "Your body gets the first vote. Start with a reset before trying to explain everything.",
+      href: "/calm"
+    });
+  }
+
+  if (supportStyle?.id === "write") {
+    return withBase({
+      title: "Private Journal",
+      text: "A quiet page can hold the first true sentence. No one is grading this.",
+      href: "/journal",
+      emotionId: arrival.emotionId || "not-sure"
+    });
+  }
+
+  if (supportStyle?.id === "wisdom") {
+    return withBase({
+      title: "Talk to Wisdom",
+      text: "Bring what feels heavy into a steadier, spiritual conversation.",
+      href: "/wisdom"
+    });
+  }
+
+  if (supportStyle?.id === "plan") {
+    return withBase({
+      title: "Care Kit",
+      text: "Make one small support plan: who helps, where to go, and what steadies you.",
+      href: "/care"
+    });
+  }
+
+  if (arrival.id === "heartbreak") {
+    return withBase({
+      title: "Private Journal",
+      text: "There are words in you that deserve a safe place without sending anything.",
+      href: "/journal",
+      emotionId: "miss-someone"
+    });
+  }
+
+  if (arrival.id === "lonely") {
+    return withBase({
+      title: "Talk to Wisdom",
+      text: "Loneliness needs warmth, not shame. Let the app answer softly first.",
+      href: "/wisdom"
+    });
+  }
+
+  if (arrival.id === "overwhelmed") {
+    return withBase({
+      title: "Guided Calm",
+      text: "When everything is loud, your body deserves the first gentle room.",
+      href: "/calm"
+    });
+  }
+
+  return withBase({
+    title: "Daily Sanctuary",
+    text: "Start with one feeling, one wisdom line, and one small action. That is enough.",
+    href: "/today"
+  });
 }
 
 function getAftercareAction(actionId) {
@@ -1310,44 +1502,164 @@ function CheckInScreen({ onSelect }) {
 
 // First-time welcome
 
-function WelcomeReasonCard({ reason, onStart }) {
+function OnboardingProgressDots({ step }) {
+  return (
+    <div className="mb-5 flex items-center gap-2" aria-label={`Step ${step + 1} of 3`}>
+      {[0, 1, 2].map((item) => (
+        <span
+          key={item}
+          className={`h-2 flex-1 rounded-full transition ${item <= step ? "bg-slate-900" : "bg-white/70"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function OnboardingOptionCard({ title, text, selected, tone = "from-white to-white", onClick }) {
   return (
     <button
       type="button"
-      onClick={() => onStart(reason)}
-      className="rounded-3xl bg-white/75 p-5 text-left shadow-[0_14px_35px_rgba(88,82,120,0.12)] ring-1 ring-white/80 transition duration-200 hover:-translate-y-0.5 hover:bg-white"
+      onClick={onClick}
+      className={`rounded-3xl bg-gradient-to-br ${tone} p-5 text-left shadow-[0_14px_35px_rgba(88,82,120,0.12)] ring-1 transition duration-200 hover:-translate-y-0.5 hover:bg-white ${
+        selected ? "ring-2 ring-slate-800" : "ring-white/80"
+      }`}
+      aria-pressed={selected}
     >
-      <p className="text-xl font-semibold leading-snug text-slate-900">{reason.label}</p>
-      <p className="mt-2 leading-7 text-slate-600">{reason.text}</p>
-      <p className="mt-4 rounded-2xl bg-slate-50/85 px-4 py-2 text-sm font-semibold leading-6 text-slate-600">{reason.action}</p>
+      <p className="text-xl font-semibold leading-snug text-slate-900">{title}</p>
+      <p className="mt-2 leading-7 text-slate-600">{text}</p>
+      <p className="mt-4 inline-flex rounded-2xl bg-white/65 px-4 py-2 text-sm font-semibold leading-6 text-slate-600">
+        {selected ? "Selected" : "Choose"}
+      </p>
     </button>
   );
 }
 
+function OnboardingEscapeLink() {
+  return (
+    <Button variant="quiet" className="mt-4 w-full" onClick={() => navigate("/sos")}>
+      I need help now
+    </Button>
+  );
+}
+
+function OnboardingDoorwayCard({ recommendation, onStart, onBack }) {
+  return (
+    <Card className="p-5">
+      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Your doorway</p>
+      <h2 className="mt-3 text-3xl font-semibold leading-tight text-slate-900">{recommendation.title}</h2>
+      <p className="mt-3 leading-7 text-slate-600">{recommendation.text}</p>
+      <div className="mt-5 rounded-2xl bg-white/65 p-4">
+        <p className="text-sm font-semibold text-slate-500">Based on</p>
+        <p className="mt-1 font-semibold leading-6 text-slate-800">
+          {recommendation.arrival.label}
+          {recommendation.supportStyle ? ` + ${recommendation.supportStyle.label}` : ""}
+        </p>
+      </div>
+      <div className="mt-5 grid gap-3">
+        <Button onClick={onStart}>Enter this room</Button>
+        <Button variant="secondary" onClick={onBack}>Change my answers</Button>
+      </div>
+    </Card>
+  );
+}
+
 function WelcomeScreen({ onStartReason }) {
+  const storedPreferences = readStoredOnboardingPreferences();
   const storedWelcome = readStoredWelcome();
   const lastReason = getWelcomeReason(storedWelcome.reasonId);
+  const [step, setStep] = useState(0);
+  const [arrivalId, setArrivalId] = useState(storedPreferences.arrivalId || "");
+  const [supportStyleId, setSupportStyleId] = useState(storedPreferences.supportStyleId || "");
+  const selectedArrival = getOnboardingArrival(arrivalId);
+  const selectedSupportStyle = getOnboardingSupportStyle(supportStyleId);
+  const recommendation = getOnboardingRecommendation(arrivalId, supportStyleId);
+
+  const chooseArrival = (arrival) => {
+    setArrivalId(arrival.id);
+    setStep(1);
+  };
+
+  const chooseSupportStyle = (style) => {
+    setSupportStyleId(style.id);
+    setStep(2);
+  };
+
+  const startRecommendation = () => {
+    onStartReason(recommendation);
+  };
 
   return (
     <SoftShell>
-      <PageHeader eyebrow="Start here" title="What brought you here today?">
-        Choose the closest truth. I will take you to the room that fits this moment.
+      <PageHeader eyebrow="Guided Start" title={step === 0 ? "What kind of day is this?" : step === 1 ? "What would feel easiest right now?" : "Start with this room."}>
+        {step === 0 && "Choose the closest truth. You do not have to explain the whole story."}
+        {step === 1 && "Pick the kind of support your body and mind can actually receive today."}
+        {step === 2 && "This is a gentle recommendation, not a rule. You can always choose another room later."}
       </PageHeader>
+      <OnboardingProgressDots step={step} />
 
-      {lastReason && (
+      {step === 0 && (storedPreferences.completedAt || lastReason) && (
         <Card className="mb-4 p-5">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Last time</p>
-          <h2 className="mt-2 text-xl font-semibold leading-snug text-slate-900">{lastReason.label}</h2>
-          <p className="mt-2 leading-7 text-slate-600">You can choose it again, or start somewhere new.</p>
+          <h2 className="mt-2 text-xl font-semibold leading-snug text-slate-900">
+            {storedPreferences.completedAt ? "You already found a starting point." : lastReason.label}
+          </h2>
+          <p className="mt-2 leading-7 text-slate-600">
+            {storedPreferences.completedAt ? "You can start like last time, or choose again for today." : "You can choose it again, or start somewhere new."}
+          </p>
+          {storedPreferences.recommendedRoute && (
+            <Button className="mt-4 w-full" onClick={() => onStartReason(getOnboardingRecommendation(storedPreferences.arrivalId, storedPreferences.supportStyleId))}>Start like last time</Button>
+          )}
         </Card>
       )}
 
-      <section className="grid gap-4 pb-6">
-        {WELCOME_REASONS.map((reason) => (
-          <WelcomeReasonCard key={reason.id} reason={reason} onStart={onStartReason} />
-        ))}
-      </section>
+      {step === 0 && (
+        <section className="grid gap-4 pb-6 sm:grid-cols-2">
+          {ONBOARDING_ARRIVALS.map((arrival) => (
+            <OnboardingOptionCard
+              key={arrival.id}
+              title={arrival.label}
+              text={arrival.text}
+              tone={arrival.tone}
+              selected={arrival.id === arrivalId}
+              onClick={() => chooseArrival(arrival)}
+            />
+          ))}
+        </section>
+      )}
 
+      {step === 1 && (
+        <>
+          <Card className="mb-4 p-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">You chose</p>
+            <p className="mt-2 text-xl font-semibold leading-snug text-slate-900">{selectedArrival?.label || "This moment"}</p>
+            <p className="mt-2 leading-7 text-slate-600">{selectedArrival?.text || "We will keep this gentle."}</p>
+          </Card>
+          <section className="grid gap-4 pb-6">
+            {ONBOARDING_SUPPORT_STYLES.map((style) => (
+              <OnboardingOptionCard
+                key={style.id}
+                title={style.label}
+                text={style.text}
+                selected={style.id === supportStyleId}
+                onClick={() => chooseSupportStyle(style)}
+              />
+            ))}
+          </section>
+          <Button variant="quiet" className="mb-3 w-full" onClick={() => setStep(0)}>Back</Button>
+        </>
+      )}
+
+      {step === 2 && (
+        <div className="grid gap-4 pb-6">
+          <OnboardingDoorwayCard
+            recommendation={recommendation}
+            onStart={startRecommendation}
+            onBack={() => setStep(0)}
+          />
+        </div>
+      )}
+
+      <OnboardingEscapeLink />
       <SafetyPanel className="mb-4" />
     </SoftShell>
   );
@@ -3133,7 +3445,8 @@ const HOME_STORAGE_KEYS = {
   pressure: "neeraj-eternal-pressure-reset",
   care: "neeraj-eternal-care-kit",
   welcome: "neeraj-eternal-welcome",
-  aftercare: "neeraj-eternal-aftercare"
+  aftercare: "neeraj-eternal-aftercare",
+  onboarding: "neeraj-eternal-onboarding-preferences"
 };
 
 function readHomeJson(key, fallback) {
@@ -3667,6 +3980,7 @@ function getHomeStatus() {
   const care = readHomeJson(HOME_STORAGE_KEYS.care, {});
   const welcome = readHomeJson(HOME_STORAGE_KEYS.welcome, {});
   const aftercare = readHomeJson(HOME_STORAGE_KEYS.aftercare, {});
+  const onboarding = readHomeJson(HOME_STORAGE_KEYS.onboarding, {});
   const compass = getCompassInsights();
   const timelineCount = getTimelineItems().length;
   const journeyValues = Object.values(journeys || {});
@@ -3676,10 +3990,11 @@ function getHomeStatus() {
   const hasJournal = Boolean(flow?.journalText);
   const welcomeReason = getWelcomeReason(welcome.reasonId);
   const aftercareAction = aftercare?.latest ? getAftercareAction(aftercare.latest.actionId) : null;
+  const onboardingRecommendation = onboarding?.completedAt ? getOnboardingRecommendation(onboarding.arrivalId, onboarding.supportStyleId) : null;
   const hasAnyProgress = Boolean(todayEntry) || hasJournal || Boolean(calm.latestExerciseId) || Boolean(pressure?.latest) || Boolean(care?.updatedAt) || Boolean(welcome.reasonId) || Boolean(aftercareAction) || journeyValues.some((j) => (j?.entries || []).length > 0 || Number(j?.currentDay) > 1);
 
   return {
-    welcome: welcomeReason ? `Started with ${welcomeReason.label}` : "Find your first room",
+    welcome: onboardingRecommendation ? `Saved: ${onboardingRecommendation.title}` : welcomeReason ? `Started with ${welcomeReason.label}` : "Find your starting point",
     checkIn: hasJournal ? "Continue your reflection" : "Start with one feeling",
     wisdom: Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Conversation waiting here" : "Private listening space",
     journeys: lastJourney ? `Day ${lastJourney.state.currentDay} waiting` : "Choose a 7-day path",
@@ -3700,19 +4015,27 @@ function getHomeStatus() {
     companion: hasJournal || todayEntry || calm.latestExerciseId || pressure?.latest || care?.updatedAt || lastJourney || Array.isArray(wisdom?.messages) && wisdom.messages.length > 1 ? "Quiet pattern ready" : "Starts as you use it",
     compass: compass.isEmpty ? "Needs one signal" : compass.seasonTitle,
     timeline: timelineCount > 0 ? `${timelineCount} saved moment${timelineCount === 1 ? "" : "s"}` : "Builds privately",
-    primary: !welcome.reasonId && !hasAnyProgress
-      ? {
-          title: "Find your first room",
-          text: "Answer one gentle question and I will take you to the best place to start.",
-          href: "/welcome",
-          status: "New here"
-        }
-      : unfinishedJourney
+    primary: unfinishedJourney
       ? {
           title: `Continue ${unfinishedJourney.journey.title}`,
           text: `Day ${unfinishedJourney.state.currentDay}: ${unfinishedJourney.journey.prompts[unfinishedJourney.state.currentDay - 1]}`,
           href: `/journeys/${unfinishedJourney.journey.id}`,
           status: "Continue where you left off"
+        }
+      : onboardingRecommendation
+      ? {
+          title: "Start like last time",
+          text: onboardingRecommendation.text,
+          href: onboardingRecommendation.href,
+          emotionId: onboardingRecommendation.emotionId || "",
+          status: onboardingRecommendation.title
+        }
+      : !welcome.reasonId && !hasAnyProgress
+      ? {
+          title: "Find your starting point",
+          text: "Answer two gentle questions and I will take you to the best place to start.",
+          href: "/welcome",
+          status: "New here"
         }
       : todayEntry
         ? {
@@ -3731,12 +4054,9 @@ function getHomeStatus() {
   };
 }
 
-function HomeCard({ title, text, status, href, featured = false }) {
-  return (
-    <a
-      href={href}
-      className={`${featured ? "bg-slate-900 text-white shadow-[0_22px_55px_rgba(15,23,42,0.24)] hover:bg-slate-800" : "bg-white/75 text-slate-800 shadow-[0_14px_35px_rgba(88,82,120,0.12)] hover:bg-white/90"} group rounded-3xl p-5 ring-1 ring-white/70 backdrop-blur transition duration-200 hover:-translate-y-0.5`}
-    >
+function HomeCard({ title, text, status, href, featured = false, onClick }) {
+  const className = `${featured ? "bg-slate-900 text-white shadow-[0_22px_55px_rgba(15,23,42,0.24)] hover:bg-slate-800" : "bg-white/75 text-slate-800 shadow-[0_14px_35px_rgba(88,82,120,0.12)] hover:bg-white/90"} group rounded-3xl p-5 text-left ring-1 ring-white/70 backdrop-blur transition duration-200 hover:-translate-y-0.5`;
+  const content = (
       <div className={featured ? "flex min-h-36 flex-col" : "flex min-h-28 flex-col"}>
         <h2 className={`${featured ? "text-2xl text-white" : "text-xl text-slate-900"} font-semibold leading-snug`}>{title}</h2>
         <p className={`${featured ? "text-slate-200" : "text-slate-600"} mt-2 flex-1 leading-7`}>{text}</p>
@@ -3744,6 +4064,19 @@ function HomeCard({ title, text, status, href, featured = false }) {
           <p className={`${featured ? "bg-white/10 text-slate-100" : "bg-slate-50/80 text-slate-500"} mt-4 rounded-2xl px-4 py-2 text-sm font-semibold`}>{status}</p>
         )}
       </div>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <a href={href} className={className}>
+      {content}
     </a>
   );
 }
@@ -3796,6 +4129,12 @@ function HomeHubScreen({ onQuickEmotion }) {
       updatedAt: new Date().toISOString()
     });
     navigate("/journal");
+  };
+  const startPrimary = () => {
+    if (!status.primary.emotionId) return undefined;
+    const emotion = getEmotion(status.primary.emotionId);
+    if (!emotion) return undefined;
+    return () => startQuickEmotion(emotion);
   };
 
   const reliefCards = [
@@ -3856,7 +4195,7 @@ function HomeHubScreen({ onQuickEmotion }) {
             <p className="mt-2 text-sm leading-6 text-slate-600">A fast grounding path for moments when thinking is too much.</p>
           </a>
 
-          <HomeCard featured title={status.primary.title} text={status.primary.text} status={status.primary.status} href={status.primary.href} />
+          <HomeCard featured title={status.primary.title} text={status.primary.text} status={status.primary.status} href={status.primary.href} onClick={startPrimary()} />
         </div>
 
         <HomeSection title="How are you arriving?">
@@ -3968,10 +4307,25 @@ function App() {
   };
 
   const startWelcomeReason = (reason) => {
+    const arrivalId = reason.arrival?.id || reason.id || "";
+    const supportStyleId = reason.supportStyle?.id || "";
+    const recommendedRoute = reason.href || reason.route || "/today";
+    const completedAt = new Date().toISOString();
+
+    if (arrivalId && supportStyleId) {
+      saveStoredOnboardingPreferences({
+        version: 1,
+        arrivalId,
+        supportStyleId,
+        recommendedRoute,
+        completedAt
+      });
+    }
+
     saveStoredWelcome({
-      reasonId: reason.id,
-      route: reason.href,
-      selectedAt: new Date().toISOString()
+      reasonId: arrivalId,
+      route: recommendedRoute,
+      selectedAt: completedAt
     });
 
     if (reason.emotionId) {
@@ -3982,7 +4336,7 @@ function App() {
       }
     }
 
-    navigate(reason.href);
+    navigate(recommendedRoute);
   };
 
   if (route === "/") return <HomeHubScreen onQuickEmotion={selectEmotion} />;

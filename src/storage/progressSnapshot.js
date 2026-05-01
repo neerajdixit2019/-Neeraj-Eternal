@@ -10,7 +10,8 @@ export const LOCAL_STORAGE_KEYS = {
   care: "neeraj-eternal-care-kit",
   welcome: "neeraj-eternal-welcome",
   aftercare: "neeraj-eternal-aftercare",
-  compass: "neeraj-eternal-compass"
+  compass: "neeraj-eternal-compass",
+  onboarding: "neeraj-eternal-onboarding-preferences"
 };
 
 function readJson(key, fallback) {
@@ -67,6 +68,7 @@ export function getSyncableProgressSnapshot() {
   const care = readJson(LOCAL_STORAGE_KEYS.care, {});
   const welcome = readJson(LOCAL_STORAGE_KEYS.welcome, {});
   const aftercare = readJson(LOCAL_STORAGE_KEYS.aftercare, {});
+  const onboarding = readJson(LOCAL_STORAGE_KEYS.onboarding, {});
   const latestDaily = latestByTime(Object.values(daily || {}));
 
   return {
@@ -75,6 +77,12 @@ export function getSyncableProgressSnapshot() {
     welcome: {
       reasonId: welcome.reasonId || "",
       selectedAt: welcome.selectedAt || ""
+    },
+    onboarding: {
+      arrivalId: onboarding.arrivalId || "",
+      supportStyleId: onboarding.supportStyleId || "",
+      recommendedRoute: onboarding.recommendedRoute || "",
+      completedAt: onboarding.completedAt || ""
     },
     emotionalFlow: {
       emotionId: flow.emotionId || "",

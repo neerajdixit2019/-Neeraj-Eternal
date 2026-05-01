@@ -5,7 +5,7 @@ A premium sacred-modern emotional safe space for young people. The app is now a 
 **Features:**
 - **Home Hub** - a warmer main doorway with a primary next step, quick feeling chips, progress hints, and safety support.
 - **Premium App Shell** - Vite, Tailwind, bottom mobile navigation, refined sacred-modern surfaces, and direct-route Vercel support.
-- **Welcome Flow** - one gentle first question that routes new users to the right room for their moment.
+- **Guided Start** - a warm 3-step onboarding flow that helps new users choose the right room without overwhelm.
 - **Optional Sync** - Supabase-ready progress sync from My Quiet Space; private writing is not uploaded in this version.
 - **Local Data Vault** - review local storage, export a private archive, or reset this browser's app data.
 - **Aftercare Suggestions** - one adaptive next step after writing, calming, or checking in, with a saved "helpful" step on Home.
@@ -68,9 +68,9 @@ Build:
 
 The app builds with Vite. The canonical app experience lives in `src/App.jsx` with supporting modules in `src/components`, `src/storage`, `src/sync`, and `src/design`. Vercel rewrites all routes back to `index.html` so the React router handles direct links consistently.
 
-Welcome choice, aftercare suggestions, journal, daily sanctuary, guided calm, pause, journey, museum, and wisdom chat progress are stored in `localStorage`; there is no backend account system.
+Guided Start, welcome choice, aftercare suggestions, journal, daily sanctuary, guided calm, pause, journey, museum, and wisdom chat progress are stored in `localStorage`; there is no backend account system.
 
-Welcome Flow stores the last selected starting reason under `neeraj-eternal-welcome` as `{ reasonId, route, selectedAt }`.
+Guided Start at `/welcome` saves light preferences under `neeraj-eternal-onboarding-preferences` as `{ version, arrivalId, supportStyleId, recommendedRoute, completedAt }`. It also keeps the compatibility welcome key `neeraj-eternal-welcome` as `{ reasonId, route, selectedAt }`.
 
 Aftercare suggestions are stored under `neeraj-eternal-aftercare` as `{ latest, history }`, keeping only the last few locally saved helpful next steps.
 
