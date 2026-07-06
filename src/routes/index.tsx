@@ -53,15 +53,15 @@ function Landing() {
       <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-5 pb-16 pt-10 sm:px-8 sm:pt-16">
         {/* Hero */}
         <section className="fade-in flex flex-col items-center text-center">
-          <p className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground">
+          <p className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground" style={{ textShadow: "0 1px 8px oklch(0 0 0 / 0.5)" }}>
             My Quiet Space
           </p>
-          <h1 className="mt-5 font-serif text-[2.1rem] font-light leading-[1.1] tracking-tight text-foreground sm:text-[2.75rem]">
+          <h1 className="mt-5 font-serif text-[2.1rem] font-light leading-[1.1] tracking-tight text-foreground sm:text-[2.75rem]" style={{ textShadow: "0 2px 16px oklch(0 0 0 / 0.35)" }}>
             A quiet space to understand
             <br className="hidden sm:block" />{" "}
             <span className="italic text-primary/85">what you feel.</span>
           </h1>
-          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground" style={{ textShadow: "0 1px 10px oklch(0 0 0 / 0.4)" }}>
             A private room inside your phone — for the days that feel heavy,
             tender, or simply too much to hold alone.
           </p>
@@ -69,7 +69,7 @@ function Landing() {
           <div className="mt-9 flex w-full max-w-sm flex-col items-center gap-3">
             <Link
               to="/login"
-              className="group inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary px-8 text-[15px] font-medium text-primary-foreground shadow-[0_18px_38px_-18px_color-mix(in_oklab,var(--primary)_70%,transparent)] transition hover:bg-primary/90"
+              className="cta-glow group inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary px-8 text-[15px] font-medium text-primary-foreground transition hover:bg-primary/90"
             >
               Enter My Quiet Space
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
@@ -123,7 +123,7 @@ function Landing() {
         </section>
 
         {/* Trust */}
-        <section className="mt-14 flex flex-col items-center text-center sm:mt-20">
+        <section className="mt-14 flex flex-col items-center text-center fade-in sm:mt-20">
           <span
             className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"
             aria-hidden="true"
@@ -139,8 +139,10 @@ function Landing() {
           </p>
         </section>
 
-        <div className="mt-auto pt-12 text-center text-[11px] text-muted-foreground/70">
-          Made for quiet evenings · v1
+        <div className="mt-auto pt-12 text-center">
+          <p className="font-serif text-[13px] italic text-muted-foreground/60">
+            Made for the moments between feeling something and doing something about it.
+          </p>
         </div>
       </div>
     </main>
