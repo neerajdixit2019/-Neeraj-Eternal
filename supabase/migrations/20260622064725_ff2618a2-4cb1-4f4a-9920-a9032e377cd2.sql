@@ -1,0 +1,2 @@
+ALTER TABLE public.safety_events ADD COLUMN IF NOT EXISTS idempotency_key text;
+CREATE UNIQUE INDEX IF NOT EXISTS safety_events_user_idempotency_key_uniq ON public.safety_events(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL;

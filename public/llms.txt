@@ -1,0 +1,12 @@
+# My Quiet Space
+
+> A private space to feel, write, and heal — mood check-in, journaling, calm tools, healing paths, and a gentle AI reflection companion. Not therapy or emergency support.
+
+## Pages
+
+- [Home](/): Pause, write, and feel a little clearer.
+- [Healing paths](/heal): Short structured paths for heartbreak, overthinking, comparison, night calm, and loneliness.
+
+## Optional
+
+- [Sign in](/login): Account access.

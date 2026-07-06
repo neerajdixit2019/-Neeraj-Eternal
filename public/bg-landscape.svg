@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f6efe0"/>
+      <stop offset="55%" stop-color="#f6f0e4"/>
+      <stop offset="100%" stop-color="#efe6d3"/>
+    </linearGradient>
+    <radialGradient id="sunL" cx="20%" cy="0%" r="55%">
+      <stop offset="0%" stop-color="#f5d9a8" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#f5d9a8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sunR" cx="85%" cy="10%" r="60%">
+      <stop offset="0%" stop-color="#cfc2e3" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#cfc2e3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1440" height="900" fill="url(#sky)"/>
+  <rect width="1440" height="900" fill="url(#sunL)"/>
+  <rect width="1440" height="900" fill="url(#sunR)"/>
+  <!-- distant mountains -->
+  <path d="M0,500 L160,360 L300,440 L460,300 L640,420 L820,320 L1000,440 L1180,340 L1320,420 L1440,360 L1440,760 L0,760 Z" fill="#bfb8d6" opacity="0.32"/>
+  <!-- mid mountains -->
+  <path d="M0,560 L180,400 L340,500 L520,360 L720,480 L900,380 L1080,500 L1260,400 L1440,520 L1440,760 L0,760 Z" fill="#a9a3c4" opacity="0.42"/>
+  <!-- near hills -->
+  <path d="M0,640 C160,560 320,600 520,560 C720,520 880,600 1080,580 C1260,562 1340,600 1440,580 L1440,760 L0,760 Z" fill="#cdb89a" opacity="0.45"/>
+  <!-- water -->
+  <path d="M0,720 C320,700 560,740 820,720 C1080,700 1260,730 1440,715 L1440,830 L0,830 Z" fill="#bcd6e6" opacity="0.45"/>
+  <!-- shoreline / sand -->
+  <path d="M0,820 C260,760 520,800 780,790 C1020,782 1240,810 1440,790 L1440,900 L0,900 Z" fill="#eddcb6" opacity="0.55"/>
+  <path d="M0,860 C300,830 600,870 900,855 C1140,845 1280,870 1440,855 L1440,900 L0,900 Z" fill="#e6cf9c" opacity="0.7"/>
+</svg>

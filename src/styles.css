@@ -1,82 +1,554 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * My Quiet Space — design tokens
+ * Warm off-white + midnight lavender, soft sand & blue accents.
+ * All colors in oklch. Use semantic tokens only.
+ */
+
+@theme inline {
+  --font-serif: 'Fraunces', ui-serif, Georgia, serif;
+  --font-sans: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-lavender: var(--lavender);
+  --color-sand: var(--sand);
+  --color-sky: var(--sky);
+  --color-rose: var(--rose);
+  --color-amber: var(--amber);
+  --color-mint: var(--mint);
+  --color-moss: var(--moss);
+  --color-dawn: var(--dawn);
+  --color-mist: var(--mist);
+}
 
 :root {
-  color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f8f1ea;
+  --radius: 1rem;
+  /* Misty Forest at Dawn — deep evergreen with warm dawn light */
+  --forest-deep: oklch(0.18 0.018 155);          /* #0f1a14 */
+  --forest-mid:  oklch(0.27 0.024 155);          /* #1f3329 */
+  --moss:        oklch(0.66 0.045 145);          /* #6b8e72 */
+  --dawn:        oklch(0.86 0.060 85);           /* #d9c89a warm dawn */
+  --mist:        oklch(0.95 0.010 110 / 0.06);
+  --background: var(--forest-deep);
+  --foreground: oklch(0.94 0.018 95);            /* warm parchment ink */
+  --card: var(--forest-mid);
+  --card-foreground: oklch(0.94 0.018 95);
+  --popover: var(--forest-mid);
+  --popover-foreground: oklch(0.94 0.018 95);
+  --primary: var(--dawn);                        /* dawn light = brand accent */
+  --primary-foreground: oklch(0.20 0.020 155);
+  --secondary: oklch(0.32 0.022 155);
+  --secondary-foreground: oklch(0.94 0.018 95);
+  --muted: oklch(0.30 0.020 155);
+  --muted-foreground: oklch(0.74 0.025 110);     /* readable misty grey-green */
+  --accent: var(--moss);
+  --accent-foreground: oklch(0.18 0.018 155);
+  --destructive: oklch(0.62 0.16 28);
+  --destructive-foreground: oklch(0.96 0.012 95);
+  --border: oklch(1 0 0 / 0.10);
+  --input: oklch(1 0 0 / 0.12);
+  --ring: oklch(0.78 0.055 95);
+  /* Tinted accents remapped to forest hues */
+  --lavender: oklch(0.62 0.040 175);             /* deep teal-mist */
+  --sand:     oklch(0.86 0.060 85);              /* warm dawn parchment */
+  --sky:      oklch(0.70 0.038 220);             /* pre-dawn sky */
+  --rose:     oklch(0.70 0.075 35);              /* ember through fog */
+  --amber:    oklch(0.82 0.080 78);              /* sun shaft */
+  --mint:     oklch(0.72 0.060 150);             /* moss highlight */
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.984 0.003 247.858);
+  --sidebar-foreground: oklch(0.129 0.042 264.695);
+  --sidebar-primary: oklch(0.208 0.042 265.755);
+  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.968 0.007 247.896);
+  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+  --sidebar-border: oklch(0.929 0.013 255.508);
+  --sidebar-ring: oklch(0.704 0.04 256.788);
 }
 
-* {
-  box-sizing: border-box;
+.dark {
+  /* Dusk plum with lavender glow */
+  --background: oklch(0.20 0.025 305);
+  --foreground: oklch(0.94 0.014 320);
+  --card: oklch(0.25 0.030 305);
+  --card-foreground: oklch(0.94 0.014 320);
+  --popover: oklch(0.25 0.030 305);
+  --popover-foreground: oklch(0.94 0.014 320);
+  --primary: oklch(0.82 0.06 305);
+  --primary-foreground: oklch(0.20 0.025 305);
+  --secondary: oklch(0.30 0.030 305);
+  --secondary-foreground: oklch(0.94 0.014 320);
+  --muted: oklch(0.28 0.028 305);
+  --muted-foreground: oklch(0.76 0.025 318);
+  --accent: oklch(0.45 0.05 310);
+  --accent-foreground: oklch(0.94 0.014 320);
+  --destructive: oklch(0.68 0.18 22);
+  --destructive-foreground: oklch(0.95 0.02 340);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.72 0.06 305);
+  --lavender: oklch(0.70 0.05 310);
+  --sand: oklch(0.55 0.06 340);
+  --sky: oklch(0.65 0.08 295);
+  --rose: oklch(0.70 0.08 355);
+  --amber: oklch(0.72 0.07 350);
+  --mint: oklch(0.70 0.08 320);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.208 0.042 265.755);
+  --sidebar-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.279 0.041 260.031);
+  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
-html {
-  min-height: 100%;
-  scroll-behavior: smooth;
-}
-
-body {
-  min-height: 100%;
-  margin: 0;
-  background: #f8f1ea;
-  text-rendering: geometricPrecision;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-.sacred-app-bg {
-  background:
-    linear-gradient(145deg, rgba(248, 241, 234, 0.98) 0%, rgba(238, 232, 255, 0.92) 42%, rgba(229, 245, 255, 0.96) 100%),
-    linear-gradient(90deg, rgba(255, 247, 237, 0.45), rgba(236, 253, 245, 0.35));
-}
-
-.sacred-card {
-  border: 1px solid rgba(255, 255, 255, 0.76);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 18px 50px rgba(88, 82, 120, 0.14);
-  backdrop-filter: blur(20px);
-}
-
-.sacred-hero {
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 248, 237, 0.72)),
-    linear-gradient(90deg, rgba(236, 253, 245, 0.32), rgba(238, 232, 255, 0.28));
-  box-shadow: 0 28px 80px rgba(79, 70, 106, 0.16);
-}
-
-.sacred-page-enter {
-  animation: sacredFadeUp 420ms ease both;
-}
-
-.breathing-pulse {
-  animation: sacredBreathe 5.8s ease-in-out infinite;
-}
-
-@keyframes sacredFadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
+@layer base {
+  * {
+    border-color: var(--color-border);
   }
-  to {
+
+  body {
+    background-color: transparent;
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-size: 15.5px;
+    line-height: 1.65;
+    position: relative;
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  /* Landscape backdrop — one cached SVG, GPU-composited, no scroll repaint.
+     Rendered by <div class="app-bg"> in the root shell. */
+  .app-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-color: var(--color-background);
+    background-image: url("/forest-dawn.jpg");
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: cover;
+    /* Promote to its own compositor layer so scrolling stays smooth. */
+    transform: translateZ(0);
+    will-change: transform;
+    contain: strict;
+  }
+  /* Forest veil — pulls the photo into deep evergreen, keeps a dawn glow at top */
+  .app-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg,
+        oklch(0 0 0 / 0.05) 0%,
+        color-mix(in oklab, var(--background) 30%, transparent) 28%,
+        color-mix(in oklab, var(--background) 78%, transparent) 60%,
+        var(--background) 100%);
     opacity: 1;
-    transform: translateY(0);
+    transition: opacity 1.2s ease;
+  }
+  body.tod-morning  .app-bg::after { opacity: 0.92; }
+  body.tod-afternoon .app-bg::after { opacity: 0.95; }
+  body.tod-evening  .app-bg::after { opacity: 0.98; }
+  body.tod-night    .app-bg::after { opacity: 1; }
+
+  /* Ambient dawn glow — single warm halo at top, drifting mist */
+  .app-bg::before {
+    content: "";
+    position: absolute;
+    inset: -5%;
+    background:
+      radial-gradient(60rem 38rem at 50% -10%, color-mix(in oklab, var(--dawn) 32%, transparent) 0%, transparent 65%),
+      radial-gradient(40rem 30rem at 20% 110%, color-mix(in oklab, var(--moss) 18%, transparent) 0%, transparent 70%);
+    filter: blur(8px);
+    opacity: 0.9;
+    pointer-events: none;
+    animation: mistDrift 90s ease-in-out infinite alternate;
+  }
+  @keyframes mistDrift {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    100% { transform: translate3d(-2%, 1.5%, 0) scale(1.04); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-bg::before { animation: none; }
+  }
+
+  /* Almost-invisible paper grain — the app should feel like paper, not glass */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.78 0 0 0 0 0.60 0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: 240px 240px;
+  }
+  body > * { position: relative; z-index: 1; }
+
+  /* Time-of-day palette drift — applied to body by the root component.
+     Subtle: a feeling, not a theme switch. */
+  body.tod-morning  { background-color: color-mix(in oklab, var(--dawn)  6%, var(--background)); }
+  body.tod-afternoon{ background-color: color-mix(in oklab, var(--mint)  5%, var(--background)); }
+  body.tod-evening  { background-color: color-mix(in oklab, var(--rose)  6%, var(--background)); }
+  body.tod-night    { background-color: var(--background); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    body.animate-background {
+      animation: bgDrift 28s ease-in-out infinite alternate;
+    }
+  }
+  @keyframes bgDrift {
+    0%   { background-position: 10% 0%, 90% 100%; }
+    100% { background-position: 20% 12%, 78% 88%; }
+  }
+
+  /* Calmer interactions on Journal & Heal pages
+     when background animation is off or the OS prefers reduced motion. */
+  body.motion-reduced .motion-calm,
+  body.motion-calm-always .motion-calm {
+    /* no-op anchor */
+  }
+  body.motion-reduced .motion-calm *,
+  body.motion-reduced .motion-calm *::before,
+  body.motion-reduced .motion-calm *::after {
+    animation: none !important;
+    transition-property: color, background-color, border-color, opacity, fill, stroke !important;
+    transition-duration: 120ms !important;
+    transform: none !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .motion-calm *,
+    .motion-calm *::before,
+    .motion-calm *::after {
+      animation: none !important;
+      transition-property: color, background-color, border-color, opacity, fill, stroke !important;
+      transition-duration: 120ms !important;
+      transform: none !important;
+    }
+  }
+
+  .font-serif { font-family: var(--font-serif); }
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.018em;
+    line-height: 1.15;
+  }
+  h1 { line-height: 1.08; }
+  p { line-height: 1.7; }
+}
+
+@layer utilities {
+  .glass {
+    background: color-mix(in oklab, var(--card) 62%, transparent);
+    backdrop-filter: blur(22px) saturate(120%);
+    border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
+    box-shadow: 0 24px 60px -28px oklch(0 0 0 / 0.55);
+  }
+  .tactile {
+    padding: 1.5rem;
+    background: color-mix(in oklab, var(--card) 66%, transparent);
+    backdrop-filter: blur(20px) saturate(120%);
+    border: 1px solid color-mix(in oklab, #ffffff 7%, transparent);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, #ffffff 8%, transparent) inset,
+      0 28px 70px -32px oklch(0 0 0 / 0.6);
+    border-radius: 2rem;
+  }
+  .tactile-tint-rose     { background: linear-gradient(145deg, color-mix(in oklab, var(--rose)     18%, var(--card)) 0%, color-mix(in oklab, var(--card) 92%, transparent) 100%); border-color: color-mix(in oklab, var(--rose)  20%, transparent); }
+  .tactile-tint-sky      { background: linear-gradient(145deg, color-mix(in oklab, var(--sky)      16%, var(--card)) 0%, color-mix(in oklab, var(--card) 92%, transparent) 100%); border-color: color-mix(in oklab, var(--sky)   18%, transparent); }
+  .tactile-tint-amber    { background: linear-gradient(145deg, color-mix(in oklab, var(--dawn)     22%, var(--card)) 0%, color-mix(in oklab, var(--card) 92%, transparent) 100%); border-color: color-mix(in oklab, var(--dawn)  24%, transparent); }
+  .tactile-tint-mint     { background: linear-gradient(145deg, color-mix(in oklab, var(--moss)     18%, var(--card)) 0%, color-mix(in oklab, var(--card) 92%, transparent) 100%); border-color: color-mix(in oklab, var(--moss)  20%, transparent); }
+  .tactile-tint-lavender { background: linear-gradient(145deg, color-mix(in oklab, var(--lavender) 22%, var(--card)) 0%, color-mix(in oklab, var(--moss)  10%, var(--card)) 100%); border-color: color-mix(in oklab, var(--lavender) 22%, transparent); }
+  .soft-arrow {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    border-radius: 9999px;
+    padding: 0.65rem 1.25rem;
+    background: linear-gradient(135deg, var(--primary) 0%, color-mix(in oklab, var(--accent) 80%, var(--primary)) 100%);
+    color: var(--primary-foreground);
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    box-shadow: 0 10px 24px -12px color-mix(in oklab, var(--primary) 60%, transparent);
+    transition: transform 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
+  }
+  .soft-arrow:hover { transform: translateY(-1px); box-shadow: 0 14px 30px -12px color-mix(in oklab, var(--primary) 70%, transparent); }
+  .gradient-soft {
+    background: linear-gradient(135deg,
+      color-mix(in oklab, var(--lavender) 30%, var(--background)),
+      color-mix(in oklab, var(--sky) 25%, var(--background)));
+  }
+  .gradient-warm {
+    background: linear-gradient(135deg,
+      color-mix(in oklab, var(--sand) 40%, var(--background)),
+      color-mix(in oklab, var(--lavender) 25%, var(--background)));
+  }
+  .fade-in { animation: fadeIn 400ms ease-out both; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Calm entrance & hover system ──────────────────────────── */
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bubble-in {
+    from { opacity: 0; transform: translateY(6px) scale(0.985); }
+    to   { opacity: 1; transform: translateY(0)  scale(1); }
+  }
+
+  .rise-in { animation: rise-in 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+  /* Tactile cards: a gentle entrance, soft hover lift */
+  .tactile {
+    animation: rise-in 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    transition:
+      transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      box-shadow 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      border-color 380ms ease;
+    will-change: transform;
+  }
+  a:hover > .tactile,
+  button:hover > .tactile,
+  .tactile:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, #ffffff 70%, transparent) inset,
+      0 30px 70px -28px color-mix(in oklab, var(--primary) 55%, transparent);
+  }
+  a:active > .tactile,
+  button:active > .tactile,
+  .tactile:active { transform: translateY(-1px); transition-duration: 120ms; }
+
+  /* Buttons: add a soft transform+shadow easing on top of existing color transition */
+  button, [role="button"], .soft-arrow {
+    transition:
+      background-color 240ms ease,
+      color 240ms ease,
+      transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      box-shadow 240ms ease,
+      opacity 200ms ease;
+  }
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover {
+    transform: translateY(-1px);
+  }
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: translateY(0) scale(0.985);
+    transition-duration: 100ms;
+  }
+
+  /* Chat bubbles: every Message animates in once, no hover */
+  .group.is-user, .group.is-assistant {
+    animation: bubble-in 480ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+  .group.is-user > * { transform-origin: bottom right; }
+  .group.is-assistant > * { transform-origin: bottom left; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise-in,
+    .tactile,
+    .group.is-user,
+    .group.is-assistant { animation: none; }
+    .tactile,
+    button, [role="button"], .soft-arrow { transition: background-color 200ms ease, color 200ms ease, opacity 200ms ease; }
+    a:hover > .tactile,
+    button:hover > .tactile,
+    .tactile:hover,
+    button:not(:disabled):hover,
+    [role="button"]:not([aria-disabled="true"]):hover { transform: none; }
+  }
+
+  /* Quiet "Kept." moment — fades in slow, lingers, fades out. */
+  .quiet-kept {
+    animation: keptFade 2400ms ease-out forwards;
+  }
+  @keyframes keptFade {
+    0%   { opacity: 0; transform: translateY(4px); }
+    18%  { opacity: 1; transform: translateY(0); }
+    72%  { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-2px); }
+  }
+
+  /* Signature ambient: ~60s drift on the hero tint. */
+  .hero-drift {
+    background-size: 180% 180%;
+    background-position: 30% 30%;
+    animation: heroDrift 60s ease-in-out infinite alternate;
+  }
+  @keyframes heroDrift {
+    0%   { background-position: 30% 30%; }
+    100% { background-position: 70% 75%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-drift { animation: none; }
+    .quiet-kept { animation: keptFade 900ms ease-out forwards; }
+    .fade-in { animation: none; opacity: 1; }
   }
 }
 
-@keyframes sacredBreathe {
-  0%,
-  100% {
-    transform: scale(1);
+@layer utilities {
+  /* Prototype primitives — mood orb + gentle breathe (shared) */
+  @keyframes qs-breathe {
+    0%, 100% { transform: scale(1);   filter: brightness(1); }
+    50%      { transform: scale(1.06); filter: brightness(1.06); }
   }
-  50% {
-    transform: scale(1.08);
+  .qs-orb {
+    display: inline-block;
+    width: 34px; height: 34px; border-radius: 9999px;
+    background: color-mix(in oklab, var(--card) 62%, transparent);
+    border: 1.5px solid color-mix(in oklab, var(--moss) 55%, transparent);
+    transition:
+      width 260ms cubic-bezier(.22,.61,.36,1),
+      height 260ms cubic-bezier(.22,.61,.36,1),
+      background 240ms ease,
+      border-color 240ms ease,
+      box-shadow 240ms ease;
+  }
+  .qs-orb--selected {
+    width: 46px; height: 46px; border: none;
+    background: radial-gradient(circle at 50% 38%, oklch(0.94 0.05 90), var(--dawn));
+    box-shadow:
+      0 0 26px -2px color-mix(in oklab, var(--dawn) 65%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--dawn) 45%, transparent);
+    animation: qs-breathe 5.5s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .qs-orb--selected { animation: none; }
+  }
+
+  /* Memory ritual — burn to embers */
+  @keyframes ember-flicker {
+    0%, 100% { transform: translateY(0) scale(1);   opacity: .95; filter: blur(0.2px); }
+    50%      { transform: translateY(-3px) scale(1.06); opacity: 1;   filter: blur(0px); }
+  }
+  @keyframes ember-rise {
+    0%   { transform: translate(var(--ex,0px), 0)  scale(1); opacity: .9; }
+    100% { transform: translate(var(--ex,0px), -140px) scale(0.4); opacity: 0; }
+  }
+  @keyframes ember-burn {
+    0%   { opacity: 1; filter: blur(0) sepia(0);        transform: scale(1); }
+    60%  { opacity: 0.55; filter: blur(1.2px) sepia(0.6) hue-rotate(-10deg); transform: scale(0.985); }
+    100% { opacity: 0; filter: blur(6px) sepia(1) hue-rotate(-30deg) brightness(0.6); transform: scale(0.96); }
+  }
+  .ember-flame  { animation: ember-flicker 1.3s ease-in-out infinite; }
+  .ember-spark  { animation: ember-rise 2.4s ease-out infinite; }
+  .ember-burn   { animation: ember-burn 2.6s ease-in forwards; }
+  @media (prefers-reduced-motion: reduce) {
+    .ember-flame, .ember-spark { animation: none; }
+    .ember-burn { animation: none; opacity: 0; transition: opacity 600ms ease; }
+  }
+
+  /* Urge Shield — breathing shield + wave */
+  @keyframes qs-shield-pulse {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 color-mix(in oklab, var(--dawn) 30%, transparent); opacity: 0.9; }
+    50%      { transform: scale(1.08); box-shadow: 0 0 0 22px color-mix(in oklab, var(--dawn) 0%, transparent);  opacity: 1; }
+  }
+  .qs-shield {
+    background: radial-gradient(circle at 50% 40%, oklch(0.92 0.05 90) 0%, var(--dawn) 55%, transparent 78%);
+    animation: qs-shield-pulse 6s ease-in-out infinite;
+  }
+  @keyframes qs-wave {
+    0%   { transform: translateX(-25%) translateY(0);   }
+    50%  { transform: translateX(-25%) translateY(-6px);}
+    100% { transform: translateX(-25%) translateY(0);   }
+  }
+  .qs-wave { animation: qs-wave 4.2s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .qs-shield, .qs-wave { animation: none; }
+  }
+
+  /* Parchment sheet — journal & letter */
+  .parchment {
+    background:
+      radial-gradient(120% 100% at 50% 0%, color-mix(in oklab, var(--sand) 20%, transparent) 0%, transparent 60%),
+      color-mix(in oklab, var(--card) 78%, transparent);
+    border: 1px solid color-mix(in oklab, var(--sand) 22%, transparent);
+    border-radius: 22px;
+    backdrop-filter: blur(14px);
+  }
+}
+
+@layer components {
+  .winddown-breath {
+    width: 160px;
+    height: 160px;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--lavender) 55%, transparent);
+    box-shadow: 0 0 60px color-mix(in oklab, var(--lavender) 40%, transparent);
+    animation: windBreath 10s ease-in-out infinite;
+  }
+  @keyframes windBreath {
+    0%, 100% { transform: scale(0.7); opacity: 0.6; }
+    40%      { transform: scale(1.0); opacity: 1; }
+    60%      { transform: scale(1.0); opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .winddown-breath { animation: none; transform: scale(0.9); }
   }
 }

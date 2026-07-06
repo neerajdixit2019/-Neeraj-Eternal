@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://neeraj2019.lovable.app/sitemap.xml

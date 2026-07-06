@@ -1,0 +1,259 @@
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+
+export const Route = createFileRoute("/login")({
+  component: LoginPage,
+  validateSearch: z.object({
+    reason: z.enum(["session-expired"]).optional(),
+  }),
+  head: () => ({
+    meta: [
+      { title: "Sign in | My Quiet Space" },
+      { name: "description", content: "Sign in to your private My Quiet Space account to continue journaling and reflecting." },
+      { property: "og:title", content: "Sign in — My Quiet Space" },
+      { property: "og:description", content: "Sign in to your private My Quiet Space account." },
+      { property: "og:url", content: "https://neeraj2019.lovable.app/login" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/login" }],
+  }),
+});
+
+function LoginPage() {
+  const navigate = useNavigate();
+  const { reason } = Route.useSearch();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/home" });
+    });
+  }, [navigate]);
+
+  useEffect(() => {
+    if (reason === "session-expired") {
+      toast.info("Your session expired. Please sign in again.");
+    }
+  }, [reason]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (!error) {
+        navigate({ to: "/home" });
+        return;
+      }
+      // Unknown account? Create one on the fly.
+      if (/invalid login credentials/i.test(error.message)) {
+        const { error: signUpError, data } = await supabase.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: window.location.origin + "/onboarding" },
+        });
+        if (signUpError) throw signUpError;
+        if (data.session) {
+          navigate({ to: "/home" });
+        } else {
+          toast.success("Check your email to confirm your new account.");
+        }
+        return;
+      }
+      throw error;
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally { setLoading(false); }
+  };
+
+  const signInWithGoogle = async () => {
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + "/home",
+      });
+      if (result.error) {
+        toast.error(result.error.message ?? "Could not sign in with Google.");
+        return;
+      }
+      if (result.redirected) return;
+      navigate({ to: "/home" });
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: window.location.origin + "/reset-password",
+      });
+      if (error) throw error;
+      toast.success("A reset link is on its way. Check your inbox.");
+      setResetOpen(false);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  return (
+    <main className="relative flex min-h-screen flex-col items-center justify-center px-6 py-16 sm:py-24">
+      <div className="mx-auto w-full max-w-md">
+        {reason === "session-expired" && (
+          <div
+            role="status"
+            className="mb-6 rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-sm text-foreground"
+          >
+            Your session expired for your safety. Please sign in again to continue.
+          </div>
+        )}
+        <Link
+          to="/"
+          className="font-serif text-[13px] tracking-[0.18em] uppercase text-muted-foreground transition hover:text-foreground"
+        >
+          My Quiet Space
+        </Link>
+        <h1 className="mt-8 font-serif text-[2.6rem] leading-[1.05] tracking-tight sm:text-[3.2rem]">
+          {resetOpen ? "A reset, gently." : "A quiet place to put things down."}
+        </h1>
+        <p className="mt-5 max-w-md text-[15.5px] leading-relaxed text-muted-foreground">
+          {resetOpen
+            ? "Enter your email and we'll send a fresh link."
+            : "Whatever you're carrying today — it can rest here. Sign in to continue, or just begin."}
+        </p>
+
+        <div
+          className="mt-10 rounded-[28px] p-7 sm:p-9"
+          style={{
+            background: "linear-gradient(140deg, color-mix(in oklab, var(--sand) 14%, var(--card)) 0%, var(--card) 100%)",
+            boxShadow: "0 24px 60px -36px color-mix(in oklab, var(--foreground) 26%, transparent)",
+          }}
+        >
+
+        {resetOpen ? (
+          <form onSubmit={sendReset} className="space-y-5">
+            <div>
+              <Label htmlFor="reset-email">Email</Label>
+              <div className="relative mt-1.5">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="reset-email" type="email" autoComplete="email" required
+                  value={resetEmail} onChange={(e) => setResetEmail(e.target.value)}
+                  className="h-12 rounded-xl pl-10 text-base"
+                  placeholder="you@somewhere.com"
+                />
+              </div>
+            </div>
+            <Button type="submit" disabled={resetLoading} className="h-12 w-full rounded-xl text-base">
+              {resetLoading ? "One quiet moment…" : "Send me a link"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setResetOpen(false)}
+              className="w-full text-sm text-muted-foreground transition hover:text-foreground"
+            >
+              ← back
+            </button>
+          </form>
+        ) : (
+          <>
+            <Button
+              type="button"
+              onClick={signInWithGoogle}
+              disabled={loading}
+              variant="outline"
+              className="h-12 w-full rounded-xl text-base"
+            >
+              <GoogleIcon /> Continue with Google
+            </Button>
+
+            <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
+              <span className="h-px flex-1 bg-border/70" /> or <span className="h-px flex-1 bg-border/70" />
+            </div>
+
+            <form onSubmit={submit} className="space-y-5">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <div className="relative mt-1.5">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="email" type="email" autoComplete="email" required
+                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    className="h-12 rounded-xl pl-10 text-base"
+                    placeholder="you@somewhere.com"
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <button
+                    type="button"
+                    onClick={() => { setResetEmail(email); setResetOpen(true); }}
+                    className="text-xs text-muted-foreground transition hover:text-foreground"
+                  >
+                    forgot it?
+                  </button>
+                </div>
+                <div className="relative mt-1.5">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="password" type={showPw ? "text" : "password"}
+                    autoComplete="current-password"
+                    required minLength={6}
+                    value={password} onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 rounded-xl pl-10 pr-11 text-base"
+                    placeholder="At least 6 characters"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(s => !s)}
+                    aria-label={showPw ? "Hide password" : "Show password"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground transition hover:text-foreground"
+                  >
+                    {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} className="h-12 w-full rounded-xl text-base">
+                {loading ? "One quiet moment…" : "Begin"}
+              </Button>
+            </form>
+
+            <p className="mt-6 text-center text-xs italic text-muted-foreground">
+              New here? Just continue — we'll create your space.
+            </p>
+          </>
+        )}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.6 4-5.5 4-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.3 14.6 2.3 12 2.3 6.7 2.3 2.5 6.6 2.5 12s4.2 9.7 9.5 9.7c5.5 0 9.1-3.9 9.1-9.3 0-.6-.1-1.1-.2-1.6H12z" />
+    </svg>
+  );
+}

@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS consent_delete_own ON public.consent_records;

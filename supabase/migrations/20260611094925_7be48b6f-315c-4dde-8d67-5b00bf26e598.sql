@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS companion_tone TEXT CHECK (companion_tone IN ('gentle','poetic','practical'));

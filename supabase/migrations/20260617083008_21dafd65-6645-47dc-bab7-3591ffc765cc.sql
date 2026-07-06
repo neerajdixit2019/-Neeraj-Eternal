@@ -1,0 +1,1 @@
+ALTER TABLE public.weekly_letters ADD COLUMN IF NOT EXISTS check_in_echo text;

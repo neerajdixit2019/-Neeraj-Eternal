@@ -1,0 +1,1 @@
+CREATE POLICY "Users can update their own memory files" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'memories' AND (auth.uid())::text = (storage.foldername(name))[1]) WITH CHECK (bucket_id = 'memories' AND (auth.uid())::text = (storage.foldername(name))[1]);
