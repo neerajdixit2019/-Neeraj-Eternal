@@ -38,8 +38,9 @@ function SOS() {
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-8 sm:px-8">
-      <h1 className="font-serif text-3xl">You are here. That's enough for now.</h1>
-      <p className="mt-2 text-muted-foreground">
+      <p className="qs-section-label">you matter more than anything you were working through</p>
+      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight">Let's pause everything else.</h1>
+      <p className="mt-3 text-muted-foreground">
         You don't have to solve your whole life tonight. Pick the one that fits this minute.
       </p>
 

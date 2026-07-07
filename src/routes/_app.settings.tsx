@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { exportMyData, deleteMyData, getProfile, setCompanionTone, setBackgroundAnimation, getStory, saveStoryField, setStoryReadable } from "@/lib/data.functions";
 import { setWeeklyLetterPrefs, getPrivateArchive } from "@/lib/letters.functions";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Lock } from "lucide-react";
+import { Eye, EyeOff, LifeBuoy, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TactileCard } from "@/components/TactileCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +31,102 @@ export const Route = createFileRoute("/_app/settings")({
 });
 
 function Settings() {
+  return (
+    <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14 space-y-10">
+      <header className="fade-in">
+        <p className="qs-section-label">your space, your way</p>
+        <h1 className="mt-3 font-serif font-light tracking-tight text-3xl sm:text-[2.4rem] leading-tight">Sanctuary</h1>
+      </header>
+
+      <SectionGroup label="how it feels here">
+        <BackgroundAnimationSection />
+        <ToneSection />
+      </SectionGroup>
+
+      <SectionGroup label="the moon cycle">
+        <SundayLetterSection />
+      </SectionGroup>
+
+      <SectionGroup label="the inner map — what InnerMate remembers">
+        <InnerMapSection />
+      </SectionGroup>
+
+      <SectionGroup label="your vault, your rules">
+        <VaultSection />
+      </SectionGroup>
+
+      <SectionGroup label="account">
+        <PasswordSection />
+        <SignOutCard />
+      </SectionGroup>
+
+      <SectionGroup label="safety">
+        <SafetySection />
+      </SectionGroup>
+
+      <footer className="pt-2 pb-4">
+        <p className="flex items-center justify-center gap-2 text-center font-serif text-sm italic text-muted-foreground">
+          <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.7} aria-hidden="true" />
+          everything you write and keep stays yours alone — never shared, never sold.
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+function SectionGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <p className="qs-section-label">{label}</p>
+      {children}
+    </section>
+  );
+}
+
+function SignOutCard() {
+  const navigate = useNavigate();
+  return (
+    <TactileCard>
+      <h2 className="font-serif text-xl">Leaving for now</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        Your sanctuary stays exactly as you left it.
+      </p>
+      <div className="mt-4">
+        <Button variant="outline" className="rounded-full" onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/" }); }}>Sign out</Button>
+      </div>
+    </TactileCard>
+  );
+}
+
+function SafetySection() {
+  return (
+    <>
+      <Link to="/sos" className="block">
+        <TactileCard tint="rose" className="transition hover:brightness-105">
+          <div className="flex items-start gap-4">
+            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background/40">
+              <LifeBuoy className="h-5 w-5" strokeWidth={1.6} style={{ color: "var(--rose)" }} aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="font-serif text-xl">Crisis support</h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                Helplines and a way to reach someone, anytime. This door is always open — day or night.
+              </p>
+            </div>
+          </div>
+        </TactileCard>
+      </Link>
+      <TactileCard>
+        <h2 className="font-serif text-xl">What this space is, and isn't</h2>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          My Quiet Space is for self-reflection and emotional wellness. It is not therapy, medical advice, or emergency support. If you feel at risk, contact emergency services or a crisis helpline — India: Tele-MANAS 14416 / 1-800-891-4416.
+        </p>
+      </TactileCard>
+    </>
+  );
+}
+
+function VaultSection() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const exp = useServerFn(exportMyData);
@@ -98,13 +194,12 @@ function Settings() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14 space-y-5">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Quiet controls</p>
-        <h1 className="mt-3 font-serif text-3xl sm:text-[2.4rem] leading-tight">Settings</h1>
-      </div>
-
-      <Section title="Your data" desc="Yours alone. You can take it with you or clear it anytime.">
+    <TactileCard>
+      <h2 className="font-serif text-xl">Everything here is yours</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        Take it with you, or let it all go.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
         <div className="w-full space-y-3">
           <div className="rounded-xl border border-border/40 bg-muted/20 p-3 space-y-2.5">
             <label className="flex items-start gap-2.5 cursor-pointer">
@@ -149,26 +244,8 @@ function Settings() {
           Delete removes everything you created — journals, moods, AI chats, memories, letters, reflections, paths.
           A minimal audit trail (consent, rights requests, safety events) is retained as legally required.
         </p>
-      </Section>
-
-      <PasswordSection />
-
-      <ToneSection />
-
-      <BackgroundAnimationSection />
-
-      <SundayLetterSection />
-
-      <MyStorySection />
-
-      <Section title="Account">
-        <Button variant="outline" className="rounded-full" onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/" }); }}>Sign out</Button>
-      </Section>
-
-      <Section title="A gentle disclaimer">
-        <p className="text-sm text-muted-foreground">My Quiet Space is for self-reflection and emotional wellness. It is not therapy, medical advice, or emergency support. If you feel at risk, contact emergency services or a crisis helpline — India: Tele-MANAS 14416 / 1-800-891-4416.</p>
-      </Section>
-    </div>
+      </div>
+    </TactileCard>
   );
 }
 
@@ -203,8 +280,10 @@ function PasswordSection() {
   };
 
   return (
-    <Section title="Password" desc="Update your sign-in password.">
-      <form onSubmit={submit} className="w-full space-y-4">
+    <TactileCard>
+      <h2 className="font-serif text-xl">A new password</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Change the key to your sanctuary whenever you like.</p>
+      <form onSubmit={submit} className="mt-4 w-full space-y-4">
         <div>
           <Label htmlFor="new-password">New password</Label>
           <div className="relative mt-1.5">
@@ -240,16 +319,6 @@ function PasswordSection() {
           {loading ? "Saving…" : "Update password"}
         </Button>
       </form>
-    </Section>
-  );
-}
-
-function Section({ title, desc, children }: { title: string; desc?: string; children?: React.ReactNode }) {
-  return (
-    <TactileCard>
-      <h2 className="font-serif text-xl">{title}</h2>
-      {desc && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{desc}</p>}
-      <div className="mt-4 flex flex-wrap gap-2">{children}</div>
     </TactileCard>
   );
 }
@@ -299,9 +368,9 @@ function ToneSection() {
 
   return (
     <TactileCard>
-      <h2 className="font-serif text-xl">Companion tone</h2>
+      <h2 className="font-serif text-xl">How InnerMate speaks with you</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-        Choose the voice that feels right for your next check-in. You can still change it anytime while chatting.
+        Choose the voice that feels right for your next conversation. You can change it anytime, even mid-chat.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {TONE_OPTIONS.map((t) => {
@@ -328,8 +397,8 @@ function ToneSection() {
       </div>
       {currentTone && (
         <div className="mt-4 rounded-xl border border-border/40 bg-muted/30 px-4 py-3">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70">Preview</p>
-          <p className="mt-1.5 text-sm italic leading-relaxed text-foreground/90">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70">How it might sound</p>
+          <p className="mt-1.5 font-serif text-sm italic leading-relaxed text-foreground/90">
             “{TONE_OPTIONS.find(t => t.value === currentTone)?.preview}”
           </p>
         </div>
@@ -352,7 +421,7 @@ function BackgroundAnimationSection() {
     try {
       await setBgFn({ data: { enabled: !enabled } });
       await qc.invalidateQueries({ queryKey: ["profile"] });
-      toast.success(!enabled ? "Background animation on." : "Background set to still.");
+      toast.success(!enabled ? "The sky is drifting again." : "The sky is holding still.");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -364,9 +433,9 @@ function BackgroundAnimationSection() {
     <TactileCard>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="font-serif text-xl">Background animation</h2>
+          <h2 className="font-serif text-xl">The slow drift of the sky</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            A gentle shifting glow behind the app. Turn off for a completely still background — helpful for comfort, focus, or motion sensitivity.
+            A gentle shifting glow behind everything here. Turn it off for a completely still sky — kinder for comfort, focus, or motion sensitivity.
           </p>
         </div>
         <button
@@ -412,7 +481,7 @@ type StoryRow = {
   is_ai_readable: boolean;
 };
 
-function MyStorySection() {
+function InnerMapSection() {
   const qc = useQueryClient();
   const storyFn = useServerFn(getStory);
   const toggleFn = useServerFn(setStoryReadable);
@@ -427,7 +496,7 @@ function MyStorySection() {
     try {
       await toggleFn({ data: { is_ai_readable: !readable } });
       await qc.invalidateQueries({ queryKey: ["user-story"] });
-      toast.success(!readable ? "Sharing on." : "Sharing off.");
+      toast.success(!readable ? "InnerMate may read your map." : "The map is quiet now.");
     } catch (e) { toast.error((e as Error).message); }
   };
 
@@ -443,16 +512,16 @@ function MyStorySection() {
 
   return (
     <TactileCard>
-      <h2 className="font-serif text-xl">My Story — help the companion understand you</h2>
+      <h2 className="font-serif text-xl">Landmarks you have chosen to share</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-        Everything here is optional. Share only what feels right. You can edit or erase any of it, anytime.
+        This is the inner map — the parts of your story you have placed here yourself, so InnerMate can meet you where you actually are. Every landmark is optional. Share only what feels right.
       </p>
 
       <div className="mt-5 flex items-start justify-between gap-4 rounded-xl border border-border/50 bg-muted/20 p-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium">Quiet Companion may read My Story</p>
+          <p className="text-sm font-medium">InnerMate may read this</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            When off, all fields stay saved but are never sent to the companion.
+            When off, every landmark stays saved here — quiet, and never sent to InnerMate.
           </p>
         </div>
         <button
@@ -478,14 +547,14 @@ function MyStorySection() {
       </div>
 
       <div className="mt-7 rounded-xl border border-border/40 bg-muted/30 p-4">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground/80">What the companion can currently see</p>
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground/80">What InnerMate can currently see</p>
         <p className="mt-2 whitespace-pre-wrap text-sm italic leading-relaxed text-foreground/85">
-          {previewLines.length ? previewLines.join("\n") : "Nothing — sharing is off."}
+          {previewLines.length ? previewLines.join("\n") : "Nothing — the map is resting."}
         </p>
       </div>
 
       <p className="mt-5 text-xs leading-relaxed text-muted-foreground/90">
-        This is stored privately, used only to shape how the companion speaks with you, never for anything else. Erase any field and it is gone.
+        You can view, edit, quiet, or erase any of this whenever you like. InnerMate only ever reads what you allow.
       </p>
     </TactileCard>
   );
@@ -570,9 +639,9 @@ function SundayLetterSection() {
 
   return (
     <TactileCard>
-      <h2 className="font-serif text-xl">The Sunday letter</h2>
+      <h2 className="font-serif text-xl">A letter from your week, every Sunday</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-        A short, private letter from your companion, waiting for you each Sunday. It notices the week with care, and ends with one small ritual for the days ahead. Nothing is sent or shared.
+        A short, private letter from InnerMate, waiting for you each Sunday. It notices your week with care, and ends with one small ritual for the days ahead. Nothing is sent or shared.
       </p>
 
       <div className="mt-5 flex items-start justify-between gap-4 rounded-xl border border-border/50 bg-muted/20 p-4">
@@ -594,9 +663,9 @@ function SundayLetterSection() {
       {enabled && (
         <div className="mt-3 flex items-start justify-between gap-4 rounded-xl border border-border/50 bg-muted/20 p-4">
           <div className="min-w-0">
-            <p className="text-sm font-medium">May the letter draw from my memories and story</p>
+            <p className="text-sm font-medium">May the letter walk among your stars?</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              If on, the letter may gently reference one memory or detail you've already marked shareable. Never more than one.
+              If yes, the letter may gently reference one memory or detail you've already marked shareable. Never more than one.
             </p>
           </div>
           <button

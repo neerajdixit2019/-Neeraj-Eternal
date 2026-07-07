@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +14,7 @@ import { listKeptLetters } from "@/lib/letters.functions";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Flame } from "lucide-react";
-import { track } from "@/lib/analytics";
+import { Flame, Mail, Plus, Sparkles, Video, X, Image as ImageIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_app/memories")({
   component: MemoriesPage,
@@ -63,6 +61,108 @@ type MemoryRow = {
   media_url?: string | null;
 };
 
+/* ── The sky: deterministic star math (SSR must equal client) ─────────── */
+
+// Feeling → star tint. Covers this app's feelings plus a few close cousins.
+const STAR_TINT: Record<string, string> = {
+  tender: "var(--rose)",
+  warm: "var(--amber)",
+  joyful: "var(--amber)",
+  hopeful: "var(--sky)",
+  heavy: "var(--sky)",
+  bittersweet: "var(--lavender)",
+  longing: "var(--lavender)",
+  calm: "var(--mint)",
+  peaceful: "var(--mint)",
+  grateful: "var(--dawn)",
+};
+function tintFor(feeling: string | null | undefined): string {
+  return (feeling && STAR_TINT[feeling]) || "var(--dawn)";
+}
+
+// How brightly each feeling burns (base px, jittered ±1, clamped 8–14).
+const STAR_BASE_SIZE: Record<string, number> = {
+  grateful: 13,
+  warm: 12.5,
+  peaceful: 11.5,
+  bittersweet: 10.5,
+  longing: 10,
+  heavy: 9,
+};
+
+// FNV-1a — stable hash of a memory id, same on server and client.
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+type SkyStar = {
+  memory: MemoryRow;
+  hash: number;
+  x: number;      // 8–92 (%)
+  y: number;      // 10–72 (%)
+  size: number;   // 8–14 (px)
+  dur: number;    // twinkle 2.8–5.5s
+  delay: number;  // 0–4.3s
+  tint: string;
+};
+
+function starFor(memory: MemoryRow): SkyStar {
+  const h = hashStr(memory.id);
+  const x = Math.round((8 + ((h % 8401) / 8400) * 84) * 100) / 100;
+  const y = Math.round((10 + (((h >>> 9) % 6301) / 6300) * 62) * 100) / 100;
+  const base = STAR_BASE_SIZE[memory.feeling_tag ?? ""] ?? 9.5;
+  const size = Math.min(14, Math.max(8, base + (((h >>> 16) % 21) - 10) / 10));
+  const dur = Math.round((2.8 + ((h >>> 5) % 271) / 100) * 100) / 100;
+  const delay = Math.round((((h >>> 13) % 431) / 100) * 100) / 100;
+  return { memory, hash: h, x, y, size, dur, delay, tint: tintFor(memory.feeling_tag) };
+}
+
+// Fixed seed so the ambient sky is identical on every render, everywhere.
+const SKY_SEED = 20260607;
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type BgStar = { left: number; top: number; size: number; opacity: number; twinkle: boolean; dur: number; delay: number };
+const BG_STARS: BgStar[] = (() => {
+  const rnd = mulberry32(SKY_SEED);
+  return Array.from({ length: 110 }, (_, i) => ({
+    left: Math.round(rnd() * 10000) / 100,
+    top: Math.round(rnd() * 8600) / 100,
+    size: Math.round((1 + rnd() * 1.3) * 100) / 100,
+    opacity: Math.round((0.12 + rnd() * 0.48) * 100) / 100,
+    twinkle: i % 3 === 0,
+    dur: Math.round((2.6 + rnd() * 3.4) * 100) / 100,
+    delay: Math.round(rnd() * 600) / 100,
+  }));
+})();
+
+const FIREFLIES = [
+  { left: "16%", top: "84%", delay: "0s" },
+  { left: "57%", top: "88%", delay: "3.4s" },
+  { left: "81%", top: "82%", delay: "7.1s" },
+] as const;
+
+function memoryDateLabel(m: MemoryRow) {
+  return m.memory_date
+    ? new Date(m.memory_date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
+    : "undated";
+}
+
+/* ── Page ─────────────────────────────────────────────────────────────── */
+
 function MemoriesPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listMemories);
@@ -71,60 +171,322 @@ function MemoriesPage() {
     queryFn: () => listFn() as Promise<MemoryRow[]>,
   });
   const [tab, setTab] = useState<"memories" | "letters">("memories");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeFeeling, setActiveFeeling] = useState<string | null>(null);
+  const [reliveId, setReliveId] = useState<string | null>(null);
 
-  const grouped = useMemo(() => {
-    const out: Record<string, MemoryRow[]> = {};
+  const stars = useMemo(() => (memories ?? []).map(starFor), [memories]);
+  const constellations = useMemo(() => {
+    const counts = new Map<string, number>();
     for (const m of memories ?? []) {
-      const y = m.memory_date ? new Date(m.memory_date).getFullYear().toString() : "Undated";
-      (out[y] ??= []).push(m);
+      if (m.feeling_tag) counts.set(m.feeling_tag, (counts.get(m.feeling_tag) ?? 0) + 1);
     }
-    return Object.entries(out).sort((a, b) => {
-      if (a[0] === "Undated") return 1;
-      if (b[0] === "Undated") return -1;
-      return Number(b[0]) - Number(a[0]);
-    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [memories]);
+  const activeStars = useMemo(
+    () => (activeFeeling
+      ? stars.filter((s) => (s.memory.feeling_tag ?? "") === activeFeeling).sort((a, b) => a.hash - b.hash)
+      : []),
+    [stars, activeFeeling],
+  );
+  const activeTint = tintFor(activeFeeling);
 
-  const pinned = useMemo(() => (memories ?? []).slice(0, 3), [memories]);
-  useEffect(() => {
-    if (pinned.length > 0) track("memory_pinned_viewed", { count: pinned.length });
-  }, [pinned.length]);
+  const selectedStar = stars.find((s) => s.memory.id === selectedId) ?? null;
+  const reliveMemory = (memories ?? []).find((m) => m.id === reliveId) ?? null;
+
+  const n = memories?.length;
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["memories"] });
 
   return (
-    <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14 space-y-6">
+    <div className="motion-calm mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14 space-y-6">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">a shelf for what stays</p>
-        <h1 className="mt-3 font-serif text-3xl sm:text-[2.4rem] leading-tight">Memory Keeper</h1>
-        <p className="mt-3 font-serif italic text-sm leading-relaxed text-muted-foreground">
-          the shelf is where things you want to remember live.
+        <p className="qs-section-label">
+          a sky of what stays{typeof n === "number" ? ` · ${n} star${n === 1 ? "" : "s"}` : ""}
         </p>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          a photo, a clip, and the story behind it. yours alone — share with the companion only if you wish.
+        <h1 className="mt-3 font-serif font-light tracking-tight text-3xl sm:text-[2.4rem] leading-tight">Your night sky</h1>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          Every memory you keep becomes a star. The ones that matter most shine brightest. Tap one to step back inside it.
         </p>
       </div>
 
       <div className="flex gap-2">
-        <button onClick={() => setTab("memories")} className={`rounded-full px-4 py-1.5 text-sm transition ${tab === "memories" ? "bg-foreground/90 text-background" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>Memories</button>
-        <button onClick={() => setTab("letters")} className={`rounded-full px-4 py-1.5 text-sm transition ${tab === "letters" ? "bg-foreground/90 text-background" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>Letters</button>
+        <button type="button" onClick={() => setTab("memories")} className={`qs-chip ${tab === "memories" ? "qs-chip--active" : ""}`}>the sky</button>
+        <button type="button" onClick={() => setTab("letters")} className={`qs-chip ${tab === "letters" ? "qs-chip--active" : ""}`}>letters</button>
       </div>
 
       {tab === "letters" ? (
-        <LettersShelf />
+        <div className="space-y-4">
+          <div>
+            <p className="qs-section-label">the moon cycle</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              InnerMate's weekly letters — gentle notes written back to you.
+            </p>
+          </div>
+          <LettersShelf />
+        </div>
       ) : (
         <>
-          <NewMemory onSaved={() => qc.invalidateQueries({ queryKey: ["memories"] })} />
+          {/* ── THE SKY ─────────────────────────────────────────────── */}
+          <div className="sky-panel h-[380px]" role="group" aria-label="Your night sky — every star is a kept memory">
+            {/* ambient layers */}
+            <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+              {/* milky way — a diagonal breath of light */}
+              <div className="absolute -left-24 -right-12 top-[28%] h-44 -rotate-[18deg]">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: "linear-gradient(90deg, transparent 0%, oklch(0.88 0.02 265 / 0.09) 30%, oklch(0.9 0.015 265 / 0.11) 55%, transparent 100%)",
+                    filter: "blur(20px)",
+                  }}
+                />
+                <div
+                  className="absolute inset-x-12 top-8 h-20 rounded-full"
+                  style={{
+                    background: "linear-gradient(90deg, transparent, oklch(0.85 0.045 300 / 0.08), transparent)",
+                    filter: "blur(28px)",
+                  }}
+                />
+                <div
+                  className="absolute inset-x-24 top-14 h-9 rounded-full"
+                  style={{
+                    background: "linear-gradient(90deg, transparent, oklch(0.96 0.01 90 / 0.08), transparent)",
+                    filter: "blur(12px)",
+                  }}
+                />
+              </div>
 
-          {pinned.length > 0 && (
-            <section aria-label="Pinned memories" className="space-y-3">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">on the shelf</p>
-              <div className="grid grid-cols-3 gap-3">
-                {pinned.map((m) => {
-                  const label = m.title || (m.story ?? "").split("\n")[0].slice(0, 40) || "untitled";
-                  const excerpt = (m.story ?? "").split("\n").find(Boolean)?.slice(0, 70) ?? "";
+              {/* one slow aurora */}
+              <div
+                className="absolute -left-8 top-10 h-28 w-4/5 rounded-full"
+                style={{
+                  background: "linear-gradient(100deg, transparent 5%, color-mix(in oklab, var(--mint) 20%, transparent) 35%, color-mix(in oklab, var(--lavender) 16%, transparent) 65%, transparent 95%)",
+                  filter: "blur(24px)",
+                  animation: "qs-aurora 18s ease-in-out infinite alternate",
+                }}
+              />
+
+              {/* drifting field of far stars + one shooting star */}
+              <div className="absolute inset-0" style={{ animation: "qs-skydrift 70s ease-in-out infinite alternate" }}>
+                {BG_STARS.map((s, i) => (
+                  <span
+                    key={i}
+                    className="absolute rounded-full bg-white"
+                    style={{
+                      left: `${s.left}%`,
+                      top: `${s.top}%`,
+                      width: s.size,
+                      height: s.size,
+                      opacity: s.opacity,
+                      animation: s.twinkle ? `qs-twinkle ${s.dur}s ease-in-out ${s.delay}s infinite` : undefined,
+                    }}
+                  />
+                ))}
+                <span
+                  className="absolute left-[14%] top-[16%] h-px w-16 rounded-full opacity-0"
+                  style={{
+                    background: "linear-gradient(90deg, oklch(1 0 0 / 0.9), oklch(1 0 0 / 0))",
+                    animation: "qs-shoot 11s linear infinite",
+                  }}
+                />
+              </div>
+
+              {/* a small moon, waning */}
+              <div className="absolute right-7 top-6 h-9 w-9">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: "oklch(0.93 0.02 95 / 0.85)", boxShadow: "0 0 26px 8px oklch(0.9 0.04 95 / 0.22)" }}
+                />
+                <div className="absolute -left-2 -top-1.5 h-8 w-8 rounded-full" style={{ background: "oklch(0.16 0.03 250)" }} />
+              </div>
+
+              {/* treeline along the bottom */}
+              <svg className="absolute inset-x-0 bottom-0 h-14 w-full" viewBox="0 0 400 56" preserveAspectRatio="none">
+                <path
+                  d="M0 56 L0 34 L14 40 L26 24 L38 37 L54 29 L68 40 L84 24 L98 36 L114 30 L128 41 L146 26 L162 38 L182 20 L200 37 L218 30 L234 42 L252 28 L268 39 L286 24 L302 37 L322 30 L338 42 L356 28 L372 38 L388 31 L400 37 L400 56 Z"
+                  fill="oklch(0.2 0.04 150 / 0.85)"
+                />
+                <path
+                  d="M0 56 L0 44 L18 49 L32 38 L48 49 L66 42 L82 51 L100 40 L118 50 L136 43 L154 52 L174 39 L192 50 L212 44 L232 53 L252 43 L272 52 L292 45 L312 53 L332 43 L352 51 L372 44 L390 51 L400 46 L400 56 Z"
+                  fill="oklch(0.14 0.03 155)"
+                />
+              </svg>
+
+              {/* fireflies near the treeline */}
+              {FIREFLIES.map((f, i) => (
+                <span key={i} className="qs-firefly" style={{ left: f.left, top: f.top, animationDelay: f.delay }} />
+              ))}
+            </div>
+
+            {/* constellation name, written in the corner of the sky */}
+            {activeFeeling && (
+              <div className="fade-in pointer-events-none absolute left-5 top-4 z-[7]">
+                <p
+                  className="font-serif italic text-[26px] leading-none"
+                  style={{ color: "oklch(0.97 0.005 90 / 0.9)", textShadow: `0 0 20px ${activeTint}` }}
+                >
+                  {activeFeeling}
+                </p>
+                <p className="mt-1.5 text-[9.5px] uppercase tracking-[0.24em]" style={{ color: "oklch(0.9 0.01 90 / 0.5)" }}>
+                  constellation · {activeStars.length}
+                </p>
+              </div>
+            )}
+
+            {/* faint lines between kin stars */}
+            {activeStars.length > 1 && (
+              <svg aria-hidden className="pointer-events-none absolute inset-0 z-[4] h-full w-full">
+                {activeStars.slice(0, -1).map((s, i) => {
+                  const next = activeStars[i + 1];
                   return (
-                    <div
+                    <line
+                      key={s.memory.id}
+                      x1={`${s.x}%`} y1={`${s.y}%`} x2={`${next.x}%`} y2={`${next.y}%`}
+                      stroke={activeTint} strokeOpacity={0.32} strokeWidth={1} strokeDasharray="2 5"
+                    />
+                  );
+                })}
+              </svg>
+            )}
+
+            {/* the memories themselves */}
+            {stars.map((s) => {
+              const dim = activeFeeling !== null && (s.memory.feeling_tag ?? "") !== activeFeeling;
+              const isSelected = s.memory.id === selectedId;
+              return (
+                <button
+                  key={s.memory.id}
+                  type="button"
+                  aria-label={s.memory.title || "an untitled memory"}
+                  aria-pressed={isSelected}
+                  onClick={() => setSelectedId(isSelected ? null : s.memory.id)}
+                  className="group absolute z-[6] flex h-10 w-10 items-center justify-center rounded-full"
+                  style={{
+                    left: `${s.x}%`,
+                    top: `${s.y}%`,
+                    marginLeft: -20,
+                    marginTop: -20,
+                    opacity: dim ? 0.22 : 1,
+                    transition: "opacity 480ms ease",
+                  }}
+                >
+                  <span
+                    className="relative block transition-transform duration-300 group-hover:scale-[1.3]"
+                    style={{ width: s.size, height: s.size }}
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background: `radial-gradient(circle at 38% 34%, oklch(1 0 0 / 0.98) 0%, ${s.tint} 58%, color-mix(in oklab, ${s.tint} 30%, transparent) 100%)`,
+                        boxShadow: `0 0 ${Math.round(s.size * 1.7)}px 1px color-mix(in oklab, ${s.tint} 65%, transparent)`,
+                        animation: `qs-twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
+                      }}
+                    />
+                    {isSelected && (
+                      <span aria-hidden className="absolute -inset-1 rounded-full" style={{ boxShadow: "0 0 0 1px oklch(1 0 0 / 0.85)" }} />
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+
+            {/* an empty sky, still listening */}
+            {!isLoading && stars.length === 0 && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8">
+                <p className="text-center font-serif italic text-sm" style={{ color: "oklch(0.92 0.015 90 / 0.75)" }}>
+                  your sky is waiting for its first star
+                </p>
+              </div>
+            )}
+
+            {/* docked detail — step closer to one star */}
+            {selectedStar && (
+              <div
+                className="rise-in absolute inset-x-3 bottom-3 z-10 rounded-2xl border p-4"
+                style={{
+                  background: "oklch(0.17 0.025 220 / 0.78)",
+                  borderColor: "oklch(1 0 0 / 0.12)",
+                  backdropFilter: "blur(16px)",
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{ background: `color-mix(in oklab, ${selectedStar.tint} 18%, transparent)` }}
+                  >
+                    {selectedStar.memory.media_type === "video" ? (
+                      <Video className="h-4 w-4" strokeWidth={1.7} style={{ color: selectedStar.tint }} />
+                    ) : selectedStar.memory.media_url ? (
+                      <ImageIcon className="h-4 w-4" strokeWidth={1.7} style={{ color: selectedStar.tint }} />
+                    ) : (
+                      <Sparkles className="h-4 w-4" strokeWidth={1.7} style={{ color: selectedStar.tint }} />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase tracking-[0.18em]" style={{ color: "oklch(0.88 0.015 90 / 0.6)" }}>
+                      {memoryDateLabel(selectedStar.memory)}
+                      {selectedStar.memory.feeling_tag ? ` · ${selectedStar.memory.feeling_tag}` : ""}
+                    </p>
+                    <p className="truncate font-serif text-[15px] leading-snug" style={{ color: "oklch(0.96 0.01 90)" }}>
+                      {selectedStar.memory.title || "an untitled moment"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="qs-pill-cta shrink-0"
+                    style={{ padding: "0.5rem 0.95rem", fontSize: "12.5px" }}
+                    onClick={() => setReliveId(selectedStar.memory.id)}
+                  >
+                    relive
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Close"
+                    onClick={() => setSelectedId(null)}
+                    className="shrink-0 rounded-full p-1.5 transition hover:bg-white/10"
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.7} style={{ color: "oklch(0.9 0.01 90 / 0.7)" }} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* constellations — the sky, sorted by feeling */}
+          {constellations.length > 0 && (
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Constellations">
+              {constellations.map(([feeling, count]) => (
+                <button
+                  key={feeling}
+                  type="button"
+                  aria-pressed={activeFeeling === feeling}
+                  onClick={() => setActiveFeeling(activeFeeling === feeling ? null : feeling)}
+                  className={`qs-chip shrink-0 ${activeFeeling === feeling ? "qs-chip--active" : ""}`}
+                >
+                  {feeling} · {count}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <NewMemory onSaved={invalidate} />
+
+          {/* walk among them */}
+          {(memories?.length ?? 0) > 0 && (
+            <section aria-label="Walk among your memories" className="space-y-3">
+              <p className="qs-section-label">walk among them</p>
+              <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
+                {(memories ?? []).map((m) => {
+                  const label = m.title || (m.story ?? "").split("\n")[0].slice(0, 40) || "an untitled moment";
+                  const when = m.memory_date
+                    ? new Date(m.memory_date).toLocaleDateString(undefined, { month: "short", year: "numeric" })
+                    : "undated";
+                  return (
+                    <button
                       key={m.id}
-                      className="parchment relative aspect-[3/4] overflow-hidden p-3 flex flex-col justify-end"
+                      type="button"
+                      onClick={() => setReliveId(m.id)}
+                      className="parchment relative flex aspect-[3/4] w-32 shrink-0 flex-col justify-end overflow-hidden p-3 text-left transition hover:-translate-y-0.5"
                     >
                       {m.media_url && m.media_type !== "video" && (
                         <img
@@ -137,42 +499,44 @@ function MemoriesPage() {
                       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/40 to-transparent" />
                       <div className="relative">
                         <p className="font-serif text-[13px] leading-tight line-clamp-2">{label}</p>
-                        {excerpt && (
-                          <p className="mt-1 text-[10px] italic text-muted-foreground line-clamp-2">{excerpt}</p>
-                        )}
+                        <p className="mt-1 text-[10px] italic text-muted-foreground">{when}</p>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
             </section>
           )}
 
-          {isLoading ? (
-        <p className="text-sm text-muted-foreground">…</p>
-      ) : (memories?.length ?? 0) === 0 ? (
-        <TactileCard>
-          <p className="font-serif text-lg leading-relaxed">Nothing kept here yet.</p>
-          <p className="mt-2 text-sm text-muted-foreground">Some moments deserve a shelf of their own.</p>
-        </TactileCard>
-      ) : (
-        <div className="space-y-8">
-          {grouped.map(([year, items]) => (
-            <section key={year} className="space-y-4">
-              <h2 className="font-serif text-2xl text-muted-foreground/90">{year}</h2>
-              <div className="space-y-4">
-                {items.map((m) => (
-                  <MemoryCard
-                    key={m.id}
-                    memory={m}
-                    onChanged={() => qc.invalidateQueries({ queryKey: ["memories"] })}
-                  />
-                ))}
+          {/* the moon cycle — letters kept from InnerMate */}
+          <button type="button" onClick={() => setTab("letters")} className="block w-full text-left">
+            <TactileCard tint="lavender" className="transition hover:-translate-y-0.5">
+              <div className="flex items-center gap-4">
+                <span
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: "color-mix(in oklab, var(--lavender) 20%, transparent)" }}
+                >
+                  <Mail className="h-[18px] w-[18px]" strokeWidth={1.6} style={{ color: "var(--lavender)" }} />
+                </span>
+                <div>
+                  <p className="font-serif text-lg leading-snug">InnerMate's weekly letters</p>
+                  <p className="mt-1 text-sm text-muted-foreground">gentle notes written back to you</p>
+                </div>
               </div>
-            </section>
-          ))}
-        </div>
-      )}
+            </TactileCard>
+          </button>
+
+          <p className="pt-1 text-center font-serif italic text-sm text-muted-foreground">
+            what you keep here, keeps shining.
+          </p>
+
+          {reliveMemory && (
+            <ReliveDialog
+              memory={reliveMemory}
+              onOpenChange={(v) => { if (!v) setReliveId(null); }}
+              onChanged={invalidate}
+            />
+          )}
         </>
       )}
     </div>
@@ -224,6 +588,8 @@ function LettersShelf() {
   );
 }
 
+/* ── hang a new star — the compose flow ───────────────────────────────── */
+
 function NewMemory({ onSaved }: { onSaved: () => void }) {
   const saveFn = useServerFn(saveMemory);
   const [open, setOpen] = useState(false);
@@ -264,7 +630,7 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
         media_type: file.type.startsWith("video") ? "video" : "image",
         is_ai_readable: aiReadable,
       }});
-      toast.success("Kept.");
+      toast.success("Kept. Look up — it's already shining.");
       reset();
       setOpen(false);
       onSaved();
@@ -277,15 +643,26 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
 
   if (!open) {
     return (
-      <Button variant="outline" className="rounded-full" onClick={() => setOpen(true)}>
-        Keep a new memory
-      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed px-5 py-4 text-sm font-medium transition hover:brightness-110"
+        style={{
+          borderColor: "color-mix(in oklab, var(--dawn) 42%, transparent)",
+          background: "color-mix(in oklab, var(--dawn) 7%, transparent)",
+          color: "var(--dawn)",
+        }}
+      >
+        <Plus className="h-4 w-4" strokeWidth={1.7} />
+        hang a new star
+      </button>
     );
   }
 
   return (
     <TactileCard>
-      <h2 className="font-serif text-xl">A new memory</h2>
+      <p className="qs-section-label">hang a new star</p>
+      <h2 className="mt-2 font-serif text-xl">What should this one hold?</h2>
       <div className="mt-5 space-y-4">
         <div>
           <Label>Photo or short video (max 50MB)</Label>
@@ -313,7 +690,7 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
           />
         </div>
         <div>
-          <Label>Feeling</Label>
+          <Label>How it feels</Label>
           <div className="mt-2 flex flex-wrap gap-2">
             {FEELINGS.map((f) => {
               const active = feeling === f.value;
@@ -343,16 +720,16 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
               className="mt-1"
             />
             <span className="text-sm">
-              <span className="font-medium">Let Quiet Companion know about this memory</span>
+              <span className="font-medium">Let InnerMate know about this memory</span>
               <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                If on, the companion may gently remember the story you wrote here. It never sees the photo or video itself — only your words about it.
+                If on, InnerMate may gently remember the story you wrote here. It never sees the photo or video itself — only your words about it.
               </span>
             </span>
           </label>
         </div>
         <div className="flex gap-2 pt-2">
           <Button onClick={submit} disabled={saving} className="rounded-full">
-            {saving ? "Keeping…" : "Keep this"}
+            {saving ? "Hanging it…" : "Hang this star"}
           </Button>
           <Button variant="outline" className="rounded-full" onClick={() => { reset(); setOpen(false); }}>
             Not now
@@ -363,12 +740,19 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-function MemoryCard({ memory, onChanged }: { memory: MemoryRow; onChanged: () => void }) {
+/* ── relive — step back inside a star ─────────────────────────────────── */
+
+function ReliveDialog({
+  memory, onOpenChange, onChanged,
+}: {
+  memory: MemoryRow;
+  onOpenChange: (v: boolean) => void;
+  onChanged: () => void;
+}) {
   const toggleFn = useServerFn(setMemoryReadable);
   const delFn = useServerFn(deleteMemory);
   const [burning, setBurning] = useState(false);
   const [working, setWorking] = useState(false);
-  const [gone, setGone] = useState(false);
 
   const toggle = async () => {
     setWorking(true);
@@ -383,66 +767,89 @@ function MemoryCard({ memory, onChanged }: { memory: MemoryRow; onChanged: () =>
     setWorking(true);
     try {
       await delFn({ data: { id: memory.id } });
-      // let the ember animation play, then remove card
-      setTimeout(() => { setGone(true); onChanged(); }, 900);
+      // let the ember animation play, then let the star go out
+      setTimeout(() => { onOpenChange(false); onChanged(); }, 900);
     } catch (e) {
       toast.error((e as Error).message);
       setWorking(false);
     }
   };
 
-  const feeling = memory.feeling_tag as Feeling | null;
-  const dateStr = memory.memory_date
-    ? new Date(memory.memory_date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
-    : "Undated";
-
-  if (gone) return null;
+  const tint = tintFor(memory.feeling_tag);
 
   return (
-    <TactileCard className={working ? "ember-burn" : undefined}>
-      {memory.media_url && (
-        <div className="-mx-6 -mt-6 mb-5 overflow-hidden rounded-t-[28px] bg-muted/40 sm:-mx-7 sm:-mt-7">
-          {memory.media_type === "video" ? (
-            <video src={memory.media_url} muted controls playsInline className="w-full" />
-          ) : (
-            <img src={memory.media_url} alt={memory.title ?? "memory"} className="w-full object-cover" loading="lazy" />
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className={`max-h-[85vh] overflow-y-auto sm:max-w-lg ${working ? "ember-burn" : ""}`}>
+        <DialogHeader className="sr-only">
+          <DialogTitle>{memory.title || "A kept memory"}</DialogTitle>
+          <DialogDescription>Step back inside this memory.</DialogDescription>
+        </DialogHeader>
+
+        {memory.media_url && (
+          <div className="-mx-6 -mt-6 overflow-hidden bg-muted/40 sm:rounded-t-lg">
+            {memory.media_type === "video" ? (
+              <video src={memory.media_url} muted controls playsInline className="w-full" />
+            ) : (
+              <img src={memory.media_url} alt={memory.title ?? "memory"} className="w-full object-cover" loading="lazy" />
+            )}
+          </div>
+        )}
+
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">
+            {memoryDateLabel(memory)}
+            {memory.feeling_tag && <span style={{ color: tint }}>{` · ${memory.feeling_tag}`}</span>}
+          </p>
+          {memory.title && <h3 className="mt-1.5 font-serif text-xl leading-snug">{memory.title}</h3>}
+          {memory.story && (
+            <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">{memory.story}</p>
           )}
         </div>
-      )}
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">{dateStr}</p>
-      {memory.title && <h3 className="mt-1.5 font-serif text-xl leading-snug">{memory.title}</h3>}
-      {memory.story && <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">{memory.story}</p>}
-      {feeling && (
-        <span className={`mt-3 inline-block rounded-full px-3 py-1 text-xs ${FEELING_CHIP[feeling]}`}>
-          {feeling}
-        </span>
-      )}
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-4">
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={memory.is_ai_readable}
-            onChange={toggle}
-            disabled={working}
-          />
-          Share with companion
-        </label>
-        <button
-          onClick={() => setBurning(true)}
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/80 transition hover:text-[color:oklch(0.68_0.14_38)]"
-        >
-          <Flame className="h-3.5 w-3.5" />
-          Burn this memory
-        </button>
-      </div>
 
-      <BurnRitual
-        open={burning}
-        onOpenChange={setBurning}
-        title={memory.title}
-        onBurn={performBurn}
-      />
-    </TactileCard>
+        <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={memory.is_ai_readable}
+              onChange={toggle}
+              disabled={working}
+              className="mt-1"
+            />
+            <span className="text-sm">
+              <span className="font-medium">Share with InnerMate</span>
+              <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                If on, InnerMate may gently remember the story you wrote here. It never sees the photo or video itself — only your words about it.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 pt-1">
+          <button type="button" className="qs-pill-cta" onClick={() => onOpenChange(false)}>
+            Sit with this a moment
+          </button>
+          <button
+            type="button"
+            onClick={() => setBurning(true)}
+            disabled={working}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/80 transition hover:text-[color:oklch(0.68_0.14_38)]"
+          >
+            <Flame className="h-3.5 w-3.5" strokeWidth={1.7} />
+            let it go
+          </button>
+        </div>
+        <p className="text-[11px] italic leading-relaxed text-muted-foreground">
+          letting go is a true goodbye — the memory and its photo or video leave your sky for good.
+        </p>
+
+        <BurnRitual
+          open={burning}
+          onOpenChange={setBurning}
+          title={memory.title}
+          onBurn={performBurn}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
 

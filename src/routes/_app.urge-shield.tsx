@@ -5,7 +5,6 @@ import { saveJournal } from "@/lib/data.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { TactileCard } from "@/components/TactileCard";
 import { Shield, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { track } from "@/lib/analytics";
@@ -98,11 +97,14 @@ function UrgeShield() {
           </button>
         )}
       </div>
-      <div className="mt-4 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-background/70 border border-border/60">
-          <Shield className="h-4 w-4" />
+      <div className="mt-6 flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/70">
+          <Shield className="h-4 w-4" strokeWidth={1.7} />
         </span>
-        <h1 className="font-serif text-3xl leading-tight">Urge Shield</h1>
+        <div>
+          <p className="qs-section-label">the anchor</p>
+          <h1 className="mt-1 font-serif text-3xl font-light leading-tight tracking-tight">Pause before action.</h1>
+        </div>
       </div>
 
       {phase === "breath" && (
@@ -121,7 +123,7 @@ function UrgeShield() {
       )}
 
       {phase === "name" && (
-        <TactileCard tint="sky" className="mt-8">
+        <div className="glass mt-8 rounded-[26px] p-6 sm:p-7">
           <p className="font-serif text-xl leading-snug">what's the urge?</p>
           <p className="mt-1.5 text-sm text-muted-foreground">
             one short line. this stays with you.
@@ -134,16 +136,16 @@ function UrgeShield() {
             className="mt-4 h-12 rounded-2xl text-base"
           />
           <div className="mt-5 flex justify-end">
-            <Button className="rounded-full" onClick={() => setPhase("cost")}>
-              continue <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
+            <button className="qs-pill-cta" onClick={() => setPhase("cost")}>
+              continue <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
-        </TactileCard>
+        </div>
       )}
 
       {phase === "cost" && (
-        <TactileCard tint="rose" className="mt-8">
-          <p className="font-serif text-xl leading-snug">what will this cost you tomorrow?</p>
+        <div className="glass mt-8 rounded-[26px] p-6 sm:p-7">
+          <p className="font-serif text-xl leading-snug">what would tomorrow-you pay for this?</p>
           <p className="mt-1.5 text-sm text-muted-foreground">no wrong answer. even a word helps.</p>
           <Textarea
             value={cost}
@@ -154,16 +156,16 @@ function UrgeShield() {
             className="mt-4 rounded-2xl"
           />
           <div className="mt-6 flex justify-end">
-            <Button className="rounded-full" onClick={() => { setWaveLeft(WAVE_SECONDS); setPhase("wave"); }}>
+            <button className="qs-pill-cta" onClick={() => { setWaveLeft(WAVE_SECONDS); setPhase("wave"); }}>
               ride the wave
-            </Button>
+            </button>
           </div>
-        </TactileCard>
+        </div>
       )}
 
       {phase === "wave" && (
-        <div className="mt-8 parchment p-8 sm:p-10 text-center overflow-hidden">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">a wave, not a wall</p>
+        <div className="glass mt-8 overflow-hidden rounded-[26px] p-8 text-center sm:p-10">
+          <p className="qs-section-label">a wave, not a wall</p>
           <p className="mt-4 font-serif text-6xl tabular-nums">{waveMm}:{waveSs}</p>
           <div aria-hidden className="relative mt-8 h-10 overflow-hidden">
             <div className="qs-wave absolute inset-0 w-[150%]" style={{
@@ -175,9 +177,9 @@ function UrgeShield() {
             it rises, peaks, and softens. you don't have to do anything with it.
           </p>
           <div className="mt-8 flex flex-col items-center gap-2">
-            <Button className="rounded-full" onClick={finish} disabled={saving}>
+            <button className="qs-pill-cta" onClick={finish} disabled={saving}>
               {saving ? "keeping…" : "the urge passed"}
-            </Button>
+            </button>
             <button
               onClick={finish}
               disabled={saving}
@@ -190,7 +192,7 @@ function UrgeShield() {
       )}
 
       {phase === "done" && (
-        <TactileCard tint="lavender" className="mt-8 text-center">
+        <div className="glass mt-8 rounded-[26px] p-6 text-center sm:p-7">
           <p className="font-serif text-2xl leading-snug">you stayed with yourself.</p>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             that's it. no badge, no streak. whatever you choose next, you chose it slower.
@@ -203,7 +205,7 @@ function UrgeShield() {
               write a little more
             </Button>
           </div>
-        </TactileCard>
+        </div>
       )}
     </div>
   );

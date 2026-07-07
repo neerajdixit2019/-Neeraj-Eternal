@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
+import { ArrowRight, Feather, Hand, MoonStar, Sparkles, type LucideIcon } from "lucide-react";
 import { listMoods, listJournal } from "@/lib/data.functions";
 import { TactileCard } from "@/components/TactileCard";
 import { WeekArc, moodsToWeekArc } from "@/components/WeekArc";
@@ -28,6 +29,131 @@ type Mood = {
   trigger_tags?: string[] | null;
 };
 
+type JournalRow = { title?: string | null };
+
+/* ── Deterministic sky helpers — identical on server and client ── */
+
+const SKY_SEED = 947213;
+
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+const ACCENTS = ["var(--rose)", "var(--sky)", "var(--mint)", "var(--lavender)", "var(--amber)", "var(--sand)"];
+
+const TAG_TINTS: Record<string, string> = {
+  Heavy: "var(--lavender)",
+  Anxious: "var(--rose)",
+  Lonely: "var(--sky)",
+  Numb: "var(--sand)",
+  Confused: "var(--lavender)",
+  Calm: "var(--mint)",
+  Hopeful: "var(--dawn)",
+  Grateful: "var(--amber)",
+  Angry: "var(--rose)",
+  Overwhelmed: "var(--sky)",
+};
+
+function tagTint(label: string): string {
+  return TAG_TINTS[label] ?? ACCENTS[hashStr(label) % ACCENTS.length];
+}
+
+type Star = { label: string; count: number; x: number; y: number; weight: number; color: string };
+
+function constellationStars(tags: { label: string; count: number }[]): Star[] {
+  const max = tags[0]?.count ?? 1;
+  const stars: Star[] = tags.map((t) => ({
+    label: t.label,
+    count: t.count,
+    x: 10 + ((hashStr(t.label) % 1000) / 999) * 80,
+    y: 12 + ((hashStr(`${t.label}·y`) % 1000) / 999) * 60,
+    weight: t.count / max,
+    color: tagTint(t.label),
+  }));
+  // Gentle deterministic de-overlap so labels never sit on each other.
+  for (let i = 1; i < stars.length; i++) {
+    for (let k = 0; k < i; k++) {
+      if (Math.abs(stars[i].x - stars[k].x) < 16 && Math.abs(stars[i].y - stars[k].y) < 12) {
+        stars[i].y = stars[i].y > 42 ? stars[i].y - 16 : stars[i].y + 16;
+        stars[i].y = Math.min(72, Math.max(12, stars[i].y));
+      }
+    }
+  }
+  return stars.slice().sort((a, b) => a.x - b.x);
+}
+
+/* ── Gentle heuristics — computed from data already on the page ── */
+
+type NextStep = { title: string; body: string; cta: string; to: "/wind-down" | "/urge-shield" | "/checkin"; icon: LucideIcon };
+
+function pickNextStep(stats: {
+  topTriggers: { label: string; count: number }[];
+  timeOfDay: { label: string; count: number }[];
+}): NextStep {
+  const topTrigger = stats.topTriggers[0]?.label;
+  const heaviest = stats.timeOfDay.reduce((a, b) => (b.count > a.count ? b : a), stats.timeOfDay[0]);
+  const eveningsHeaviest = !!heaviest && heaviest.count > 0 && (heaviest.label === "Evening" || heaviest.label === "Night");
+  if (topTrigger === "Sleep" || eveningsHeaviest) {
+    return {
+      title: "A night reset",
+      body: "The late hours keep appearing in your sky. Three slow breaths and one line set down before bed can soften their edges.",
+      cta: "Begin a night reset",
+      to: "/wind-down",
+      icon: MoonStar,
+    };
+  }
+  if (topTrigger === "Work") {
+    return {
+      title: "A pause before action",
+      body: "Work has been a bright signal lately. When the next wave rises, try meeting it with a small pause instead of a reply.",
+      cta: "Practice the pause",
+      to: "/urge-shield",
+      icon: Hand,
+    };
+  }
+  return {
+    title: "A two-minute check-in",
+    body: "The simplest way to add a star to this sky — pause, name the feeling, let it be seen.",
+    cta: "Check in gently",
+    to: "/checkin",
+    icon: Feather,
+  };
+}
+
+const DEEPER_QUESTIONS: Record<string, string> = {
+  Anxious: "What would you do this week if you trusted yourself a little more?",
+  Heavy: "What are you carrying that was never yours to hold?",
+  Overwhelmed: "If you could set one thing down for seven days, what would it be?",
+  Lonely: "Who could you let one sentence closer this week?",
+  Numb: "When did you last feel something small and real — and what were you doing?",
+  Confused: "If the fog lifted for an hour, what would you look at first?",
+  Angry: "What is the anger standing guard over?",
+  Calm: "What is quietly going right that deserves a longer look?",
+  Hopeful: "What small thing would you begin if this feeling stayed a while?",
+  Grateful: "Who doesn't know yet how much they steadied you?",
+};
+
+function pickQuestion(theme?: string): string {
+  return (theme && DEEPER_QUESTIONS[theme]) || "What would this week feel like if you were on your own side?";
+}
+
+/* ── Screen ── */
+
 function Insights() {
   const m = useServerFn(listMoods);
   const j = useServerFn(listJournal);
@@ -41,31 +167,64 @@ function Insights() {
   const arcAvg = arc.filter((v): v is number => v != null);
   const arcMean = arcAvg.length ? (arcAvg.reduce((a, b) => a + b, 0) / arcAvg.length).toFixed(1) : "—";
 
+  const windDownCount = useMemo(
+    () => ((journal ?? []) as JournalRow[]).filter((e) => e.title === "Wind-down").length,
+    [journal],
+  );
+  const pageCount = Math.max(0, (journal?.length ?? 0) - windDownCount);
+
+  const stars = useMemo(() => constellationStars(stats.topEmotions), [stats.topEmotions]);
+  const nextStep = pickNextStep(stats);
+  const StepIcon = nextStep.icon;
+  const question = pickQuestion(stats.topEmotions[0]?.label);
+
   return (
     <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">A soft mirror</p>
-      <h1 className="mt-3 font-serif text-3xl sm:text-[2.4rem] leading-tight">Quietly noticed.</h1>
+      <p className="qs-section-label">your pattern constellation</p>
+      <h1 className="mt-3 font-serif text-[28px] font-light leading-tight tracking-tight sm:text-[2.3rem]">
+        Patterns, becoming visible.
+      </h1>
       <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-        Not a report card. Just gentle shapes of what you've been carrying.
+        Not a report card. A sky slowly taking shape.
       </p>
 
-      {/* This week arc */}
-      <TactileCard className="mt-8">
+      {/* The constellation */}
+      <ConstellationSky stars={stars} />
+
+      {/* themes + signals */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <TactileCard tint="mint">
+          <p className="qs-section-label">themes</p>
+          <p className="mt-2 font-serif text-lg leading-snug">What kept rising</p>
+          <TagWeights items={stats.topEmotions} empty="no feelings named yet — the sky can wait." />
+        </TactileCard>
+        <TactileCard tint="rose">
+          <p className="qs-section-label">signals</p>
+          <p className="mt-2 font-serif text-lg leading-snug">What tended to stir it</p>
+          <TagWeights items={stats.topTriggers} empty="no signals yet. they surface when they're ready." />
+          {stats.topTriggers[0] && (
+            <p className="mt-4 border-t border-border/40 pt-3 text-[13px] leading-relaxed text-muted-foreground">
+              <strong className="font-medium text-foreground/85">{stats.topTriggers[0].label}</strong> kept flickering at
+              the edge of your sky. Nothing is wrong — it's just asking to be noticed.
+            </p>
+          )}
+        </TactileCard>
+      </div>
+
+      {/* the week's shape */}
+      <TactileCard className="mt-4">
         <div className="flex items-baseline justify-between">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">How this week has moved</p>
-          <p className="font-serif text-sm text-muted-foreground">avg <span className="text-foreground">{arcMean}</span></p>
+          <p className="qs-section-label">the week's shape</p>
+          <p className="font-serif text-sm text-muted-foreground">resting near <span className="text-foreground">{arcMean}</span></p>
         </div>
         <div className="mt-4 text-foreground/80">
           <WeekArc days={arc} />
         </div>
-        <p className="mt-2 text-[12px] italic text-muted-foreground">A wavy week is a real week.</p>
-      </TactileCard>
+        <p className="mt-2 text-[12px] italic text-muted-foreground">a wavy week is a real week.</p>
 
-      {/* 30-day soft trend */}
-      <TactileCard className="mt-4">
-        <div className="flex items-baseline justify-between">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">The last 30 days</p>
-          <p className="font-serif text-sm text-muted-foreground">{stats.thirtyCount} check-ins</p>
+        <div className="mt-6 flex items-baseline justify-between border-t border-border/40 pt-5">
+          <p className="qs-section-label">the last thirty nights</p>
+          <p className="font-serif text-sm text-muted-foreground">{stats.thirtyCount} moments noticed</p>
         </div>
         <div className="mt-4">
           <MoodTrend days={stats.thirty} />
@@ -76,72 +235,222 @@ function Insights() {
         </div>
       </TactileCard>
 
-      {/* Stats row */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <Stat label="Streak" value={stats.streak === 0 ? "—" : `${stats.streak} day${stats.streak === 1 ? "" : "s"}`} hint="days in a row you paused" />
-        <Stat label="Kindest day" value={stats.bestDay ?? "—"} hint="on average" />
-        <Stat label="Journal entries" value={String(journal?.length ?? 0)} hint="in your archive" />
-      </div>
-
-      {/* Time of day */}
+      {/* rhythms */}
       <TactileCard className="mt-4">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">When you check in</p>
-        <div className="mt-4 grid grid-cols-4 gap-3">
+        <p className="qs-section-label">rhythms</p>
+        <p className="mt-2 font-serif text-lg leading-snug">When the heavy hours come</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">the times of day you most often pause here</p>
+        <div className="mt-5 grid grid-cols-4 gap-3">
           {stats.timeOfDay.map((t) => (
             <TimeOfDayBar key={t.label} label={t.label} count={t.count} max={stats.timeOfDayMax} />
           ))}
         </div>
       </TactileCard>
 
-      {/* Emotions + triggers */}
+      {/* anchors */}
+      <TactileCard tint="amber" className="mt-4">
+        <p className="qs-section-label">anchors</p>
+        <p className="mt-2 font-serif text-lg leading-snug">What steadied you</p>
+        <div className="mt-5 grid grid-cols-3 gap-3">
+          <Anchor value={pageCount} label="pages in your vault" />
+          <Anchor value={windDownCount} label="nights set down gently" />
+          <Anchor value={stats.bestDay ?? "—"} label="your kindest day" />
+        </div>
+        <p className="mt-5 border-t border-border/40 pt-4 font-serif text-[14px] italic leading-relaxed text-foreground/75">
+          {stats.streak > 0
+            ? `${stats.streak} ${stats.streak === 1 ? "day" : "days in a row"} you showed up for yourself. not a score — just something quietly true.`
+            : "whenever you return, the sky will be here."}
+        </p>
+      </TactileCard>
+
+      {/* one gentle next step + one deeper question */}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <TactileCard>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Most felt</p>
-          <TagWeights items={stats.topEmotions} tint="mint" />
+        <TactileCard tint="sky">
+          <p className="qs-section-label">one gentle next step</p>
+          <div className="mt-3 flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-background/60">
+              <StepIcon className="h-4 w-4" strokeWidth={1.7} />
+            </span>
+            <div className="min-w-0">
+              <p className="font-serif text-lg leading-snug">{nextStep.title}</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{nextStep.body}</p>
+            </div>
+          </div>
+          <Link
+            to={nextStep.to}
+            className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground"
+          >
+            {nextStep.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
+          </Link>
         </TactileCard>
-        <TactileCard>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Most triggered by</p>
-          <TagWeights items={stats.topTriggers} tint="rose" />
+        <TactileCard tint="lavender">
+          <p className="qs-section-label">one deeper question</p>
+          <p className="mt-4 font-serif text-lg italic leading-relaxed text-foreground/90">{question}</p>
+          <p className="mt-3 text-[12px] text-muted-foreground">no need to answer today. let it orbit for a while.</p>
         </TactileCard>
       </div>
 
-      {stats.topTriggers[0] && (
-        <TactileCard tint="lavender" className="mt-4">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">A gentle noticing</p>
-          <p className="mt-2 font-serif text-lg leading-snug">
-            <strong>{stats.topTriggers[0].label}</strong> kept showing up.
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            That doesn't mean anything is wrong — just that it's asking for attention. A wind-down or an evening check-in might soften it.
-          </p>
-        </TactileCard>
-      )}
+      {/* CTA — the moon cycle */}
+      <div className="mt-10 flex flex-col items-center">
+        <Link to="/home" className="qs-pill-cta">
+          <Sparkles className="h-4 w-4" strokeWidth={1.7} />
+          Open your letter from the moon cycle
+        </Link>
+        <p className="mt-3 text-center text-[12px] text-muted-foreground">
+          your letter from the week waits on Home.
+        </p>
+      </div>
 
-      <p className="mt-12 text-center text-[13px] italic text-muted-foreground">
-        A quiet week and a loud week both count.
+      <p className="mt-12 text-center font-serif text-[13px] italic text-muted-foreground">
+        a quiet week and a loud week both count.
       </p>
     </div>
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+/* ── The constellation panel ── */
+
+function ConstellationSky({ stars }: { stars: Star[] }) {
+  // Fixed seed — the background sky renders identically on server and client.
+  const bgStars = useMemo(() => {
+    const rand = mulberry32(SKY_SEED);
+    return Array.from({ length: 40 }, () => ({
+      x: 2 + rand() * 96,
+      y: 4 + rand() * 88,
+      r: 1 + rand() * 1.6,
+      o: 0.12 + rand() * 0.38,
+      d: rand() * 6,
+    }));
+  }, []);
+
   return (
-    <TactileCard>
-      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
-      <p className="mt-2 font-serif text-3xl leading-none">{value}</p>
-      {hint && <p className="mt-2 text-[12px] text-muted-foreground">{hint}</p>}
-    </TactileCard>
+    <div
+      className="sky-panel mt-8 h-[300px]"
+      role="img"
+      aria-label={
+        stars.length
+          ? `Your constellation — the feelings you named most: ${stars.map((s) => s.label).join(", ")}`
+          : "An empty night sky, waiting for your first check-ins"
+      }
+    >
+      {/* aurora band */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-[-12%] top-[6%] h-28 rounded-[100%] opacity-50 blur-2xl motion-safe:animate-[qs-aurora_18s_ease-in-out_infinite_alternate]"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--mint) 24%, transparent) 32%, color-mix(in oklab, var(--sky) 20%, transparent) 58%, color-mix(in oklab, var(--lavender) 16%, transparent) 78%, transparent 100%)",
+        }}
+      />
+
+      {/* dim background stars */}
+      {bgStars.map((s, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className={
+            "absolute rounded-full" +
+            (i % 4 === 0 ? " motion-safe:animate-[qs-twinkle_5.5s_ease-in-out_infinite]" : "")
+          }
+          style={{
+            left: `${s.x}%`,
+            top: `${s.y}%`,
+            width: s.r,
+            height: s.r,
+            background: "oklch(0.95 0.01 90)",
+            opacity: s.o,
+            animationDelay: `${s.d.toFixed(2)}s`,
+          }}
+        />
+      ))}
+
+      {/* faint threads between the named stars */}
+      {stars.length > 1 && (
+        <svg aria-hidden className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {stars.slice(1).map((s, i) => (
+            <line
+              key={s.label}
+              x1={stars[i].x}
+              y1={stars[i].y}
+              x2={s.x}
+              y2={s.y}
+              stroke="oklch(1 0 0 / 0.25)"
+              strokeWidth="1"
+              strokeDasharray="4 6"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+      )}
+
+      {/* the named stars */}
+      {stars.map((s, i) => (
+        <div
+          key={s.label}
+          className="absolute -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${s.x}%`, top: `${s.y}%` }}
+        >
+          <span
+            className="mx-auto block rounded-full motion-safe:animate-[qs-twinkle_4.5s_ease-in-out_infinite]"
+            style={{
+              width: 6 + Math.round(s.weight * 8),
+              height: 6 + Math.round(s.weight * 8),
+              background: s.color,
+              opacity: 0.55 + s.weight * 0.45,
+              boxShadow: `0 0 ${8 + Math.round(s.weight * 14)}px ${2 + Math.round(s.weight * 4)}px color-mix(in oklab, ${s.color} 55%, transparent)`,
+              animationDelay: `${(i * 0.9).toFixed(1)}s`,
+            }}
+          />
+          <span
+            className="mt-1.5 block whitespace-nowrap text-center font-serif text-[10.5px] italic"
+            style={{ color: `color-mix(in oklab, ${s.color} 45%, var(--foreground))` }}
+          >
+            {s.label.toLowerCase()}
+          </span>
+        </div>
+      ))}
+
+      {/* two fireflies, resting under reduced motion */}
+      <span aria-hidden className="qs-firefly hidden motion-safe:inline-block" style={{ left: "18%", top: "64%" }} />
+      <span
+        aria-hidden
+        className="qs-firefly hidden motion-safe:inline-block"
+        style={{ left: "82%", top: "30%", animationDelay: "4s" }}
+      />
+
+      {stars.length === 0 ? (
+        <div className="absolute inset-0 flex items-center justify-center px-10">
+          <p className="text-center font-serif text-[15px] italic leading-relaxed text-foreground/60">
+            check in for a few days and your sky will begin to take shape
+          </p>
+        </div>
+      ) : (
+        <p className="absolute inset-x-0 bottom-4 text-center font-serif text-[11px] italic text-foreground/45">
+          each star is a feeling you named
+        </p>
+      )}
+    </div>
   );
 }
 
-function TagWeights({ items, tint }: { items: { label: string; count: number }[]; tint: "mint" | "rose" }) {
+/* ── Small pieces ── */
+
+function Anchor({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="rounded-2xl bg-background/40 px-3 py-4 text-center">
+      <p className="font-serif text-2xl leading-none">{String(value)}</p>
+      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function TagWeights({ items, empty }: { items: { label: string; count: number }[]; empty: string }) {
   if (!items.length) {
-    return <p className="mt-3 text-sm italic text-muted-foreground">Nothing to measure yet. That's allowed.</p>;
+    return <p className="mt-4 text-sm italic text-muted-foreground">{empty}</p>;
   }
   const max = items[0].count;
-  const color = tint === "mint" ? "var(--mint)" : "var(--rose)";
   return (
-    <ul className="mt-3 space-y-2.5">
+    <ul className="mt-4 space-y-2.5">
       {items.map((it) => (
         <li key={it.label}>
           <div className="flex items-baseline justify-between text-sm">
@@ -151,7 +460,7 @@ function TagWeights({ items, tint }: { items: { label: string; count: number }[]
           <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-foreground/5">
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${(it.count / max) * 100}%`, background: color, opacity: 0.55 }}
+              style={{ width: `${(it.count / max) * 100}%`, background: tagTint(it.label), opacity: 0.55 }}
             />
           </div>
         </li>

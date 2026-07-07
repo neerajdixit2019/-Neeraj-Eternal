@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { listMoods, listJournal, getProfile, listPaths, logMood, saveJournal } from "@/lib/data.functions";
 import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions";
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
-import { Heart, Moon, Brain, MessageSquareOff, PenLine, Mail, Clock, ArrowRight, HeartHandshake, MessageCircle, Wind, X, AlertTriangle } from "lucide-react";
+import {
+  Heart, Moon, PenLine, Mail, Clock, ArrowRight, HeartHandshake, MessageCircle,
+  Wind, X, AlertTriangle, Settings, Shield, Eye, Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { VerseQuote } from "@/components/VerseQuote";
 import { dailyVerse } from "@/lib/verses";
@@ -43,22 +46,34 @@ function useLocalHour() {
   return hour;
 }
 
-function greetingFor(hour: number) {
-  if (hour < 5)  return { eyebrow: "Good late night", sub: "You're up late. Be tender with yourself." };
-  if (hour < 12) return { eyebrow: "Good morning",    sub: "A quiet start. No rush today." };
-  if (hour < 17) return { eyebrow: "Good afternoon",  sub: "However the day's gone — you're allowed a pause." };
-  if (hour < 21) return { eyebrow: "Good evening",    sub: "The day is softening. So can you." };
-  return            { eyebrow: "Good night",          sub: "Nothing more is required of you tonight." };
+// Time-of-day subline for the inner sky.
+function skyFor(hour: number) {
+  if (hour < 5)  return "A quiet room for the hour when everything feels louder than it is.";
+  if (hour < 12) return "The sky is still deciding what it will be today. So are you — no rush.";
+  if (hour < 17) return "However the day is moving, there is a pause here with your name on it.";
+  if (hour < 21) return "The light is lowering. Whatever the day held, it can be set down here.";
+  return            "A quiet room for the hour when everything feels louder than it is.";
 }
 
-// 1..5 mood orbs (heavy → light) with a matching serif word + description.
+// 1..5 mood orbs (heavy → light): a serif word + today's emotional weather line.
 const MOOD_ORBS = [
-  { score: 2,  word: "Heavy",   desc: "Something is pressing on you today." },
-  { score: 4,  word: "Cloudy",  desc: "Not clear yet. That's okay — arrive slowly." },
-  { score: 6,  word: "Settled", desc: "A quiet middle. Neither pulled up nor down." },
-  { score: 8,  word: "Open",    desc: "A little more room to breathe today." },
-  { score: 10, word: "Bright",  desc: "Something inside is lighter — let it be noticed." },
+  { score: 2,  word: "Heavy",   weather: "today is asking a lot of you. that's allowed." },
+  { score: 4,  word: "Cloudy",  weather: "a tender day. be gentle with the hours." },
+  { score: 6,  word: "Settled", weather: "somewhere in the middle. just here." },
+  { score: 8,  word: "Open",    weather: "a little ease today. let it be." },
+  { score: 10, word: "Bright",  weather: "a softness you can rest in. notice it." },
 ] as const;
+
+// One reflection star per day — rotated by day-of-year (computed client-side).
+const REFLECTION_STARS = [
+  "What am I still holding that I'm ready to release?",
+  "What is true today — not what fear is telling me?",
+  "What softened me today, even for a second?",
+  "What does the tired part of me actually want?",
+  "If this feeling could speak, what would it ask for?",
+  "What would I say to someone I love, if they were carrying this?",
+  "What small thing went unnoticed today that deserved a moment?",
+];
 
 // Feeling chips → deep-link into InnerMate with a pre-seeded opening line.
 const FEELING_CHIPS: { label: string; seed: string; tint: string }[] = [
@@ -74,30 +89,6 @@ const FEELING_CHIPS: { label: string; seed: string; tint: string }[] = [
   { label: "I want deeper wisdom",  seed: "Offer me one small piece of quiet wisdom that fits how I feel today.", tint: "var(--lavender)" },
 ];
 
-const INTENTS = [
-  {
-    title: "I want to text or check someone",
-    body: "Ten minutes with yourself first. No streaks, no shame.",
-    to: "/urge-shield" as const,
-    icon: MessageSquareOff,
-    tint: "var(--amber)",
-  },
-  {
-    title: "I am overthinking",
-    body: "Untangle one loop with InnerMate. Slow, gentle, brief.",
-    to: "/companion" as const,
-    icon: Brain,
-    tint: "var(--lavender)",
-  },
-  {
-    title: "Calm me down now",
-    body: "A 60-second breath, grounding, or the SOS toolbox.",
-    to: "/sos" as const,
-    icon: Wind,
-    tint: "var(--sky)",
-  },
-] as const;
-
 function Home() {
   const profile = useServerFn(getProfile);
   const moods = useServerFn(listMoods);
@@ -108,7 +99,7 @@ function Home() {
   const todayMood = m?.[0];
   const { enabled: privacy } = usePrivacyMode();
   const hour = useLocalHour();
-  const tod = hour == null ? null : greetingFor(hour);
+  const skyLine = hour == null ? null : skyFor(hour);
   const isEvening = hour != null && (hour >= 20 || hour < 4);
   const firstName = p?.display_name?.split(" ")[0];
   const weekStart = currentWeekStartISO();
@@ -117,132 +108,135 @@ function Home() {
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-      {/* Eyebrow + SOS pill */}
+      {/* 1 · Header row — brand eyebrow, SOS pill, sanctuary door */}
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[10.5px] uppercase tracking-[0.22em] text-muted-foreground">
-          my quiet space
-        </p>
-        <Link
-          to="/sos"
-          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px]"
-          style={{
-            borderColor: "color-mix(in oklab, var(--rose) 45%, transparent)",
-            background: "color-mix(in oklab, var(--rose) 14%, transparent)",
-            color: "color-mix(in oklab, var(--rose) 85%, var(--foreground))",
-          }}
-        >
-          <AlertTriangle className="h-3 w-3" /> I'm not safe
-        </Link>
+        <p className="qs-section-label">my quiet space</p>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/sos"
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px]"
+            style={{
+              borderColor: "color-mix(in oklab, var(--rose) 45%, transparent)",
+              background: "color-mix(in oklab, var(--rose) 14%, transparent)",
+              color: "color-mix(in oklab, var(--rose) 85%, var(--foreground))",
+            }}
+          >
+            <AlertTriangle className="h-3 w-3" /> I'm not safe
+          </Link>
+          <Link
+            to="/settings"
+            aria-label="The sanctuary — settings"
+            className="glass flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground"
+          >
+            <Settings className="h-3.5 w-3.5" strokeWidth={1.7} />
+          </Link>
+        </div>
       </div>
 
-      {/* Hero */}
-      <h1 className="mt-4 font-serif text-[2.05rem] font-light leading-[1.08] tracking-tight sm:text-[2.5rem]">
-        Come here before<br className="hidden sm:inline" /> you react{firstName ? `, ${firstName}` : ""}.
-      </h1>
-      <p className="mt-3 max-w-[34ch] text-[15px] leading-relaxed text-muted-foreground">
-        {tod?.sub ?? "A quiet place, ready when you are."} A quiet room for the moment between feeling something and doing something about it.
-      </p>
+      {/* 2 · Hero — today's inner sky */}
+      <div className="relative mt-7">
+        <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "4%", left: "76%" }} />
+        <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "48%", left: "91%", animationDelay: "-4.5s" }} />
+        <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "78%", left: "58%", animationDelay: "-9s" }} />
+        <p className="qs-section-label">
+          today's inner sky{firstName ? ` · for ${firstName}` : ""}
+        </p>
+        <h1 className="mt-3 font-serif text-[2.05rem] font-light leading-[1.08] tracking-tight sm:text-[2.5rem]">
+          Come here before<br className="hidden sm:inline" /> you <em className="italic text-primary">react</em>.
+        </h1>
+        <p className="mt-3 max-w-[38ch] text-[15px] leading-relaxed text-muted-foreground">
+          {skyLine ?? "A quiet place, ready when you are."}
+        </p>
+      </div>
 
-      {/* How are you arriving today? */}
+      {/* 3 · Emotional weather */}
       <MoodOrbs alreadyLogged={!!todayMood} />
 
-      {/* What is heavy on your mind — quick scratch to journal */}
+      {/* 4 · One reflection star */}
+      <ReflectionStar />
+
+      {/* 5 · Journal gateway — what is heavy on your mind */}
       <HeavyOnMind />
 
-      {/* Or begin from a feeling — deep-links into InnerMate */}
+      {/* 6 · Or begin from a feeling — deep-links into InnerMate */}
       <div className="mt-8">
-        <p className="text-[10.5px] uppercase tracking-[0.2em] text-muted-foreground">
-          or begin from a feeling
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <p className="qs-section-label">or begin from a feeling</p>
+        <div className="mt-3 flex flex-wrap gap-2">
           {FEELING_CHIPS.map((c) => (
-            <Link
-              key={c.label}
-              to="/companion"
-              search={{ seed: c.seed }}
-              className="group flex items-center gap-2.5 rounded-2xl border border-white/10 bg-card/50 px-3.5 py-3 text-[13px] text-foreground/90 backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-white/20"
-            >
+            <Link key={c.label} to="/companion" search={{ seed: c.seed }} className="qs-chip">
               <span
                 aria-hidden="true"
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: c.tint, boxShadow: `0 0 10px ${c.tint}` }}
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: c.tint, boxShadow: `0 0 8px ${c.tint}` }}
               />
-              <span className="leading-snug">{c.label}</span>
+              {c.label}
             </Link>
           ))}
         </div>
       </div>
 
-      {/* Quiet secondary intents (kept from before) */}
-      <p className="mt-10 text-[10.5px] uppercase tracking-[0.2em] text-muted-foreground">
-        or a small ritual
-      </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        {INTENTS.map((it) => (
-          <Link key={it.title} to={it.to} className="block">
-            <TactileCard tint={tintName(it.tint)} className="h-full transition hover:-translate-y-0.5">
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-full"
-                style={{ background: `color-mix(in oklab, ${it.tint} 45%, transparent)` }}
-              >
-                <it.icon className="h-4 w-4" />
-              </span>
-              <p className="mt-3 font-serif text-[17px] leading-snug">{it.title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{it.body}</p>
-              <p className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                Open <ArrowRight className="h-3 w-3" />
-              </p>
-            </TactileCard>
-          </Link>
-        ))}
+      {/* 7 · The companion */}
+      <div className="glass mt-8 rounded-3xl p-5 rise-in">
+        <p className="qs-section-label">the companion</p>
+        <p className="mt-2 font-serif text-[20px] font-light leading-snug">
+          Someone to think alongside — never to judge.
+        </p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          Whatever arrived with you today, you don't have to sort it alone.
+        </p>
+        <Link to="/companion" className="qs-pill-cta mt-4">
+          <MessageCircle className="h-4 w-4" strokeWidth={1.7} /> Talk to InnerMate
+        </Link>
       </div>
 
+      {/* 8 · Your week's constellation */}
       {arcHasAny && (
-        <div className="mt-10 flex flex-col items-start gap-2 text-foreground/70">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            How the week has moved
+        <div className="sky-panel mt-8 p-5">
+          <p className="qs-section-label">your week's constellation</p>
+          <p className="mt-2 font-serif text-[17px] font-light leading-snug">
+            Seven days, becoming a shape.
           </p>
-          <WeekArc days={arc!} className="-ml-1 w-full max-w-xs" />
+          <WeekArc days={arc!} className="-ml-1 mt-3 w-full max-w-xs" label="Your week's constellation" />
+          <Link
+            to="/insights"
+            className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
+          >
+            reveal this week's patterns <ArrowRight className="h-3 w-3" />
+          </Link>
         </div>
       )}
+
+      {/* 9 · The anchor — for when the wave rises */}
+      <div className="mt-8">
+        <p className="qs-section-label">when the wave rises</p>
+        <AnchorGrid isEvening={isEvening} />
+      </div>
 
       <OnThisDay />
 
       <DailyCheckinReminder />
 
+      <LetterWaiting enabled={!!(p as { weekly_letter_enabled?: boolean } | null | undefined)?.weekly_letter_enabled} />
+
       <ContinuePath />
 
       <TactileCard tint="lavender" className="hero-drift mt-9">
-        <VerseQuote initial={dailyVerse()} rotate variant="plain" />
-        <Link to="/reflect" className="mt-5 soft-arrow">
-          Begin a quiet reflection <ArrowRight className="h-4 w-4" />
+        <p className="qs-section-label">a small light for today</p>
+        <div className="mt-2">
+          <VerseQuote initial={dailyVerse()} rotate variant="plain" />
+        </div>
+        <Link
+          to="/reflect"
+          className="mt-4 inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
+        >
+          sit with it a while longer <ArrowRight className="h-3 w-3" />
         </Link>
       </TactileCard>
-
-      <LetterWaiting enabled={!!(p as { weekly_letter_enabled?: boolean } | null | undefined)?.weekly_letter_enabled} />
-
-      {isEvening && (
-        <Link to="/wind-down" className="mt-6 block">
-          <TactileCard tint="lavender" className="transition hover:-translate-y-0.5">
-            <div className="flex items-start gap-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background/70">
-                <Moon className="h-4 w-4" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-serif text-xl leading-snug">A wind-down before sleep.</p>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  Three breaths, and one thing you'd like to set down. Under two minutes.
-                </p>
-              </div>
-            </div>
-          </TactileCard>
-        </Link>
-      )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <Link to="/checkin" className="block">
           <TactileCard tint="sky" className="h-full transition hover:-translate-y-0.5">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Today's check-in</p>
+            <p className="qs-section-label">today's check-in</p>
             <p className={`mt-2 font-serif text-2xl ${privacy ? "blur-sm select-none" : ""}`}>
               {todayMood ? `${todayMood.mood_score}/10` : "Not yet"}
             </p>
@@ -253,7 +247,7 @@ function Home() {
         </Link>
         <Link to="/journal" className="block">
           <TactileCard tint="mint" className="h-full transition hover:-translate-y-0.5">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Last journal</p>
+            <p className="qs-section-label">the vault · last entry</p>
             <p className={`mt-2 font-serif text-lg leading-snug line-clamp-2 ${privacy ? "blur-sm select-none" : ""}`}>
               {j?.[0]?.title || j?.[0]?.body?.slice(0,80) || "Your page is waiting."}
             </p>
@@ -263,7 +257,7 @@ function Home() {
       </div>
 
       <div className="mt-10 flex items-center gap-3">
-        <p className="font-serif text-lg">Or something smaller</p>
+        <p className="font-serif text-lg font-light">Or something smaller</p>
         <div className="h-px flex-1 bg-border/60" />
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -272,19 +266,32 @@ function Home() {
         <SmallTile to="/sos" icon={Moon} label="Calm me down" tint="var(--sky)" />
       </div>
 
-      <p className="mt-12 text-center text-[13px] italic text-muted-foreground">
-        Whatever today is, you're allowed to meet it slowly.
+      {/* 11 · Closing */}
+      <p className="mt-12 text-center font-serif text-[15px] italic text-muted-foreground">
+        the pause is the practice.
       </p>
     </div>
   );
 }
 
-function tintName(v: string): "amber" | "lavender" | "mint" | "sky" | "rose" {
-  if (v.includes("amber")) return "amber";
-  if (v.includes("lavender")) return "lavender";
-  if (v.includes("mint")) return "mint";
-  if (v.includes("rose")) return "rose";
-  return "sky";
+function AnchorGrid({ isEvening }: { isEvening: boolean }) {
+  const tiles = [
+    { to: "/urge-shield" as const, icon: Shield, title: "Pause before action", line: "for the text you might regret" },
+    { to: "/wind-down" as const,   icon: Moon,   title: "Night reset",         line: isEvening ? "the day is done — set it down" : "for the night your mind won't quiet" },
+    { to: "/sos" as const,         icon: Wind,   title: "Calm my body",        line: "sixty seconds of slower" },
+    { to: "/reflect" as const,     icon: Eye,    title: "See it clearly",      line: "for the thought that keeps circling" },
+  ];
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-3">
+      {tiles.map((t) => (
+        <Link key={t.to} to={t.to} className="glass block rounded-3xl p-4 transition hover:-translate-y-0.5">
+          <t.icon className="h-4 w-4 text-foreground/80" strokeWidth={1.7} />
+          <p className="mt-2.5 font-serif text-[15.5px] leading-snug">{t.title}</p>
+          <p className="mt-1 text-[12px] leading-snug text-muted-foreground">{t.line}</p>
+        </Link>
+      ))}
+    </div>
+  );
 }
 
 function SmallTile({ to, icon: Icon, label, tint }: { to: "/journal"|"/heal"|"/sos"; icon: typeof Heart; label: string; tint: string }) {
@@ -326,13 +333,13 @@ function ContinuePath() {
             <HeartHandshake className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Continue · {path.title} · Day {step.day}
+            <p className="qs-section-label">
+              a path you're walking · {path.title} · day {step.day}
             </p>
             <p className="mt-1.5 font-serif text-xl leading-snug">{step.title}</p>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground line-clamp-2">{step.preview}</p>
             <p className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground">
-              Open today's step <ArrowRight className="h-3 w-3" />
+              take today's step <ArrowRight className="h-3 w-3" />
             </p>
           </div>
         </div>
@@ -388,9 +395,12 @@ function LetterWaiting({ enabled }: { enabled: boolean }) {
               <Mail className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="font-serif text-xl leading-snug">Your weekly letter is ready.</p>
+              <p className="qs-section-label">the moon cycle</p>
+              <p className="mt-1.5 font-serif text-xl leading-snug">
+                A letter from your week, written back to you.
+              </p>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                Open it when you have a quiet minute.
+                It's ready. Open it when you have a quiet minute.
               </p>
             </div>
           </div>
@@ -407,11 +417,14 @@ function LetterWaiting({ enabled }: { enabled: boolean }) {
             <Mail className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-serif text-xl leading-snug">Create your weekly letter.</p>
+            <p className="qs-section-label">the moon cycle</p>
+            <p className="mt-1.5 font-serif text-xl leading-snug">
+              A letter from your week, written back to you.
+            </p>
             {!expanded ? (
               <>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  Turn this week's check-ins and reflections into a gentle letter. It's created when you open it.
+                  Woven from this week's check-ins and reflections. It's written the moment you open it.
                 </p>
                 <button onClick={() => setExpanded(true)} className="mt-4 soft-arrow">
                   Begin the check-in <ArrowRight className="h-4 w-4" />
@@ -481,10 +494,10 @@ function OnThisDay() {
   };
   const to = kind === "memory" ? "/memories" : kind === "journal" ? "/journal" : "/insights";
   return (
-    <div className="mt-6">
+    <div className="mt-8">
       <TactileCard tint="amber" className="relative">
         <button
-          aria-label="Dismiss this memory card"
+          aria-label="Let this star rest for today"
           onClick={dismiss}
           className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background/60 hover:text-foreground"
         >
@@ -495,12 +508,12 @@ function OnThisDay() {
             <Clock className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{when}</p>
+            <p className="qs-section-label">a star from your sky · {when}</p>
             <p className="mt-1.5 font-serif text-[17px] leading-snug italic text-foreground/85">
               {kindLabel} — {preview}
             </p>
             <Link to={to} className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-              Visit it <ArrowRight className="h-3 w-3" />
+              revisit it <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </div>
@@ -509,7 +522,7 @@ function OnThisDay() {
   );
 }
 
-// ── New home widgets ────────────────────────────────────────────
+// ── Inner-sky widgets ───────────────────────────────────────────
 
 function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
   const qc = useQueryClient();
@@ -538,12 +551,10 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
 
   return (
     <div
-      className="mt-6 rounded-3xl border border-white/10 bg-card/55 p-5 backdrop-blur-xl rise-in"
+      className="mt-7 rounded-3xl border border-white/10 bg-card/55 p-5 backdrop-blur-xl rise-in"
       style={{ boxShadow: "0 20px 54px -34px oklch(0 0 0 / 0.7)" }}
     >
-      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        how are you arriving today?
-      </p>
+      <p className="qs-section-label">how are you arriving today?</p>
       <div className="mt-4 flex items-center justify-between gap-1.5">
         {MOOD_ORBS.map((o) => (
           <button
@@ -572,10 +583,42 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
           </span>
           <div className="min-w-0">
             <p className="font-serif text-[17px] leading-tight">{chosen.word}</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground leading-snug">{chosen.desc}</p>
+            <p className="mt-0.5 font-serif text-[13px] italic leading-snug text-muted-foreground">{chosen.weather}</p>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ReflectionStar() {
+  // Day-of-year computed client-side, mirroring the todayKey pattern, so SSR and client agree.
+  const [idx, setIdx] = useState<number | null>(null);
+  useEffect(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now.getTime() - start.getTime()) / 86400000);
+    setIdx(((dayOfYear % REFLECTION_STARS.length) + REFLECTION_STARS.length) % REFLECTION_STARS.length);
+  }, []);
+  if (idx == null) return null;
+  return (
+    <div
+      className="mt-4 rounded-3xl border p-5 backdrop-blur-xl fade-in"
+      style={{
+        borderColor: "color-mix(in oklab, var(--dawn) 26%, transparent)",
+        background:
+          "linear-gradient(150deg, color-mix(in oklab, var(--dawn) 12%, color-mix(in oklab, var(--card) 60%, transparent)), color-mix(in oklab, var(--card) 60%, transparent))",
+      }}
+    >
+      <p className="qs-section-label flex items-center gap-1.5">
+        <Sparkles className="h-3 w-3" strokeWidth={1.7} /> one reflection star
+      </p>
+      <p className="mt-2.5 font-serif text-[19px] font-light leading-snug">
+        {REFLECTION_STARS[idx]}
+      </p>
+      <Link to="/journal" className="qs-chip mt-4">
+        write from this <ArrowRight className="h-3 w-3" />
+      </Link>
     </div>
   );
 }
@@ -586,6 +629,7 @@ function HeavyOnMind() {
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [kept, setKept] = useState(false);
+  const hasText = value.trim().length > 0;
 
   const save = async () => {
     const body = value.trim();
@@ -621,22 +665,33 @@ function HeavyOnMind() {
         maxLength={2000}
         className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-background/40 px-4 py-3 font-serif text-[15px] italic leading-relaxed text-foreground/90 placeholder:text-muted-foreground/70 focus:border-white/25 focus:outline-none"
       />
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3">
         {kept ? (
           <span className="quiet-kept text-[12px] italic text-muted-foreground">Kept in your journal.</span>
+        ) : hasText ? (
+          <div className="fade-in">
+            <p className="qs-section-label">how would you like to be met?</p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <Link
+                to="/companion"
+                search={{ seed: value.trim().slice(0, 500) }}
+                className="qs-chip"
+              >
+                <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> talk it through with InnerMate
+              </Link>
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving}
+                className="qs-chip disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                <PenLine className="h-3.5 w-3.5" strokeWidth={1.7} /> {saving ? "keeping…" : "just keep it here"}
+              </button>
+            </div>
+          </div>
         ) : (
-          <span className="text-[11px] text-muted-foreground">Saves quietly to your journal.</span>
+          <span className="text-[11px] text-muted-foreground">Saves quietly to your journal, whenever you're ready.</span>
         )}
-        <Button
-          type="button"
-          onClick={save}
-          disabled={saving || !value.trim()}
-          className="rounded-full"
-          size="sm"
-        >
-          <PenLine className="mr-1 h-3.5 w-3.5" />
-          {saving ? "Keeping…" : "Keep this"}
-        </Button>
       </div>
     </div>
   );

@@ -49,42 +49,57 @@ function PathDetail() {
   const fn = useServerFn(getPath);
   const cmp = useServerFn(completeStep);
   const { data } = useQuery({ queryKey: ["path", slug], queryFn: () => fn({ data: { slug } }) });
-  if (!data?.path) return <div className="px-6 py-12">Path not found.</div>;
+  if (!data?.path) {
+    return (
+      <div className="px-6 py-12 text-sm text-muted-foreground">
+        That path isn't here. <Link to="/heal" className="underline">Back to all paths</Link>.
+      </div>
+    );
+  }
 
   const completed = new Set(data.progress?.completed_steps ?? []);
 
   return (
     <div className="motion-calm mx-auto max-w-2xl px-5 py-8 sm:px-8">
-      <Link to="/heal" className="text-sm text-muted-foreground">← all paths</Link>
-      <h1 className="mt-4 font-serif text-3xl sm:text-4xl">{data.path.title}</h1>
-      <p className="mt-3 text-muted-foreground">{data.path.description}</p>
+      <Link to="/heal" className="text-sm text-muted-foreground transition hover:text-foreground">← all paths</Link>
+      <p className="qs-section-label mt-8">gentle guided paths</p>
+      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight sm:text-4xl">{data.path.title}</h1>
+      <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{data.path.description}</p>
 
       <div className="mt-10 space-y-4">
         {data.steps.map(s => {
           const isDone = completed.has(s.day_number);
+          const markDone = async () => {
+            await cmp({ data: { path_id: data.path!.id, day: s.day_number } });
+            qc.invalidateQueries({ queryKey: ["path", slug] });
+            toast.success("One quiet step taken.");
+          };
           return (
-            <div key={s.id} className={`glass rounded-3xl p-6 ${isDone ? "opacity-60" : ""}`}>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Day {s.day_number}</p>
-              <h3 className="mt-1 font-serif text-xl">{s.title}</h3>
+            <div key={s.id} className={`glass rounded-3xl p-6 sm:p-7 ${isDone ? "opacity-60" : ""}`}>
+              <p className="qs-section-label">day {s.day_number}</p>
+              <h3 className="mt-1.5 font-serif text-xl font-light">{s.title}</h3>
               <p className="mt-3 text-sm leading-relaxed">{s.exercise_text}</p>
               <div className="mt-4 rounded-2xl bg-muted/50 p-4">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Journal prompt</p>
-                <p className="mt-1 font-serif">{s.journal_prompt}</p>
+                <p className="qs-section-label">journal prompt</p>
+                <p className="mt-1.5 font-serif italic">{s.journal_prompt}</p>
               </div>
-              <Button
-                variant={isDone ? "secondary" : "default"}
-                className="mt-4 rounded-full"
-                onClick={async () => {
-                  await cmp({ data: { path_id: data.path!.id, day: s.day_number } });
-                  qc.invalidateQueries({ queryKey: ["path", slug] });
-                  toast.success("One quiet step taken.");
-                }}>
-                {isDone ? <><Check className="mr-1 h-4 w-4" />Completed</> : "Mark complete"}
-              </Button>
+              {isDone ? (
+                <Button variant="secondary" className="mt-5 rounded-full" onClick={markDone}>
+                  <Check className="mr-1 h-4 w-4" />walked
+                </Button>
+              ) : (
+                <button className="qs-pill-cta mt-5" onClick={markDone}>
+                  {completed.size === 0 && s.day_number === 1 ? "begin this path" : "continue this step"}
+                </button>
+              )}
             </div>
           );
         })}
       </div>
+
+      <p className="mt-12 text-center font-serif text-[13.5px] italic text-muted-foreground">
+        one quiet day at a time.
+      </p>
     </div>
   );
 }

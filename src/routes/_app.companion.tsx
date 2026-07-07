@@ -7,7 +7,7 @@ import { getProfile, setCompanionTone, listMoods } from "@/lib/data.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Mic, MicOff, RotateCcw, Languages, History, Settings2, Search, X } from "lucide-react";
+import { Plus, Trash2, Mic, MicOff, RotateCcw, Languages, History, Settings2, Search, X, ArrowLeft, ArrowUp } from "lucide-react";
 import companionMark from "@/assets/companion-mark.png";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -29,7 +29,6 @@ import {
   PromptInputButton,
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
-import { Shimmer } from "@/components/ai-elements/shimmer";
 import {
   Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
@@ -123,6 +122,19 @@ const SUGGESTIONS_BY_TOD: Record<"morning" | "afternoon" | "evening" | "night", 
     "A wind-down before sleep",
   ],
 };
+
+// Empty-state invitations — quiet openings, no wrong door.
+const EMPTY_STATE_CHIPS = [
+  "help me put the day down",
+  "something is still tugging at me",
+  "i don't know where to start",
+];
+
+// Bubble skins — dawn-tinted glass for InnerMate, quiet forest for the writer.
+const ASSISTANT_BUBBLE =
+  "rounded-[20px_20px_20px_6px] border border-white/[0.07] bg-[linear-gradient(150deg,color-mix(in_oklab,var(--dawn)_13%,var(--card))_0%,var(--card)_70%)] px-4 py-3 shadow-[0_18px_38px_-26px_rgb(0_0_0/0.7)] backdrop-blur-md";
+const USER_BUBBLE =
+  "group-[.is-user]:rounded-[20px_20px_6px_20px] group-[.is-user]:bg-[var(--forest-mid)] group-[.is-user]:text-foreground group-[.is-user]:border group-[.is-user]:border-white/[0.05]";
 
 // "Silent specialists" — a quick way to steer the mode without typing.
 const SPECIALISTS: { mode: Mode; label: string; hint: string; seed: string }[] = [
@@ -571,6 +583,15 @@ function Companion() {
     <div className="relative mx-auto flex h-[100dvh] max-w-3xl flex-col md:h-screen">
       {/* Header */}
       <header className="flex items-center gap-2 px-4 py-3 sm:px-5">
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label="Back to home"
+          className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-card/40 backdrop-blur-md hover:bg-card/70"
+          onClick={() => navigate({ to: "/home" })}
+        >
+          <ArrowLeft className="h-4 w-4" strokeWidth={1.7} />
+        </Button>
         <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
           <SheetTrigger asChild>
             <Button size="icon" variant="ghost" aria-label="Conversation history" className="h-9 w-9 rounded-full">
@@ -633,13 +654,15 @@ function Companion() {
           </SheetContent>
         </Sheet>
 
-        <img src={companionMark} alt="" width={32} height={32} className="h-8 w-8 shrink-0 rounded-full" loading="lazy" />
+        <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--dawn)_16%,var(--card))] ring-1 ring-white/[0.18]">
+          <img src={companionMark} alt="" width={36} height={36} className="h-full w-full rounded-full" loading="lazy" />
+        </span>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif text-[15px] font-medium leading-tight truncate text-foreground">
             InnerMate
           </h1>
-          <p className="text-[11px] leading-tight truncate text-muted-foreground">
-            {thread?.conversation?.title || "A quiet companion"}
+          <p className="text-[11px] italic leading-tight truncate text-muted-foreground">
+            {thread?.conversation?.title || "a calm companion"}
           </p>
         </div>
 
@@ -650,8 +673,8 @@ function Companion() {
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64">
-            <p className="text-xs font-medium text-foreground">Tone</p>
-            <p className="text-[11px] text-muted-foreground mb-3">How should InnerMate speak?</p>
+            <p className="qs-section-label">tone</p>
+            <p className="mt-1 mb-3 text-[11px] text-muted-foreground">How should InnerMate meet you?</p>
             <div className="space-y-1.5">
               {TONE_STYLE_CHIPS.map(chip => {
                 const active = selectedTone === chip.value;
@@ -688,66 +711,58 @@ function Companion() {
               transition={{ duration: 0.4 }}
               className="flex flex-col items-center text-center pt-8 pb-4 sm:pt-12"
             >
-              {/* Soft dawn hero */}
-              <div className="relative mb-6 flex h-24 w-24 items-center justify-center">
+              {/* Glowing companion mark */}
+              <div className="relative mb-7 flex h-24 w-24 items-center justify-center">
                 <span
                   aria-hidden
-                  className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_45%,color-mix(in_oklab,var(--primary)_35%,transparent),transparent_70%)] blur-md"
+                  className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_45%,color-mix(in_oklab,var(--dawn)_38%,transparent),transparent_72%)] blur-lg motion-safe:animate-[qs-breathe_7s_ease-in-out_infinite]"
                 />
                 <span
                   aria-hidden
-                  className="qs-orb absolute inset-3 rounded-full bg-gradient-to-br from-[#eadbdd]/60 via-[#c8b0d0]/45 to-[#8a7aa8]/40"
+                  className="absolute inset-2.5 rounded-full bg-[color-mix(in_oklab,var(--dawn)_14%,var(--card))] ring-1 ring-white/[0.18]"
                 />
                 <img
                   src={companionMark}
                   alt=""
-                  width={56}
-                  height={56}
-                  className="relative h-14 w-14 rounded-full opacity-95"
+                  width={66}
+                  height={66}
+                  className="relative h-[66px] w-[66px] rounded-full"
                   loading="lazy"
                 />
               </div>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
-                {greeting.eyebrow}
-              </p>
-              <h2 className="mt-3 max-w-sm font-serif text-[1.6rem] font-light leading-snug text-foreground sm:text-[1.85rem]">
-                What's sitting quietly inside you today?
+              <p className="qs-section-label">{greeting.eyebrow}</p>
+              <h2 className="mt-3 max-w-sm font-serif text-[1.6rem] font-light leading-snug tracking-tight text-foreground sm:text-[1.85rem]">
+                What's sitting with you today?
               </h2>
               <p className="mt-4 max-w-xs text-[13.5px] leading-relaxed text-muted-foreground">
-                {greeting.line} Begin anywhere — there's no wrong way to start.
+                {greeting.line} Begin anywhere. There's no wrong way to start.
               </p>
 
+              <div className="mt-7 flex max-w-md flex-wrap justify-center gap-2">
+                {EMPTY_STATE_CHIPS.map((label) => (
+                  <button key={label} type="button" onClick={() => onSuggestion(label)} className="qs-chip">
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               {/* Silent specialists strip */}
-              <div className="mt-7 w-full max-w-lg">
-                <p className="mb-2 text-[10px] uppercase tracking-[0.24em] text-muted-foreground/80">
-                  Or ask InnerMate to…
-                </p>
+              <div className="mt-8 w-full max-w-lg">
+                <p className="qs-section-label mb-2.5">or ask InnerMate to…</p>
                 <div className="flex flex-wrap justify-center gap-1.5">
                   {SPECIALISTS.map((s) => (
                     <button
                       key={s.mode}
+                      type="button"
                       onClick={() => { setLastMode(s.mode); onSuggestion(s.seed); }}
-                      className="group inline-flex flex-col items-center rounded-2xl border border-border/50 bg-card/50 px-3 py-2 text-left backdrop-blur-sm transition hover:-translate-y-px hover:border-primary/35 hover:bg-card"
+                      className="qs-chip"
                       title={s.hint}
                     >
-                      <span className="text-[12.5px] font-medium text-foreground/90">{s.label}</span>
-                      <span className="text-[10.5px] italic text-muted-foreground/80 group-hover:text-muted-foreground">{s.hint}</span>
+                      {s.label}
+                      <span className="text-[10.5px] italic text-muted-foreground/70">{s.hint}</span>
                     </button>
                   ))}
                 </div>
-              </div>
-
-              <p className="mt-6 text-[10px] uppercase tracking-[0.24em] text-muted-foreground/80">Or start with…</p>
-              <div className="mt-2 flex flex-wrap justify-center gap-2 max-w-md">
-                {personalizedReplies.slice(0, 6).map(r => (
-                  <button
-                    key={r.label}
-                    onClick={() => onSuggestion(r.label)}
-                    className="rounded-full border border-border/60 bg-card/60 px-4 py-2 text-[13px] text-foreground/90 backdrop-blur-sm transition hover:-translate-y-px hover:border-primary/30 hover:bg-card"
-                  >
-                    {r.label}
-                  </button>
-                ))}
               </div>
               {lastConv && (
                 <button
@@ -771,13 +786,20 @@ function Companion() {
                   >
                     <Message from={m.role}>
                       {m.role === "assistant" && m.pending ? (
-                        <MessageContent>
-                          <Shimmer className="text-sm">
-                            {(m.phase && m.phase !== "ready" ? PHASE_COPY[m.phase] : "Quietly thinking") + "…"}
-                          </Shimmer>
+                        <MessageContent className={ASSISTANT_BUBBLE}>
+                          <span className="flex items-center gap-2.5 py-0.5">
+                            <span aria-hidden className="flex items-center gap-1">
+                              <span className="qs-typing-dot" />
+                              <span className="qs-typing-dot" style={{ animationDelay: "0.18s" }} />
+                              <span className="qs-typing-dot" style={{ animationDelay: "0.36s" }} />
+                            </span>
+                            <span className="text-xs italic text-muted-foreground">
+                              {(m.phase && m.phase !== "ready" ? PHASE_COPY[m.phase] : "Quietly thinking") + "…"}
+                            </span>
+                          </span>
                         </MessageContent>
                       ) : m.role === "assistant" ? (
-                        <MessageContent>
+                        <MessageContent className={ASSISTANT_BUBBLE}>
                           <MessageResponse>{m.content}</MessageResponse>
                           {isLatestCompletedAssistant && (
                             <>
@@ -794,7 +816,7 @@ function Companion() {
                                       if (chip.to) navigate({ to: chip.to });
                                       else if (chip.prompt) onSuggestion(chip.prompt);
                                     }}
-                                    className="rounded-full border border-border/60 bg-card/40 px-3 py-1 text-[11px] text-muted-foreground transition hover:border-primary/30 hover:bg-card hover:text-foreground"
+                                    className="qs-chip"
                                   >
                                     {chip.label}
                                   </button>
@@ -810,7 +832,7 @@ function Companion() {
                                   <button
                                     key={r.label}
                                     onClick={() => onSuggestion(r.label)}
-                                    className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] text-foreground/90 transition hover:border-primary/40 hover:bg-primary/10"
+                                    className="qs-chip"
                                   >
                                     {r.label}
                                   </button>
@@ -820,7 +842,7 @@ function Companion() {
                           )}
                         </MessageContent>
                       ) : (
-                        <MessageContent>{m.content}</MessageContent>
+                        <MessageContent className={USER_BUBBLE}>{m.content}</MessageContent>
                       )}
                     </Message>
                   </motion.div>
@@ -858,10 +880,11 @@ function Companion() {
 
         <div ref={formRef} className="mx-auto max-w-2xl">
           <PromptInput
+            className="[&>div]:rounded-[24px] [&>div]:border-white/10 [&>div]:bg-card/45 [&>div]:shadow-[0_18px_44px_-28px_rgb(0_0_0/0.75)] [&>div]:backdrop-blur-xl"
             onSubmit={(msg) => { void send(msg.text || draft); }}
           >
             <PromptInputTextarea
-              
+              className="bg-transparent"
               value={draft}
               onChange={(e) => setDraft(e.currentTarget.value)}
               placeholder={listening ? "Listening… speak gently" : "What is here right now?"}
@@ -921,7 +944,10 @@ function Companion() {
                 status={sendStatus}
                 disabled={!draft.trim() && sendStatus === "ready"}
                 onStop={() => { abortRef.current?.abort(); }}
-              />
+                className="h-9 w-9 rounded-full bg-[linear-gradient(140deg,var(--dawn),color-mix(in_oklab,var(--dawn)_78%,oklch(0.6_0.05_100)))] text-[oklch(0.26_0.02_155)] shadow-[0_12px_26px_-14px_color-mix(in_oklab,var(--dawn)_70%,transparent)] hover:brightness-110"
+              >
+                {sendStatus === "ready" ? <ArrowUp className="h-4 w-4" strokeWidth={1.7} /> : null}
+              </PromptInputSubmit>
             </PromptInputFooter>
           </PromptInput>
           <p className="mt-2 text-center text-[10px] italic text-muted-foreground">

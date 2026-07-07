@@ -88,10 +88,11 @@ function LetterPage() {
         <ArrowLeft className="h-3 w-3" /> Home
       </Link>
 
-      <p className="mt-10 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+      <p className="qs-section-label mt-10">the moon cycle · a letter from your week</p>
+      <p className="mt-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
         Week of {dateStr}
       </p>
-      <div className="mt-1 h-px w-12 bg-border/70" />
+      <div className="mt-2 h-px w-12 bg-border/70" />
 
       {letter.arc && letter.arc.some((v) => v != null) && (
         <div className="mt-6 text-foreground/70">

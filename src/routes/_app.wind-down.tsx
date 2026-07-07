@@ -52,9 +52,21 @@ function WindDown() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background px-6 text-center">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(180deg, color-mix(in oklab, var(--background) 68%, transparent) 0%, color-mix(in oklab, var(--background) 90%, transparent) 100%), url(/night-sky.jpg) center / cover no-repeat",
+        }}
+      />
       <Link to="/home" className="absolute right-5 top-5 text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground">
         close
       </Link>
+      <div className="pointer-events-none absolute inset-x-0 top-7 px-16">
+        <p className="qs-section-label">the anchor · for the end of the day</p>
+        <p className="mt-1.5 font-serif text-lg font-light text-foreground/80">Night reset</p>
+      </div>
 
       {phase === "breath" && (
         <div className="flex flex-col items-center">

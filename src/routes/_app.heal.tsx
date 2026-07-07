@@ -51,7 +51,7 @@ const MOODS: Record<string, Mood> = {
     dotOn: "var(--rose)",
     dotOff: "color-mix(in oklab, var(--rose) 22%, transparent)",
     glyph: (
-      <svg viewBox="0 0 48 48" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg viewBox="0 0 48 48" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M24 38c-7-4.5-13-9.5-13-17a7 7 0 0 1 13-3.7A7 7 0 0 1 37 21c0 7.5-6 12.5-13 17z" />
       </svg>
     ),
@@ -65,7 +65,7 @@ const MOODS: Record<string, Mood> = {
     dotOn: "var(--mint)",
     dotOff: "color-mix(in oklab, var(--mint) 22%, transparent)",
     glyph: (
-      <svg viewBox="0 0 48 48" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <svg viewBox="0 0 48 48" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <path d="M10 28c4-3 6 3 10 0s6 3 10 0 6 3 10 0" />
         <path d="M10 20c4-3 6 3 10 0s6 3 10 0 6 3 10 0" />
       </svg>
@@ -80,7 +80,7 @@ const MOODS: Record<string, Mood> = {
     dotOn: "var(--lavender)",
     dotOff: "color-mix(in oklab, var(--lavender) 22%, transparent)",
     glyph: (
-      <svg viewBox="0 0 48 48" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <svg viewBox="0 0 48 48" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <circle cx="24" cy="24" r="14" />
         <circle cx="24" cy="24" r="7" />
         <circle cx="24" cy="24" r="1.5" fill="currentColor" />
@@ -96,7 +96,7 @@ const MOODS: Record<string, Mood> = {
     dotOn: "var(--sky)",
     dotOff: "color-mix(in oklab, var(--sky) 22%, transparent)",
     glyph: (
-      <svg viewBox="0 0 48 48" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg viewBox="0 0 48 48" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M34 30a12 12 0 1 1-16-16 10 10 0 0 0 16 16z" />
       </svg>
     ),
@@ -110,7 +110,7 @@ const MOODS: Record<string, Mood> = {
     dotOn: "var(--amber)",
     dotOff: "color-mix(in oklab, var(--amber) 22%, transparent)",
     glyph: (
-      <svg viewBox="0 0 48 48" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg viewBox="0 0 48 48" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 30c0-4 4-7 10-7s10 3 10 7" />
         <circle cx="18" cy="18" r="3.5" />
         <circle cx="30" cy="18" r="3.5" />
@@ -151,11 +151,11 @@ function HealList() {
 
   return (
     <div className="motion-calm mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">For the tender days</p>
-      <h1 className="mt-3 font-serif text-3xl leading-tight sm:text-[2.6rem]">Take it slow. You're allowed.</h1>
+      <p className="qs-section-label">gentle guided paths</p>
+      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight sm:text-[2.6rem]">Walk it slowly.</h1>
       <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-        These aren't programs or fixes — just small, kind things to try, one
-        quiet day at a time. Start one, pause it, come back later. Your pace.
+        A few unhurried paths, one small step a day. Begin when you're ready;
+        pause whenever you need.
       </p>
 
       {inProgress && (
@@ -167,35 +167,35 @@ function HealList() {
             boxShadow: "0 20px 50px -28px color-mix(in oklab, var(--foreground) 22%, transparent)",
           }}
         >
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Where you left off</p>
-          <h2 className="mt-2 font-serif text-2xl sm:text-[1.7rem]">{inProgress.path.title}</h2>
+          <p className="qs-section-label">where you left off</p>
+          <h2 className="mt-2 font-serif text-2xl font-light sm:text-[1.7rem]">{inProgress.path.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Day {inProgress.current?.day ?? inProgress.done + 1} of {inProgress.path.duration_days}
             {inProgress.current ? ` · ${inProgress.current.title}` : ""}
           </p>
           {inProgress.current && (
-            <p className="mt-4 max-w-xl text-[15px] leading-relaxed">
-              {inProgress.current.preview}
+            <p className="mt-4 max-w-xl font-serif text-[15px] italic leading-relaxed text-foreground/85">
+              today · {inProgress.current.preview}
             </p>
           )}
           <Link
             to="/heal/$slug"
             params={{ slug: inProgress.path.slug }}
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:opacity-90"
+            className="qs-pill-cta mt-6"
           >
-            Continue today's step <ArrowRight className="h-4 w-4" />
+            continue today's step <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       )}
 
       {!inProgress && (
         <p className="mt-8 rounded-2xl border border-dashed border-border/70 px-5 py-4 text-sm text-muted-foreground">
-          Nothing started yet — these are here whenever you need them.
+          Nothing started yet. These paths keep — begin whenever you're ready.
         </p>
       )}
 
       <div className="mt-10 flex items-center gap-3">
-        <p className="font-serif text-lg">A few quiet paths</p>
+        <p className="qs-section-label">the paths</p>
         <div className="h-px flex-1 bg-border/60" />
       </div>
 
@@ -207,53 +207,52 @@ function HealList() {
           const started = done > 0;
           const finished = done >= p.duration_days;
           const first = data.firstSteps?.[p.id];
+          const current = started && !finished ? data.currentSteps?.[p.id] : null;
+          const todayStep = current ?? first ?? null;
           const stateLine = finished
-            ? "You finished this. Revisit anytime."
+            ? "finished, gently. revisit anytime."
             : started
-              ? `Continue — day ${done + 1} of ${p.duration_days}`
-              : "Begin when you're ready";
+              ? `continue — day ${done + 1} of ${p.duration_days}`
+              : "begin when you're ready";
 
           return (
             <Link
               key={p.id}
               to="/heal/$slug"
               params={{ slug: p.slug }}
-              className="group relative block overflow-hidden rounded-[28px] border p-7 transition hover:-translate-y-0.5 sm:p-8"
-              style={{
-                background: mood.tint,
-                borderColor: mood.ring,
-                boxShadow: "0 16px 40px -30px color-mix(in oklab, var(--foreground) 30%, transparent)",
-              }}
+              className="glass group relative block overflow-hidden rounded-[28px] p-7 transition hover:-translate-y-0.5 sm:p-8"
+              style={{ borderColor: mood.ring }}
             >
-              <div className="absolute right-6 top-6 text-foreground/55 transition group-hover:text-foreground/80">
-                {mood.glyph}
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="qs-section-label">{p.theme}</p>
+                  <h3 className="mt-2 font-serif text-2xl font-light sm:text-[1.6rem]">{p.title}</h3>
+                </div>
+                {mood.glyph && (
+                  <span
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      background: `color-mix(in oklab, ${mood.dotOn} 20%, transparent)`,
+                      color: mood.dotOn,
+                    }}
+                  >
+                    {mood.glyph}
+                  </span>
+                )}
               </div>
 
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{p.theme}</p>
-              <p className="mt-2 max-w-[22rem] text-sm italic text-foreground/70">{mood.teaser}</p>
-
-              <h3 className="mt-3 font-serif text-2xl sm:text-[1.6rem]">{p.title}</h3>
-              <p className="mt-2 max-w-xl text-[14.5px] leading-relaxed text-muted-foreground">
+              <p className="mt-2 max-w-[22rem] font-serif text-sm italic text-foreground/70">{mood.teaser}</p>
+              <p className="mt-3 max-w-xl text-[14.5px] leading-relaxed text-muted-foreground">
                 {p.description}
               </p>
 
-              {first && (
-                <div
-                  className="mt-5 rounded-2xl border px-4 py-3.5"
-                  style={{
-                    background: "color-mix(in oklab, var(--card) 70%, transparent)",
-                    borderColor: "color-mix(in oklab, var(--border) 60%, transparent)",
-                  }}
-                >
-                  <p className="text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">
-                    Day 1 begins with
-                  </p>
-                  <p className="mt-1.5 font-serif text-[17px] leading-snug">{first.title}</p>
-                  <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">{first.preview}</p>
-                </div>
+              {todayStep && !finished && (
+                <p className="mt-4 font-serif text-[15px] italic leading-snug text-foreground/85">
+                  today · {todayStep.preview}
+                </p>
               )}
 
-              <p className="mt-5 text-[12px] text-muted-foreground">
+              <p className="mt-4 text-[12px] text-muted-foreground">
                 {mood.minutes} · {p.duration_days} gentle days · {mood.forWhom}
               </p>
 
@@ -264,7 +263,7 @@ function HealList() {
                     return (
                       <span
                         key={i}
-                        className="h-2 w-2 rounded-full transition"
+                        className="h-1.5 w-1.5 rounded-full transition"
                         style={{ background: filled ? mood.dotOn : mood.dotOff }}
                       />
                     );
@@ -280,8 +279,8 @@ function HealList() {
         })}
       </div>
 
-      <p className="mt-12 text-center text-[13px] italic text-muted-foreground">
-        Missing a day is part of healing too. Nothing here keeps score.
+      <p className="mt-12 text-center font-serif text-[13.5px] italic text-muted-foreground">
+        missing a day is part of the path. nothing here keeps score.
       </p>
     </div>
   );

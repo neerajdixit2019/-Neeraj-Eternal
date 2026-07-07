@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, BookHeart, HeartHandshake, MessageCircle, LifeBuoy, Settings, Eye, EyeOff, Images, Shield, HeartPulse } from "lucide-react";
+import { Home, BookHeart, HeartHandshake, MessageCircle, LifeBuoy, Settings, Eye, EyeOff, Shield, HeartPulse, Sparkles, Star } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,24 +10,24 @@ import { getProfile } from "@/lib/data.functions";
 
 export const Route = createFileRoute("/_app")({ component: AppLayout });
 
-// Desktop sidebar — full surface
+// Desktop sidebar — the whole universe, each place with its quiet name
 const nav = [
-  { to: "/home", label: "Home", icon: Home, desc: "Your quiet space, today" },
-  { to: "/companion", label: "InnerMate", icon: MessageCircle, desc: "A gentle conversation" },
-  { to: "/checkin", label: "Check-in", icon: HeartPulse, desc: "How you feel, in a minute" },
-  { to: "/journal", label: "Journal", icon: BookHeart, desc: "Write what you can't say" },
+  { to: "/home", label: "Home", icon: Home, desc: "Today's inner sky" },
+  { to: "/companion", label: "InnerMate", icon: MessageCircle, desc: "The companion" },
+  { to: "/checkin", label: "Check-in", icon: HeartPulse, desc: "Your inner weather" },
+  { to: "/journal", label: "Journal", icon: BookHeart, desc: "Your private vault" },
+  { to: "/insights", label: "Insights", icon: Sparkles, desc: "Your pattern constellation" },
   { to: "/heal", label: "Heal", icon: HeartHandshake, desc: "Gentle guided paths" },
-  { to: "/memories", label: "Memories", icon: Images, desc: "A shelf for what stays" },
+  { to: "/memories", label: "Memories", icon: Star, desc: "Your night sky" },
 ] as const;
 
-// Mobile bottom — six thumb-friendly essentials
+// Mobile bottom — five essentials; settings and grounding live on Home
 const mobileNav = [
   { to: "/home", label: "Home", icon: Home },
-  { to: "/checkin", label: "Check-in", icon: HeartPulse },
   { to: "/journal", label: "Journal", icon: BookHeart },
-  { to: "/heal", label: "Heal", icon: HeartHandshake },
-  { to: "/companion", label: "Companion", icon: MessageCircle },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/companion", label: "InnerMate", icon: MessageCircle },
+  { to: "/insights", label: "Insights", icon: Sparkles },
+  { to: "/memories", label: "Memories", icon: Star },
 ] as const;
 
 function AppLayout() {
@@ -132,7 +132,7 @@ function AppLayout() {
       {!path.startsWith("/companion") && (
       <nav
         aria-label="Primary"
-        className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-6 border-t border-border/60 bg-background/85 backdrop-blur-xl pb-[max(env(safe-area-inset-bottom),0.25rem)] md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t border-white/[0.06] bg-background/80 backdrop-blur-xl pb-[max(env(safe-area-inset-bottom),0.25rem)] md:hidden"
       >
         {mobileNav.map((n) => {
           const active = path === n.to || path.startsWith(n.to + "/");
@@ -141,25 +141,23 @@ function AppLayout() {
               key={n.to}
               to={n.to}
               aria-current={active ? "page" : undefined}
-              className={`group relative flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium outline-none transition-colors duration-200 ease-out focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 ${
+              className={`group relative flex min-h-[58px] flex-col items-center justify-center gap-1 px-1 py-2 text-[9.5px] font-medium outline-none transition-colors duration-200 ease-out focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 ${
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <span
                 aria-hidden="true"
-                className={`absolute top-0 h-[2px] w-8 rounded-full bg-primary transition-all duration-300 ease-out ${
-                  active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-50"
-                }`}
-              />
+                className="flex h-8 w-8 items-center justify-center transition-transform duration-200 ease-out group-active:scale-95"
+              >
+                <n.icon className="h-[20px] w-[20px]" strokeWidth={active ? 2 : 1.6} aria-hidden="true" focusable="false" />
+              </span>
+              <span className={`leading-none tracking-tight transition-opacity duration-200 ${active ? "opacity-100" : "opacity-70"}`}>{n.label}</span>
               <span
                 aria-hidden="true"
-                className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ease-out group-active:scale-95 ${
-                  active ? "bg-primary/10" : "bg-transparent group-hover:bg-muted/40"
+                className={`h-1 w-1 rounded-full bg-primary shadow-[0_0_8px_1px_color-mix(in_oklab,var(--dawn)_75%,transparent)] transition-opacity duration-200 ${
+                  active ? "opacity-100" : "opacity-0"
                 }`}
-              >
-                <n.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 1.75} aria-hidden="true" focusable="false" />
-              </span>
-              <span className="leading-none tracking-tight">{n.label}</span>
+              />
             </Link>
           );
         })}
