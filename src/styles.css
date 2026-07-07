@@ -179,7 +179,8 @@
     html { scroll-behavior: auto; }
   }
 
-  /* Landscape backdrop — one cached SVG, GPU-composited, no scroll repaint.
+  /* Landscape backdrop — moonlit mountains under an open sky.
+     One cached JPEG, GPU-composited, no scroll repaint.
      Rendered by <div class="app-bg"> in the root shell. */
   .app-bg {
     position: fixed;
@@ -187,46 +188,60 @@
     z-index: 0;
     pointer-events: none;
     background-color: var(--color-background);
-    background-image: url("/forest-dawn.jpg");
+    background-image: url("/night-mountains.jpg");
     background-repeat: no-repeat;
-    background-position: center top;
+    background-position: center 30%;
     background-size: cover;
     /* Promote to its own compositor layer so scrolling stays smooth. */
     transform: translateZ(0);
     will-change: transform;
     contain: strict;
   }
-  /* Forest veil — pulls the photo into deep evergreen, keeps a dawn glow at top */
+  /* Veil — the sky and ridges stay visible up top; the scene settles
+     into the app's ground color where content lives. A faint forest
+     wash bridges the photo's indigo into the evergreen palette. */
   .app-bg::after {
     content: "";
     position: absolute;
     inset: 0;
     background:
+      radial-gradient(135% 100% at 50% 18%, transparent 55%, oklch(0 0 0 / 0.28) 100%),
+      linear-gradient(color-mix(in oklab, var(--forest-mid) 9%, transparent), color-mix(in oklab, var(--forest-mid) 9%, transparent)),
       linear-gradient(180deg,
-        oklch(0 0 0 / 0.05) 0%,
-        color-mix(in oklab, var(--background) 30%, transparent) 28%,
-        color-mix(in oklab, var(--background) 78%, transparent) 60%,
-        var(--background) 100%);
+        color-mix(in oklab, var(--background) 24%, transparent) 0%,
+        color-mix(in oklab, var(--background) 14%, transparent) 20%,
+        color-mix(in oklab, var(--background) 30%, transparent) 44%,
+        color-mix(in oklab, var(--background) 58%, transparent) 64%,
+        color-mix(in oklab, var(--background) 86%, transparent) 82%,
+        var(--background) 98%);
     opacity: 1;
     transition: opacity 1.2s ease;
   }
-  body.tod-morning  .app-bg::after { opacity: 0.92; }
-  body.tod-afternoon .app-bg::after { opacity: 0.95; }
+  body.tod-morning  .app-bg::after { opacity: 0.93; }
+  body.tod-afternoon .app-bg::after { opacity: 0.96; }
   body.tod-evening  .app-bg::after { opacity: 0.98; }
   body.tod-night    .app-bg::after { opacity: 1; }
 
-  /* Ambient dawn glow — single warm halo at top, drifting mist */
+  /* Ambient light — moon halo lifted gold, moss breath at the ground,
+     drifting like slow mist */
   .app-bg::before {
     content: "";
     position: absolute;
     inset: -5%;
     background:
-      radial-gradient(60rem 38rem at 50% -10%, color-mix(in oklab, var(--dawn) 32%, transparent) 0%, transparent 65%),
-      radial-gradient(40rem 30rem at 20% 110%, color-mix(in oklab, var(--moss) 18%, transparent) 0%, transparent 70%);
-    filter: blur(8px);
-    opacity: 0.9;
+      radial-gradient(46rem 30rem at 50% 16%, color-mix(in oklab, var(--dawn) 15%, transparent) 0%, transparent 62%),
+      radial-gradient(40rem 28rem at 16% 108%, color-mix(in oklab, var(--moss) 16%, transparent) 0%, transparent 70%);
+    filter: blur(10px);
+    opacity: 0.85;
     pointer-events: none;
     animation: mistDrift 90s ease-in-out infinite alternate;
+  }
+  /* Morning and afternoon warm the sky toward dawn */
+  body.tod-morning .app-bg::before,
+  body.tod-afternoon .app-bg::before {
+    background:
+      radial-gradient(50rem 34rem at 50% 12%, color-mix(in oklab, var(--dawn) 26%, transparent) 0%, transparent 64%),
+      radial-gradient(40rem 28rem at 16% 108%, color-mix(in oklab, var(--moss) 18%, transparent) 0%, transparent 70%);
   }
   @keyframes mistDrift {
     0%   { transform: translate3d(0, 0, 0) scale(1); }
@@ -234,6 +249,29 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .app-bg::before { animation: none; }
+  }
+
+  /* Living sky — a few real twinkles and a rare shooting star,
+     rendered as spans inside .app-bg (aria-hidden, no pointer events) */
+  .app-bg-star {
+    position: absolute;
+    border-radius: 9999px;
+    background: oklch(0.97 0.008 95);
+    box-shadow: 0 0 8px 2px oklch(0.97 0.008 95 / 0.35);
+    animation: qs-twinkle 4.5s ease-in-out infinite;
+  }
+  .app-bg-shoot {
+    position: absolute;
+    width: 80px;
+    height: 1.5px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.9));
+    opacity: 0;
+    animation: qs-shoot 42s ease-in 9s infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-bg-star { animation: none; opacity: 0.55; }
+    .app-bg-shoot { animation: none; opacity: 0; }
   }
 
   /* Almost-invisible paper grain — the app should feel like paper, not glass */
@@ -298,6 +336,8 @@
     font-weight: 400;
     letter-spacing: -0.018em;
     line-height: 1.15;
+    /* stays readable over the open sky at the top of every screen */
+    text-shadow: 0 2px 18px oklch(0 0 0 / 0.35);
   }
   h1 { line-height: 1.08; }
   p { line-height: 1.7; }

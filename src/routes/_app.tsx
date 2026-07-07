@@ -34,6 +34,7 @@ function AppLayout() {
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [ready, setReady] = useState(false);
+  const [devPreview, setDevPreview] = useState(false);
   const { enabled: privacy, toggle } = usePrivacyMode();
   const profileFn = useServerFn(getProfile);
   const queryClient = useQueryClient();
@@ -57,6 +58,14 @@ function AppLayout() {
   }, [bgEnabled]);
 
   useEffect(() => {
+    // Dev-only walkthrough mode: view every screen without an account.
+    // import.meta.env.DEV is false in production builds, so this whole
+    // branch is stripped from the deployed app.
+    if (import.meta.env.DEV && window.localStorage.getItem("mqs-dev-preview") === "1") {
+      setDevPreview(true);
+      setReady(true);
+      return;
+    }
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { navigate({ to: "/login" }); return; }
       const { data: p } = await supabase.from("profiles").select("onboarding_completed").eq("id", data.session.user.id).maybeSingle();
@@ -125,6 +134,19 @@ function AppLayout() {
         {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
 
+      {devPreview && (
+        <button
+          onClick={() => { window.localStorage.removeItem("mqs-dev-preview"); window.location.href = "/login"; }}
+          className="fixed left-1/2 top-3 z-50 -translate-x-1/2 rounded-full border px-3.5 py-1.5 text-[11px] backdrop-blur"
+          style={{
+            borderColor: "color-mix(in oklab, var(--amber) 40%, transparent)",
+            background: "color-mix(in oklab, var(--background) 80%, transparent)",
+            color: "var(--amber)",
+          }}
+        >
+          dev preview — nothing saves · tap to exit
+        </button>
+      )}
       <main className={`flex-1 ${path.startsWith("/companion") ? "" : "pb-24"} md:pb-0`}>
         <Outlet />
       </main>

@@ -1,15 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { streamText, generateText, stepCountIs, tool, type ModelMessage } from "ai";
-import { z } from "zod";
+import { streamText, type ModelMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import {
   createLovableAiGatewayProvider,
   COMPANION_SYSTEM_PROMPT,
-  EMOTIONAL_RESET_PROMPT,
-  HABIT_PROMPT,
-  JOURNAL_PROMPT,
-  WISDOM_PROMPT,
 } from "@/lib/ai-gateway.server";
 import {
   AI_RATE_LIMITS,
@@ -21,7 +16,9 @@ import {
   logInvocation,
 } from "@/lib/ai-prompt-registry.server";
 
-const COMPANION_MODEL = "google/gemini-3-flash-preview";
+// One companion, one mind: the facets (steadying, building, the page,
+// deeper water) live inside the system prompt, not in separate sub-agents.
+const COMPANION_MODEL = "openai/gpt-5.5";
 const COMPANION_ROUTE = "companion.stream";
 
 const CRISIS_KEYWORDS = [
@@ -307,12 +304,20 @@ export const Route = createFileRoute("/api/companion")({
           .limit(20);
         const history = (historyDesc ?? []).slice().reverse();
 
-        const [moodsRes, journalRes] = await Promise.all([
-          supabase.from("mood_logs").select("mood_score, emotion_tags, note, created_at").order("created_at", { ascending: false }).limit(3),
-          supabase.from("journal_entries").select("title, body, created_at, is_ai_readable").eq("is_ai_readable", true).order("created_at", { ascending: false }).limit(1),
+        const [moodsRes, journalRes, profileRes, prevConvRes] = await Promise.all([
+          supabase.from("mood_logs").select("mood_score, emotion_tags, note, created_at").order("created_at", { ascending: false }).limit(6),
+          supabase.from("journal_entries").select("title, body, created_at, is_ai_readable").eq("is_ai_readable", true).order("created_at", { ascending: false }).limit(2),
+          supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
+          supabase
+            .from("ai_conversations")
+            .select("id, updated_at")
+            .neq("id", convId)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
         ]);
 
-        const [storyRes, memoriesRes] = await Promise.all([
+        const [storyRes, memoriesRes, prevMsgsRes] = await Promise.all([
           supabase.from("user_story").select("*").eq("user_id", userId).maybeSingle(),
           supabase
             .from("memories")
@@ -321,27 +326,60 @@ export const Route = createFileRoute("/api/companion")({
             .order("memory_date", { ascending: false, nullsFirst: false })
             .order("created_at", { ascending: false })
             .limit(3),
+          prevConvRes.data?.id
+            ? supabase
+                .from("ai_messages")
+                .select("role, content, created_at")
+                .eq("conversation_id", prevConvRes.data.id)
+                .order("created_at", { ascending: false })
+                .limit(4)
+            : Promise.resolve({ data: null }),
         ]);
 
-        const moodLine = (moodsRes.data ?? [])
+        const moods = moodsRes.data ?? [];
+        const moodLine = moods
+          .slice(0, 3)
           .map((m) => {
             const tags = (m.emotion_tags ?? []).slice(0, 3).join("/");
             return `${m.mood_score}/10${tags ? ` (${tags})` : ""}`;
           })
           .join(", ");
-        const lastJournal = journalRes.data?.[0];
-        const journalSnippet = lastJournal
-          ? `${lastJournal.title ?? ""}${lastJournal.title ? " — " : ""}${(lastJournal.body ?? "").slice(0, 140)}`.trim()
-          : "";
+        // Trajectory reads more human than raw numbers: compare the newest
+        // check-ins against the ones before them.
+        let moodTrend = "";
+        if (moods.length >= 4) {
+          const recent = moods.slice(0, 3).reduce((s, m) => s + m.mood_score, 0) / 3;
+          const before = moods.slice(3).reduce((s, m) => s + m.mood_score, 0) / (moods.length - 3);
+          moodTrend = recent - before > 0.8 ? "lifting lately" : before - recent > 0.8 ? "heavier lately" : "holding steady";
+        }
+        const journalSnippets = (journalRes.data ?? [])
+          .map((j) => `${j.title ?? ""}${j.title ? " — " : ""}${(j.body ?? "").slice(0, 140)}`.trim())
+          .filter(Boolean);
 
-        const hour = new Date().getHours();
+        const displayName = (profileRes.data?.display_name ?? "").trim();
+
+        // A short tail of their previous conversation, so a new chat can
+        // gently pick the thread back up instead of starting cold.
+        const prevMsgs = (prevMsgsRes.data ?? []).slice().reverse();
+        const prevAgeDays = prevConvRes.data?.updated_at
+          ? Math.max(0, Math.round((Date.now() - new Date(prevConvRes.data.updated_at).getTime()) / 86_400_000))
+          : null;
+        const prevThreadLines = prevMsgs.map((m) => {
+          const who = m.role === "user" ? "them" : "you";
+          return `${who}: ${(m.content ?? "").replace(/\s+/g, " ").slice(0, 110)}`;
+        });
+
+        const now = new Date();
+        const hour = now.getHours();
         const timeOfDay =
           hour < 5 ? "late night" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night";
+        const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
 
         const contextBrief = [
-          `Time of day: ${timeOfDay}.`,
-          moodLine ? `Recent moods on a 1–10 scale (1–2 very low, 3–4 heavy, 5–6 neutral, 7–8 steady, 9–10 peaceful), newest first: ${moodLine}.` : "",
-          journalSnippet ? `Last journal note: "${journalSnippet}".` : "",
+          `It is ${weekday} ${timeOfDay}.`,
+          displayName ? `Their name: ${displayName} (use sparingly, never in every reply).` : "",
+          moodLine ? `Recent moods on a 1–10 scale (1–2 very low, 3–4 heavy, 5–6 neutral, 7–8 steady, 9–10 peaceful), newest first: ${moodLine}${moodTrend ? ` — overall ${moodTrend}` : ""}.` : "",
+          journalSnippets.length ? `Recent journal notes: ${journalSnippets.map((s) => `"${s}"`).join(" · ")}.` : "",
         ].filter(Boolean).join(" ");
 
         // What the user has shared about themselves
@@ -368,6 +406,10 @@ export const Route = createFileRoute("/api/companion")({
           ? `\n\nMemories they chose to share: ${memoryLines.join(" / ")}`
           : "";
 
+        const prevThreadBlock = prevThreadLines.length
+          ? `\n\nTHREAD FROM THEIR LAST CONVERSATION (${prevAgeDays === 0 ? "earlier today" : prevAgeDays === 1 ? "yesterday" : `${prevAgeDays} days ago`} — silent background only; acknowledge at most once, only if clearly relevant to what they bring up now; never recite it):\n${prevThreadLines.join("\n")}`
+          : "";
+
         const honorRules = (storyLines.length || memoryLines.length)
           ? "\n\nRULES: If they shared 'how I like to be spoken to', honor it in every reply. Never pretend to remember anything they did not write here. Never speak AS or FOR any person they mentioned — you may acknowledge that someone matters to them, but you must never simulate that person's voice, imagine their thoughts, or compose messages from them."
           : "";
@@ -388,7 +430,7 @@ export const Route = createFileRoute("/api/companion")({
         const baseContext = contextBrief
           ? `${COMPANION_SYSTEM_PROMPT}\n\nCONTEXT (silent; do not quote unless asked): ${contextBrief}`
           : COMPANION_SYSTEM_PROMPT;
-        const systemWithContext = `${baseContext}${storyBlock}${memoryBlock}${honorRules}${toneModifier}`;
+        const systemWithContext = `${baseContext}${storyBlock}${memoryBlock}${prevThreadBlock}${honorRules}${toneModifier}`;
 
         const supportModifier = isSupport
           ? "\n\nThe user may be in elevated distress. Be extra gentle, do not problem-solve, and end your reply with one soft line reminding them that Tele-MANAS 14416 exists if things feel too heavy."
@@ -448,54 +490,6 @@ export const Route = createFileRoute("/api/companion")({
         }
 
         const gateway = createLovableAiGatewayProvider(key);
-        const subModel = gateway(COMPANION_MODEL);
-        const runSubAgent = async (system: string, context: string) => {
-          try {
-            const r = await generateText({
-              model: subModel,
-              system,
-              messages: [{ role: "user", content: context }],
-            });
-            return { text: r.text.trim() };
-          } catch (e) {
-            console.error("Sub-agent error:", e);
-            return { text: "" };
-          }
-        };
-        const subTools = {
-          emotional_reset: tool({
-            description:
-              "Consult for overwhelm, heartbreak, loneliness, anxiety, or urges to text/check/contact someone.",
-            inputSchema: z.object({
-              context: z.string().describe("Plain prose summary of the user's current emotional situation."),
-            }),
-            execute: async ({ context }) => runSubAgent(EMOTIONAL_RESET_PROMPT, context),
-          }),
-          habit_coach: tool({
-            description:
-              "Consult for routines, plans, discipline, sleep, focus, 7/30/90-day resets, or returning after a slip.",
-            inputSchema: z.object({
-              context: z.string().describe("Plain prose summary of what the user wants to build or restart."),
-            }),
-            execute: async ({ context }) => runSubAgent(HABIT_PROMPT, context),
-          }),
-          journal_coach: tool({
-            description:
-              "Consult when the user wants to reflect, write, sort facts from feelings, or process a memory on paper.",
-            inputSchema: z.object({
-              context: z.string().describe("Plain prose summary of what the user wants to reflect on."),
-            }),
-            execute: async ({ context }) => runSubAgent(JOURNAL_PROMPT, context),
-          }),
-          wisdom_coach: tool({
-            description:
-              "Consult sparingly when the user asks about meaning, purpose, attachment, suffering, or a deeper lens.",
-            inputSchema: z.object({
-              context: z.string().describe("Plain prose summary of what the user is wrestling with."),
-            }),
-            execute: async ({ context }) => runSubAgent(WISDOM_PROMPT, context),
-          }),
-        };
 
         // Register the exact system prompt + model combo we're about to use,
         // so the invocation log can point back to a stable version row.
@@ -511,8 +505,6 @@ export const Route = createFileRoute("/api/companion")({
           model: gateway(COMPANION_MODEL),
           system: systemFinal,
           messages,
-          tools: subTools,
-          stopWhen: stepCountIs(3),
         });
 
         const stream = new ReadableStream({
@@ -542,14 +534,13 @@ export const Route = createFileRoute("/api/companion")({
               }
             }
 
-            // Infer which inner specialist (if any) was consulted, so the UI can
-            // surface mode-appropriate follow-up chips.
+            // Infer which facet of InnerMate this turn leaned into, so the UI
+            // can surface mode-appropriate follow-up chips and the live facet
+            // line. One companion — the mode is a reading of the moment, not
+            // a separate helper.
             let mode:
               | "listen" | "reset" | "habit" | "journal"
               | "wisdom" | "decision" | "grounding" = "listen";
-            // Lightweight heuristic for decision/grounding moments — these
-            // don't have dedicated specialist tools, but the UI offers
-            // tailored follow-up chips for them.
             const lower = body.message.toLowerCase();
             const decisionHints = [
               "should i", "shall i", "what should", "do i ", "decide",
@@ -562,19 +553,31 @@ export const Route = createFileRoute("/api/companion")({
               "calm me", "calm down", "anxiety attack", "racing heart",
               "spiraling", "spiralling",
             ];
+            const resetHints = [
+              "urge", "impulse", "stop myself", "before i do something",
+              "keep checking", "her profile", "his profile", "their profile",
+              "delete the chat", "unblock", "stalking", "one more text",
+            ];
+            const habitHints = [
+              "habit", "routine", "discipline", "consistent", "every day",
+              "sleep schedule", "wake up early", "focus", "gym", "start again",
+              "restart", "get back on track", "how do i start",
+            ];
+            const journalHints = [
+              "journal", "write it", "writing", "write about", "unsent letter",
+              "on paper", "put into words", "facts from feelings",
+            ];
+            const wisdomHints = [
+              "meaning", "purpose", "wisdom", "perspective on", "attachment",
+              "let go of", "letting go", "karma", "a quote", "gita",
+              "why does life", "what's the point of it all",
+            ];
             if (decisionHints.some((k) => lower.includes(k))) mode = "decision";
             else if (groundingHints.some((k) => lower.includes(k))) mode = "grounding";
-            try {
-              const steps = await result.steps;
-              for (const step of steps) {
-                for (const call of step.toolCalls ?? []) {
-                  if (call.toolName === "emotional_reset") mode = "reset";
-                  else if (call.toolName === "habit_coach") mode = "habit";
-                  else if (call.toolName === "journal_coach") mode = "journal";
-                  else if (call.toolName === "wisdom_coach") mode = "wisdom";
-                }
-              }
-            } catch { /* noop */ }
+            else if (resetHints.some((k) => lower.includes(k))) mode = "reset";
+            else if (habitHints.some((k) => lower.includes(k))) mode = "habit";
+            else if (journalHints.some((k) => lower.includes(k))) mode = "journal";
+            else if (wisdomHints.some((k) => lower.includes(k))) mode = "wisdom";
             writeFrame(controller, "mode", mode);
 
             // Persist assistant message

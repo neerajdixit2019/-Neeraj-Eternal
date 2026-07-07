@@ -136,16 +136,17 @@ const ASSISTANT_BUBBLE =
 const USER_BUBBLE =
   "group-[.is-user]:rounded-[20px_20px_6px_20px] group-[.is-user]:bg-[var(--forest-mid)] group-[.is-user]:text-foreground group-[.is-user]:border group-[.is-user]:border-white/[0.05]";
 
-// "Silent specialists" — a quick way to steer the mode without typing.
-const SPECIALISTS: { mode: Mode; label: string; hint: string; seed: string }[] = [
-  { mode: "listen",    label: "Just listen",  hint: "hold what's here",         seed: "I just need you to listen for a moment." },
-  { mode: "reset",     label: "Reset",        hint: "pause an urge",            seed: "Help me pause before I do something I might regret." },
-  { mode: "grounding", label: "Ground me",    hint: "60-second calm",           seed: "Help me ground myself right now — I feel scattered." },
-  { mode: "decision",  label: "Decide",       hint: "sort a hard choice",       seed: "Help me think through a decision I'm stuck on." },
-  { mode: "habit",     label: "Tiny habit",   hint: "one small promise",        seed: "Help me pick one tiny thing I could do today." },
-  { mode: "journal",   label: "Journal",      hint: "write it out",             seed: "Help me write out what's underneath this." },
-  { mode: "wisdom",    label: "Wisdom",       hint: "a gentle perspective",     seed: "Give me a gentle perspective on what I'm feeling." },
-];
+// One companion, many facets. The facet line is InnerMate's living
+// presence in the header — it shifts with how the last reply met you.
+const FACETS: Record<Mode, { line: string; tint: string }> = {
+  listen:    { line: "listening, quietly",        tint: "var(--dawn)" },
+  grounding: { line: "grounding, together",       tint: "var(--mint)" },
+  reset:     { line: "steadying the wave",        tint: "var(--rose)" },
+  habit:     { line: "building something small",  tint: "var(--amber)" },
+  journal:   { line: "turning toward the page",   tint: "var(--sky)" },
+  wisdom:    { line: "in slightly deeper water",  tint: "var(--lavender)" },
+  decision:  { line: "slowing it down, together", tint: "var(--sky)" },
+};
 
 type QuickReply = {
   label: string;
@@ -661,9 +662,20 @@ function Companion() {
           <h1 className="font-serif text-[15px] font-medium leading-tight truncate text-foreground">
             InnerMate
           </h1>
-          <p className="text-[11px] italic leading-tight truncate text-muted-foreground">
-            {thread?.conversation?.title || "a calm companion"}
-          </p>
+          <motion.p
+            key={lastMode}
+            initial={{ opacity: 0, y: 2 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex items-center gap-1.5 text-[11px] italic leading-tight truncate text-muted-foreground"
+          >
+            <span
+              aria-hidden
+              className="h-1.5 w-1.5 flex-none rounded-full transition-colors duration-500"
+              style={{ background: FACETS[lastMode].tint, boxShadow: `0 0 6px ${FACETS[lastMode].tint}` }}
+            />
+            {FACETS[lastMode].line}
+          </motion.p>
         </div>
 
         <Popover>
@@ -746,24 +758,11 @@ function Companion() {
                 ))}
               </div>
 
-              {/* Silent specialists strip */}
-              <div className="mt-8 w-full max-w-lg">
-                <p className="qs-section-label mb-2.5">or ask InnerMate to…</p>
-                <div className="flex flex-wrap justify-center gap-1.5">
-                  {SPECIALISTS.map((s) => (
-                    <button
-                      key={s.mode}
-                      type="button"
-                      onClick={() => { setLastMode(s.mode); onSuggestion(s.seed); }}
-                      className="qs-chip"
-                      title={s.hint}
-                    >
-                      {s.label}
-                      <span className="text-[10.5px] italic text-muted-foreground/70">{s.hint}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* One companion — the facets live inside it, not as a menu */}
+              <p className="mt-8 max-w-[30ch] font-serif text-[13px] italic leading-relaxed text-muted-foreground/80">
+                One companion — it listens, steadies, helps you build, and
+                sits with you in deeper water when you need it.
+              </p>
               {lastConv && (
                 <button
                   onClick={() => setActiveId(lastConv.id)}

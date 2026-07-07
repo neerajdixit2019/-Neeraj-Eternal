@@ -14,6 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 let redirecting = false;
 function handleUnauthorized(error: unknown) {
   if (typeof window === "undefined") return;
+  // Dev-only walkthrough mode intentionally runs without a session —
+  // don't bounce it to /login. Stripped from production builds.
+  if (import.meta.env.DEV && window.localStorage.getItem("mqs-dev-preview") === "1") return;
   const msg = error instanceof Error ? error.message : String(error ?? "");
   if (!/unauthorized/i.test(msg)) return;
   if (redirecting) return;

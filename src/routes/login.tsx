@@ -80,6 +80,15 @@ function LoginPage() {
   };
 
   const signInWithGoogle = async () => {
+    // Lovable's OAuth proxy (/~oauth) only exists on the published site —
+    // on a local dev server that redirect dead-ends in a 404.
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      toast.info(
+        "Google sign-in only works on the published site. Here, use email and password below — a new account is created automatically.",
+      );
+      return;
+    }
     setLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
@@ -242,6 +251,19 @@ function LoginPage() {
             <p className="mt-6 text-center text-xs italic text-muted-foreground">
               New here? Just continue — we'll create your space.
             </p>
+
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.localStorage.setItem("mqs-dev-preview", "1");
+                  navigate({ to: "/home" });
+                }}
+                className="mt-4 w-full text-center text-xs text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline"
+              >
+                developer: preview the app without an account
+              </button>
+            )}
           </>
         )}
         </div>

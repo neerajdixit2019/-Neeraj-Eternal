@@ -11,6 +11,7 @@ import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { PerfDebugPanel } from "@/components/PerfDebugPanel";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -85,7 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "preload", as: "image", href: "/forest-dawn.jpg", type: "image/jpeg" },
+      { rel: "preload", as: "image", href: "/night-mountains.jpg", type: "image/jpeg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -119,8 +120,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="app-bg" aria-hidden="true" />
+        <div className="app-bg" aria-hidden="true">
+          <span className="app-bg-star" style={{ top: "7%", left: "16%", width: 2.5, height: 2.5, animationDelay: "0.8s", animationDuration: "4.6s" }} />
+          <span className="app-bg-star" style={{ top: "13%", left: "79%", width: 2, height: 2, animationDelay: "2.2s", animationDuration: "5.8s" }} />
+          <span className="app-bg-star" style={{ top: "4%", left: "56%", width: 1.5, height: 1.5, animationDelay: "4s", animationDuration: "6.6s" }} />
+          <span className="app-bg-star" style={{ top: "19%", left: "32%", width: 1.5, height: 1.5, animationDelay: "1.4s", animationDuration: "7.2s" }} />
+          <span className="app-bg-shoot" style={{ top: "9%", left: "-4%" }} />
+        </div>
         {children}
+        <Toaster position="top-center" />
         <PerfDebugPanel />
         <Scripts />
       </body>
