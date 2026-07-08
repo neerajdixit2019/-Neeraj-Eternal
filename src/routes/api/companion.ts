@@ -15,56 +15,13 @@ import {
   registerPromptVersion,
   logInvocation,
 } from "@/lib/ai-prompt-registry.server";
+import { classifyInnerMateMessage, toWireMode } from "@/lib/companion-risk";
+import { buildActiveDangerReply, buildSafetyCheckFallback } from "@/lib/crisis-resources";
 
 // One companion, one mind: the facets (steadying, building, the page,
 // deeper water) live inside the system prompt, not in separate sub-agents.
 const COMPANION_MODEL = "openai/gpt-5.5";
 const COMPANION_ROUTE = "companion.stream";
-
-const CRISIS_KEYWORDS = [
-  "kill myself", "suicide", "end my life", "want to die", "hurt myself",
-  "self harm", "self-harm", "cutting myself", "end it all",
-  "don't want to be here", "dont want to be here", "no reason to live",
-  "no point in living", "can't go on", "cant go on", "better off without me",
-  "want to disappear", "end everything", "give up on life", "take my own life",
-  "overdose", "jump off",
-  "marna chahta", "marna chahti", "jeena nahi", "khatam karna chahta", "zindagi khatam",
-];
-
-const SUPPORT_KEYWORDS = [
-  "hopeless", "worthless", "nobody would care", "what's the point",
-  "tired of everything", "can't take it anymore",
-];
-
-const CRISIS_REPLY = `I hear you, and I'm so glad you wrote those words instead of holding them alone. What you're feeling matters, and it deserves real, immediate care — more than I can give as a reflection guide.
-
-Please reach out right now to someone who can be with you:
-
-• India — Tele-MANAS: 14416 or 1-800-891-4416
-• Or contact your local emergency services
-
-You can also tap the SOS button in the app for a 60-second breath and grounding. You don't have to carry this minute by yourself.`;
-
-function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s']/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function matchesAny(text: string, keywords: string[]): boolean {
-  const n = normalize(text);
-  return keywords.some((k) => n.includes(normalize(k)));
-}
-
-function detectCrisis(text: string): boolean {
-  return matchesAny(text, CRISIS_KEYWORDS);
-}
-
-function detectSupport(text: string): boolean {
-  return matchesAny(text, SUPPORT_KEYWORDS);
-}
 
 /**
  * Hash an arbitrary string into a stable hex digest. Used to build
@@ -201,8 +158,8 @@ export const Route = createFileRoute("/api/companion")({
           conversationId = conv.id;
         }
 
-        // Look at recent user history so a crisis disclosure followed by
-        // "never mind" still keeps the careful tone.
+        // Classify with recent user history so a risk disclosure followed by
+        // a short answer ("safe" / "not safe") is understood in context.
         const { data: recentUserMsgs } = await supabase
           .from("ai_messages")
           .select("content")
@@ -210,9 +167,10 @@ export const Route = createFileRoute("/api/companion")({
           .eq("role", "user")
           .order("created_at", { ascending: false })
           .limit(2);
-        const recentUserText = [body.message, ...(recentUserMsgs ?? []).map((m) => m.content)];
-        const isCrisis = recentUserText.some(detectCrisis);
-        const isSupport = !isCrisis && detectSupport(body.message);
+        const risk = classifyInnerMateMessage(body.message, {
+          recentUserMessages: (recentUserMsgs ?? []).map((m) => m.content),
+        });
+        const isCrisis = risk.riskLevel === 3;
 
         // Save user message
         await supabase.from("ai_messages").insert({
@@ -220,7 +178,7 @@ export const Route = createFileRoute("/api/companion")({
           user_id: userId,
           role: "user",
           content: body.message,
-          risk_label: isCrisis ? "crisis" : isSupport ? "support" : null,
+          risk_label: isCrisis ? "crisis" : risk.riskLevel === 2 ? "support" : null,
         });
 
         const encoder = new TextEncoder();
@@ -232,6 +190,9 @@ export const Route = createFileRoute("/api/companion")({
         };
 
         if (isCrisis) {
+          // Level 3 — active danger. The reply is deterministic (never
+          // model-generated) and built ONLY from verified crisis resources.
+          const crisisReply = buildActiveDangerReply();
           // Stable key for this crisis turn: same user + conversation + message
           // content always produces the same key, so any retry (network blip,
           // client resend, internal backoff) collapses into one row.
@@ -248,7 +209,7 @@ export const Route = createFileRoute("/api/companion")({
             risk_level: "crisis",
             resource_shown: "tele_manas",
             action_taken: "crisis_reply_shown",
-            flagged_categories: { source: "companion_api", matched: "crisis_keyword" },
+            flagged_categories: { source: "companion_api", matched: risk.reason },
             session_id: convId,
             idempotency_key: idempotencyKey,
           });
@@ -256,7 +217,7 @@ export const Route = createFileRoute("/api/companion")({
             conversation_id: convId,
             user_id: userId,
             role: "assistant",
-            content: CRISIS_REPLY,
+            content: crisisReply,
             risk_label: "crisis",
           });
           const stream = new ReadableStream({
@@ -264,10 +225,11 @@ export const Route = createFileRoute("/api/companion")({
               writeFrame(controller, "meta", JSON.stringify({ conversationId: convId, crisis: true }));
               writeFrame(controller, "phase", "crisis");
               // Stream char-by-char with calm pacing
-              for (const ch of CRISIS_REPLY) {
+              for (const ch of crisisReply) {
                 writeFrame(controller, "token", JSON.stringify(ch));
                 await new Promise((r) => setTimeout(r, 8));
               }
+              writeFrame(controller, "mode", "safety");
               writeFrame(controller, "done", "1");
               controller.close();
             },
@@ -277,9 +239,28 @@ export const Route = createFileRoute("/api/companion")({
           });
         }
 
-        // Rate limit AFTER the crisis branch — safety responses must never
-        // be gated by abuse protection. Logged as a separate invocation row
-        // so we can see who's being throttled and why.
+        // Log the Level-2 safety event BEFORE any rate limiting — the audit
+        // trail of a risk disclosure must never depend on abuse protection.
+        if (risk.riskLevel === 2) {
+          const supportKey = await sha256Hex(
+            `support:${convId}:${body.message}`,
+          );
+          await logSafetyEventSafely({
+            user_id: userId,
+            event_type: "support_keyword_detected",
+            severity: "medium",
+            risk_level: "elevated",
+            resource_shown: risk.safetyFollowUp === "confirmed_safe" ? null : "sos_button",
+            action_taken: risk.safetyFollowUp === "confirmed_safe" ? "safety_confirmed_by_user" : "safety_check_asked",
+            flagged_categories: { source: "companion_api", matched: risk.reason },
+            session_id: convId,
+            idempotency_key: supportKey,
+          });
+        }
+
+        // Rate limit AFTER the safety branches. If a Level-2 user is
+        // throttled, they still get a deterministic safety-check reply —
+        // never a bare 429.
         const rl = await consumeAiRateLimit(userId, COMPANION_ROUTE, AI_RATE_LIMITS[COMPANION_ROUTE]);
         if (!rl.allowed) {
           await logInvocation({
@@ -288,8 +269,34 @@ export const Route = createFileRoute("/api/companion")({
             promptVersionId: null,
             model: COMPANION_MODEL,
             status: "rate_limited",
-            metadata: { conversation_id: convId, retry_after_seconds: rl.retryAfterSeconds },
+            metadata: { conversation_id: convId, retry_after_seconds: rl.retryAfterSeconds, risk_level: risk.riskLevel },
           });
+          if (risk.riskLevel === 2) {
+            const fallback = buildSafetyCheckFallback();
+            await supabase.from("ai_messages").insert({
+              conversation_id: convId,
+              user_id: userId,
+              role: "assistant",
+              content: fallback,
+              risk_label: "support",
+            });
+            const stream = new ReadableStream({
+              async start(controller) {
+                writeFrame(controller, "meta", JSON.stringify({ conversationId: convId, crisis: false }));
+                writeFrame(controller, "phase", "ready");
+                for (const ch of fallback) {
+                  writeFrame(controller, "token", JSON.stringify(ch));
+                  await new Promise((r) => setTimeout(r, 8));
+                }
+                writeFrame(controller, "mode", "safety");
+                writeFrame(controller, "done", "1");
+                controller.close();
+              },
+            });
+            return new Response(stream, {
+              headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache" },
+            });
+          }
           return rateLimitedResponse(rl);
         }
 
@@ -432,27 +439,30 @@ export const Route = createFileRoute("/api/companion")({
           : COMPANION_SYSTEM_PROMPT;
         const systemWithContext = `${baseContext}${storyBlock}${memoryBlock}${prevThreadBlock}${honorRules}${toneModifier}`;
 
-        const supportModifier = isSupport
-          ? "\n\nThe user may be in elevated distress. Be extra gentle, do not problem-solve, and end your reply with one soft line reminding them that Tele-MANAS 14416 exists if things feel too heavy."
-          : "";
-        const systemFinal = systemWithContext + supportModifier;
-
-        if (isSupport) {
-          const supportKey = await sha256Hex(
-            `support:${convId}:${body.message}`,
-          );
-          await logSafetyEventSafely({
-            user_id: userId,
-            event_type: "support_keyword_detected",
-            severity: "medium",
-            risk_level: "elevated",
-            resource_shown: "tele_manas",
-            action_taken: "support_reminder_shown",
-            flagged_categories: { source: "companion_api", matched: "support_keyword" },
-            session_id: convId,
-            idempotency_key: supportKey,
-          });
-        }
+        // Risk-level modifiers. Level 3 never reaches here (deterministic
+        // reply above). Level 2 is warm and trust-first with ONE safety
+        // check; Level 1 reframes without escalation; Level 0 adds nothing.
+        const riskModifier = (() => {
+          if (risk.riskLevel === 2 && risk.carryOver) {
+            return `\n\nSAFETY CONTEXT — a recent message in this conversation contained risk language, and the safety question may still be open. Stay warm and watchful. If they asked for grounding, guide one small two-minute practice in short sentences. Whatever they said, weave ONE natural check into your reply — e.g. "and just so I know you're okay — safe, for now?" — without restarting the whole script. No hotline numbers. No journaling or deep-reflection suggestions yet. Keep it short.`;
+          }
+          if (risk.riskLevel === 2 && risk.safetyFollowUp === "confirmed_safe") {
+            return `\n\nSAFETY MODE — THEY JUST CONFIRMED THEY CAN STAY SAFE. Thank them briefly for answering, without ceremony. Then: one tiny grounding instruction (water, feet on the floor, sit somewhere visible), and gently return to the pain that started this — invite them to tell you what happened. One practical step at most. Keep it under 90 words. No hotline numbers. Example rhythm: "Good. Stay with me for the next 10 minutes. The exam pain is real, but we won't let one result decide the whole story. First, drink some water and sit somewhere visible — then tell me: what happened?"`;
+          }
+          if (risk.riskLevel === 2) {
+            return `\n\nSAFETY MODE — PASSIVE RISK DETECTED (they said something like not wanting to live, with no plan or means). Override the usual 2-3 sentence limit: reply in 90-150 words, calm and direct, in this order:
+1) Meet the concrete pain first in one or two grounded sentences (e.g. "Failing the exam hurts. But this result is not a verdict on your life."). No drama, no lecture.
+2) Then ONE direct safety check, plainly: "When you say that, I want to check one thing first — are you in danger of hurting yourself, or can you stay safe for the next 10 minutes?"
+3) One conditional line, not a disclaimer: "If there's any chance you may hurt yourself, please don't stay alone — tap SOS below, or call someone near you and say: 'Please stay with me. I'm not okay right now.'"
+4) Close with one tiny physical instruction and ask them to reply with one word: safe or not safe.
+DO NOT: include any hotline numbers (the app surfaces those), quote philosophy or scripture, suggest journaling or deep reflection, use lines like "you are not alone" or "this too shall pass", or ask any other question.`;
+          }
+          if (risk.riskLevel === 1) {
+            return `\n\nHIGH DISTRESS (no self-harm language). Validate strongly and specifically. Separate the event from their identity — what failed is a result, not who they are. Offer one grounding step or one small next step, not both. Ask whether they want to talk it through or calm down first. Keep it short. Do not mention hotlines, SOS, or safety checks unless they introduce self-harm language.`;
+          }
+          return "";
+        })();
+        const systemFinal = systemWithContext + riskModifier;
 
         const messages: ModelMessage[] = [
           ...(history ?? []).map((m) => ({
@@ -497,7 +507,7 @@ export const Route = createFileRoute("/api/companion")({
           promptName: "companion.system",
           model: COMPANION_MODEL,
           systemText: systemFinal,
-          metadata: { tone: body.tone ?? null, support: isSupport },
+          metadata: { tone: body.tone ?? null, risk_level: risk.riskLevel, response_mode: risk.responseMode },
         });
         const invocationStart = Date.now();
 
@@ -534,59 +544,37 @@ export const Route = createFileRoute("/api/companion")({
               }
             }
 
-            // Infer which facet of InnerMate this turn leaned into, so the UI
-            // can surface mode-appropriate follow-up chips and the live facet
-            // line. One companion — the mode is a reading of the moment, not
-            // a separate helper.
-            let mode:
-              | "listen" | "reset" | "habit" | "journal"
-              | "wisdom" | "decision" | "grounding" = "listen";
-            const lower = body.message.toLowerCase();
-            const decisionHints = [
-              "should i", "shall i", "what should", "do i ", "decide",
-              "decision", "tell them", "say to them", "block them",
-              "text them", "message them", "confront",
-            ];
-            const groundingHints = [
-              "panic", "panicking", "can't breathe", "cant breathe",
-              "shaking", "overwhelmed", "freaking out", "ground me",
-              "calm me", "calm down", "anxiety attack", "racing heart",
-              "spiraling", "spiralling",
-            ];
-            const resetHints = [
-              "urge", "impulse", "stop myself", "before i do something",
-              "keep checking", "her profile", "his profile", "their profile",
-              "delete the chat", "unblock", "stalking", "one more text",
-            ];
-            const habitHints = [
-              "habit", "routine", "discipline", "consistent", "every day",
-              "sleep schedule", "wake up early", "focus", "gym", "start again",
-              "restart", "get back on track", "how do i start",
-            ];
-            const journalHints = [
-              "journal", "write it", "writing", "write about", "unsent letter",
-              "on paper", "put into words", "facts from feelings",
-            ];
-            const wisdomHints = [
-              "meaning", "purpose", "wisdom", "perspective on", "attachment",
-              "let go of", "letting go", "karma", "a quote", "gita",
-              "why does life", "what's the point of it all",
-            ];
-            if (decisionHints.some((k) => lower.includes(k))) mode = "decision";
-            else if (groundingHints.some((k) => lower.includes(k))) mode = "grounding";
-            else if (resetHints.some((k) => lower.includes(k))) mode = "reset";
-            else if (habitHints.some((k) => lower.includes(k))) mode = "habit";
-            else if (journalHints.some((k) => lower.includes(k))) mode = "journal";
-            else if (wisdomHints.some((k) => lower.includes(k))) mode = "wisdom";
+            // The classifier already read this turn — map its response mode
+            // onto the wire vocabulary the UI understands, with two light
+            // refinements (habit/journal) that only apply when risk is 0.
+            let mode = toWireMode(risk);
+            if (risk.riskLevel === 0 && mode === "listen") {
+              const lower = body.message.toLowerCase();
+              const habitHints = [
+                "habit", "routine", "discipline", "consistent", "every day",
+                "sleep schedule", "wake up early", "gym", "start again",
+                "restart", "get back on track", "how do i start",
+              ];
+              const journalHints = [
+                "journal", "write it", "writing", "write about", "unsent letter",
+                "on paper", "put into words",
+              ];
+              if (habitHints.some((k) => lower.includes(k))) mode = "habit";
+              else if (journalHints.some((k) => lower.includes(k))) mode = "journal";
+            }
             writeFrame(controller, "mode", mode);
 
-            // Persist assistant message
+            // Persist assistant message. Level-2 turns carry the "support"
+            // risk label so the client can restore safety mode after a
+            // thread refetch (the mode frame alone lives only in optimistic
+            // state).
             try {
               await supabase.from("ai_messages").insert({
                 conversation_id: convId,
                 user_id: userId,
                 role: "assistant",
                 content: full || "(no response)",
+                risk_label: risk.riskLevel === 2 ? "support" : null,
               });
             } catch (e) {
               console.error("Failed to persist assistant message", e);
@@ -606,7 +594,7 @@ export const Route = createFileRoute("/api/companion")({
               latencyMs: Date.now() - invocationStart,
               inputChars: body.message.length,
               outputChars: full.length,
-              metadata: { conversation_id: convId, mode, tone: body.tone ?? null, support: isSupport },
+              metadata: { conversation_id: convId, mode, tone: body.tone ?? null, risk_level: risk.riskLevel, response_mode: risk.responseMode },
             });
           },
         });

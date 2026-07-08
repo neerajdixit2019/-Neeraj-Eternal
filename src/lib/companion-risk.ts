@@ -1,0 +1,448 @@
+/**
+ * InnerMate risk classifier — pure, dependency-free, shared by the
+ * companion API route (routing + prompt modifiers) and the chat UI
+ * (quick replies + composer state).
+ *
+ * Four levels:
+ *   0 — normal emotional distress ("I'm sad", "I failed today")
+ *   1 — high distress, no self-harm language ("I'm worthless", "my life is ruined")
+ *   2 — passive suicidal ideation / ambiguous risk ("I don't like living")
+ *   3 — active danger: intent, plan, means, or timing ("I'll do it tonight")
+ *
+ * Design rules (product, not just code):
+ * - Level 3 responses are NEVER model-generated — the caller short-circuits
+ *   to a deterministic reply built from verified crisis resources.
+ * - Level 2 is warm and trust-first: the model replies, guided by a safety
+ *   modifier, with ONE direct safety check. No hotline numbers unless the
+ *   user says they are not safe.
+ * - Classification only ever escalates from language the user actually used.
+ */
+
+export type RiskLevel = 0 | 1 | 2 | 3;
+
+export type ResponseMode =
+  | "calm"
+  | "mirror"
+  | "deep_thinking"
+  | "action"
+  | "no_impulse"
+  | "safety"
+  | "pattern";
+
+/** The wire-level mode vocabulary the chat client already understands. */
+export type WireMode =
+  | "listen" | "reset" | "habit" | "journal"
+  | "wisdom" | "decision" | "grounding" | "safety";
+
+export type SafetyFollowUp = "confirmed_safe" | "not_safe" | null;
+
+export interface RiskClassification {
+  riskLevel: RiskLevel;
+  primaryEmotion: string;
+  primaryNeed: string;
+  responseMode: ResponseMode;
+  confidence: number;
+  shouldAskSafetyCheck: boolean;
+  shouldShowSOS: boolean;
+  shouldShowHotline: boolean;
+  quickReplies: string[];
+  reason: string;
+  /** Set when this message answers a safety check we just asked. */
+  safetyFollowUp: SafetyFollowUp;
+  /**
+   * True when this turn doesn't contain risk language itself but follows
+   * recent risk language — the safety posture is kept open, softly.
+   */
+  carryOver?: boolean;
+}
+
+export interface UserContext {
+  /** Most recent prior user messages, newest first (the current message excluded). */
+  recentUserMessages?: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Normalization
+// ---------------------------------------------------------------------------
+
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasAny(n: string, patterns: string[]): string | null {
+  for (const p of patterns) if (n.includes(p)) return p;
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Signal vocabularies
+// (normalized form: lowercase, no apostrophes, no punctuation)
+// ---------------------------------------------------------------------------
+
+/** Level 3 — explicit intent, plan, means, or "cannot stay safe". */
+const L3_SIGNALS = [
+  "kill myself", "killing myself", "end my life", "take my own life",
+  "commit suicide", "going to jump", "jump off", "hang myself",
+  "have pills", "took pills", "overdose", "slit my", "cut myself tonight",
+  "i will do it tonight", "ill do it tonight", "going to end it",
+  "cant stay safe", "cannot stay safe", "wont stay safe",
+  "about to hurt myself", "hurting myself right now",
+  "khatam kar lunga", "khatam kar lungi", "jaan de dunga", "jaan de dungi",
+  "zindagi khatam kar",
+];
+
+/** Words that escalate a Level-2 phrase to Level 3 when they co-occur. */
+const L3_ESCALATORS = [
+  "tonight", "right now", "in an hour", "pills", "rope", "knife",
+  "blade", "bridge", "roof", "railway", "train tracks", "plan to",
+  "decided to", "wrote a note", "goodbye forever",
+];
+
+/** Level 2 — passive ideation, self-harm language without plan/means. */
+const L2_SIGNALS = [
+  "dont like living", "do not like living", "dont want to live",
+  "dont want to exist", "dont want to be here", "wish i could disappear",
+  "want to disappear", "wish i wasnt here", "wish i was never born",
+  "what is the point of life", "whats the point of life",
+  "no point in living", "no point of living", "point of living anymore",
+  "what is the point of living", "whats the point of living", "no reason to live",
+  "feel like giving up", "give up on life", "giving up on life",
+  "cant live like this", "cannot live like this", "want to die", "wanna die",
+  "wish i were dead", "better off without me", "better off dead",
+  "end it all", "end everything", "cant go on", "cannot go on",
+  "tired of living", "suicide", "suicidal",
+  "hurt myself", "harm myself", "self harm", "cutting myself", "cut myself",
+  "hurting myself",
+  "marna chahta", "marna chahti", "jeena nahi", "jeene ka mann nahi",
+  "khatam karna chahta", "khatam karna chahti", "zindagi khatam",
+];
+
+/**
+ * "don't want to live HERE" is a housing complaint, not ideation.
+ * Applied only to the phrases where a benign continuation is common.
+ */
+const GUARDED_L2_PHRASES = ["dont want to live", "tired of living"];
+const BENIGN_CONTINUATIONS = ["here", "there", "in ", "at ", "with ", "near ", "around "];
+function isBenignLivingComplaint(n: string, phrase: string): boolean {
+  if (!GUARDED_L2_PHRASES.includes(phrase)) return false;
+  const after = n.slice(n.indexOf(phrase) + phrase.length).trimStart();
+  return BENIGN_CONTINUATIONS.some((c) => after.startsWith(c));
+}
+
+/** Escalators only count near the risk phrase, not anywhere in a long message. */
+function escalatorNear(n: string, phrase: string): string | null {
+  const idx = n.indexOf(phrase);
+  if (idx === -1) return null;
+  const win = n.slice(Math.max(0, idx - 60), Math.min(n.length, idx + phrase.length + 60));
+  return hasAny(win, L3_ESCALATORS);
+}
+
+/** Negation word shortly before "safe" ("not/cant/dont … safe") — matched
+ *  at word level so e.g. "know" never counts as "no". */
+function negatedSafe(n: string): boolean {
+  const si = n.indexOf("safe");
+  if (si === -1) return false;
+  const beforeTokens = n.slice(Math.max(0, si - 24), si).split(" ").filter(Boolean);
+  return beforeTokens.some((t) => NEGATION_WORDS.includes(t));
+}
+
+/** Level 1 — high distress, identity-level pain, no self-harm language. */
+const L1_SIGNALS = [
+  "life is ruined", "my life is ruined", "ruined my life", "failed everything",
+  "failed in everything", "worthless",
+  "i am useless", "im useless", "feel useless", "hate myself",
+  "cant take this", "cannot take this", "cant take it anymore",
+  "cant handle this anymore", "tired of everything", "sick of everything",
+  "hopeless", "nobody would care", "no one would care", "whats the point",
+  "everything is falling apart", "cant do this anymore",
+];
+
+/**
+ * Safety-check answers (only meaningful right after a risk exchange).
+ *
+ * SAFE answers are matched conservatively: exact one-word answers, or
+ * unambiguous phrases — and NEVER when a negation word is present.
+ * UNSAFE matching is deliberately greedy: after a risk exchange, any
+ * negated or uncertain "safe" counts as not safe.
+ */
+// "yes"/"ok" are ambiguous answers to "are you in danger, or can you stay
+// safe?" — they fall through to watchful carry-over instead.
+const SAFE_EXACT = ["safe", "yes safe", "im safe", "i am safe"];
+const SAFE_PHRASES = [
+  "i can stay safe", "im safe", "i am safe", "i wont do anything",
+  "i will not do anything", "no i wont hurt myself", "i can stay safe for now",
+];
+const NEGATION_WORDS = [
+  "not", "no", "never", "cant", "cannot", "wont", "dont", "didnt",
+  "nahi", "hardly", "barely", "unsure",
+];
+const UNSAFE_ANSWERS = [
+  "not safe", "im not safe", "i am not safe", "may not be safe",
+  "might not be safe", "dont feel safe", "do not feel safe", "feel unsafe",
+  "unsafe", "nowhere feels safe", "not sure i am safe", "not sure im safe",
+  "i might hurt myself", "i may hurt myself", "i have pills",
+  "alone and scared", "no im not", "cant promise", "cannot promise",
+  "wont promise", "dont think i can stay safe", "dont think so",
+];
+/** Grounding requests that must keep the safety flow open, not exit it. */
+const GROUNDING_REQUESTS = [
+  "ground me", "grounding", "breathe with me", "calm me", "calm down",
+];
+
+// Mode signals (Level 0/1 only)
+const NO_IMPULSE_SIGNALS = [
+  "should i text", "should i message", "should i call her", "should i call him",
+  "want to text", "urge to text", "about to text", "check her profile",
+  "check his profile", "keep checking", "unblock", "one more message",
+  "send an angry", "want to quit right now",
+];
+const CALM_SIGNALS = [
+  "panic", "panicking", "cant breathe", "shaking", "overwhelmed",
+  "freaking out", "racing heart", "spiraling", "spiralling", "anxiety attack",
+  "cant stop crying", "crying so much", "shutting down",
+  "ground me", "calm me", "calm down", "breathe with me",
+];
+const ACTION_SIGNALS = [
+  "what should i do", "what do i do", "what now", "next step",
+  "how do i fix", "help me decide", "give me a plan",
+];
+const MIRROR_SIGNALS = [
+  "confused", "dont know what i feel", "mixed feelings", "dont understand why i",
+  "part of me", "torn between",
+];
+const DEEP_SIGNALS = [
+  "meaning of", "purpose of", "why do we", "philosoph", "attachment",
+  "letting go of", "what does it all mean",
+];
+
+// Emotion naming — first match wins, order matters.
+const EMOTION_MAP: Array<[string[], string]> = [
+  [["fail", "exam", "marks", "result", "fired", "rejected from"], "shame"],
+  [["miss her", "miss him", "miss them", "heartbreak", "breakup", "broke up", "ex "], "longing"],
+  [["lonely", "alone", "no one", "nobody"], "loneliness"],
+  [["panic", "anxious", "anxiety", "scared", "afraid", "worry"], "anxiety"],
+  [["angry", "furious", "rage", "hate him", "hate her"], "anger"],
+  [["tired", "exhausted", "drained", "burnt out", "burned out"], "exhaustion"],
+  [["overwhelm", "too much", "pressure", "stress"], "overwhelm"],
+  [["sad", "crying", "cried", "empty", "numb", "heavy"], "sadness"],
+];
+
+function nameEmotion(n: string, base: string): string {
+  for (const [keys, label] of EMOTION_MAP) {
+    if (keys.some((k) => n.includes(k))) return base ? `${label} + ${base}` : label;
+  }
+  return base || "unclear";
+}
+
+// ---------------------------------------------------------------------------
+// Quick replies per level (the UI renders these as chips)
+// ---------------------------------------------------------------------------
+
+export const QUICK_REPLIES_BY_LEVEL: Record<RiskLevel, string[]> = {
+  0: ["Reflect deeper", "Name the feeling", "Save to Journal", "Give me next steps"],
+  1: ["Calm me down", "Break this down", "What should I do now?", "I need perspective"],
+  2: ["I can stay safe", "I may not be safe", "Ground me for 2 minutes", "Open SOS"],
+  3: ["Open SOS", "Call emergency help", "I am not alone now", "I moved away from danger"],
+};
+
+// ---------------------------------------------------------------------------
+// Classifier
+// ---------------------------------------------------------------------------
+
+export function classifyInnerMateMessage(
+  message: string,
+  userContext?: UserContext,
+): RiskClassification {
+  const n = normalize(message);
+  const recent = (userContext?.recentUserMessages ?? []).map(normalize);
+  const recentRisk = recent.some(
+    (r) => hasAny(r, L3_SIGNALS) || hasAny(r, L2_SIGNALS),
+  );
+
+  const level3 = (reason: string, followUp: SafetyFollowUp = null): RiskClassification => ({
+    riskLevel: 3,
+    primaryEmotion: "acute danger",
+    primaryNeed: "immediate emergency support",
+    responseMode: "safety",
+    confidence: 0.95,
+    shouldAskSafetyCheck: false,
+    shouldShowSOS: true,
+    shouldShowHotline: true,
+    quickReplies: QUICK_REPLIES_BY_LEVEL[3],
+    reason,
+    safetyFollowUp: followUp,
+  });
+
+  // --- Level 3 signals in the CURRENT message always win, regardless of
+  //     context or message length — never downgraded by follow-up matching.
+  const rawL2 = hasAny(n, L2_SIGNALS);
+  const l2 = rawL2 && !isBenignLivingComplaint(n, rawL2) ? rawL2 : null;
+  const l3 = hasAny(n, L3_SIGNALS);
+  const escalator = l2 ? escalatorNear(n, l2) : null;
+  if (l3 || escalator) {
+    return level3(
+      `active-danger signal: "${l3 ?? `${l2} + ${escalator}`}"`,
+    );
+  }
+
+  // --- Right after a risk exchange: read the answer to the safety check.
+  if (recentRisk) {
+    // Unsafe signals win at ANY length; negated "…safe" counts as unsafe.
+    if (
+      hasAny(n, UNSAFE_ANSWERS) ||
+      negatedSafe(n) ||
+      n === "no" ||
+      n === "i dont know" ||
+      n === "idk"
+    ) {
+      return level3("answered a safety check with an unsafe signal", "not_safe");
+    }
+    // Clear safe answers: exact words or unambiguous short phrases only.
+    if (
+      n.length <= 80 &&
+      (SAFE_EXACT.includes(n) || hasAny(n, SAFE_PHRASES))
+    ) {
+      return {
+        riskLevel: 2,
+        primaryEmotion: "settling",
+        primaryNeed: "grounding, then the original pain",
+        responseMode: "safety",
+        confidence: 0.9,
+        shouldAskSafetyCheck: false,
+        shouldShowSOS: true,
+        shouldShowHotline: false,
+        quickReplies: ["Ground me for 2 minutes", "Talk about what happened", "Open SOS"],
+        reason: "confirmed they can stay safe after a safety check",
+        safetyFollowUp: "confirmed_safe",
+      };
+    }
+    // Grounding request while the safety question is open → stay in the flow.
+    if (hasAny(n, GROUNDING_REQUESTS)) {
+      return {
+        riskLevel: 2,
+        primaryEmotion: "overwhelm",
+        primaryNeed: "grounding while the safety check stays open",
+        responseMode: "safety",
+        confidence: 0.8,
+        shouldAskSafetyCheck: true,
+        shouldShowSOS: true,
+        shouldShowHotline: false,
+        quickReplies: QUICK_REPLIES_BY_LEVEL[2],
+        reason: "grounding request during recent risk context",
+        safetyFollowUp: null,
+        carryOver: true,
+      };
+    }
+    // Anything else while risk language is recent: keep the safety posture
+    // open instead of snapping back to normal chat ("sorry, forget it").
+    if (!l2) {
+      return {
+        riskLevel: 2,
+        primaryEmotion: nameEmotion(n, ""),
+        primaryNeed: "gentle watchfulness — risk language was recent",
+        responseMode: "safety",
+        confidence: 0.6,
+        shouldAskSafetyCheck: true,
+        shouldShowSOS: true,
+        shouldShowHotline: false,
+        quickReplies: QUICK_REPLIES_BY_LEVEL[2],
+        reason: "carry-over from recent risk language",
+        safetyFollowUp: null,
+        carryOver: true,
+      };
+    }
+  }
+
+  // --- Level 2: passive ideation, no plan or means.
+  if (l2) {
+    return {
+      riskLevel: 2,
+      primaryEmotion: nameEmotion(n, "despair"),
+      primaryNeed: "safety check + emotional containment",
+      responseMode: "safety",
+      confidence: 0.85,
+      shouldAskSafetyCheck: true,
+      shouldShowSOS: true,
+      shouldShowHotline: false,
+      quickReplies: QUICK_REPLIES_BY_LEVEL[2],
+      reason: `passive-ideation signal: "${l2}"`,
+      safetyFollowUp: null,
+    };
+  }
+
+  // --- Level 1: high distress, no self-harm language.
+  const l1 = hasAny(n, L1_SIGNALS);
+  if (l1) {
+    const mode: ResponseMode = hasAny(n, CALM_SIGNALS)
+      ? "calm"
+      : hasAny(n, ACTION_SIGNALS)
+        ? "action"
+        : "calm";
+    return {
+      riskLevel: 1,
+      primaryEmotion: nameEmotion(n, ""),
+      primaryNeed: "reframe identity vs event + one next step",
+      responseMode: mode,
+      confidence: 0.7,
+      shouldAskSafetyCheck: false,
+      shouldShowSOS: false,
+      shouldShowHotline: false,
+      quickReplies: QUICK_REPLIES_BY_LEVEL[1],
+      reason: `high-distress signal: "${l1}"`,
+      safetyFollowUp: null,
+    };
+  }
+
+  // --- Level 0: normal emotional weather. Pick the best mode.
+  let mode: ResponseMode = "mirror";
+  let need = "gentle reflection";
+  if (hasAny(n, NO_IMPULSE_SIGNALS)) {
+    mode = "no_impulse";
+    need = "slow the impulse, clarify the wanted outcome";
+  } else if (hasAny(n, CALM_SIGNALS)) {
+    mode = "calm";
+    need = "grounding before anything else";
+  } else if (hasAny(n, ACTION_SIGNALS)) {
+    mode = "action";
+    need = "a small practical next step";
+  } else if (hasAny(n, DEEP_SIGNALS)) {
+    mode = "deep_thinking";
+    need = "a wider lens, gently";
+  } else if (hasAny(n, MIRROR_SIGNALS)) {
+    mode = "mirror";
+    need = "untangle facts, feelings, and assumptions";
+  }
+  return {
+    riskLevel: 0,
+    primaryEmotion: nameEmotion(n, ""),
+    primaryNeed: need,
+    responseMode: mode,
+    confidence: 0.55,
+    shouldAskSafetyCheck: false,
+    shouldShowSOS: false,
+    shouldShowHotline: false,
+    quickReplies: QUICK_REPLIES_BY_LEVEL[0],
+    reason: `no risk signals; mode "${mode}"`,
+    safetyFollowUp: null,
+  };
+}
+
+/** Map the classifier's response mode onto the chat client's wire modes. */
+export function toWireMode(c: RiskClassification): WireMode {
+  if (c.responseMode === "safety") return "safety";
+  switch (c.responseMode) {
+    case "calm": return "grounding";
+    case "no_impulse": return "reset";
+    case "action": return "decision";
+    case "deep_thinking": return "wisdom";
+    case "mirror":
+    case "pattern":
+    default:
+      return "listen";
+  }
+}

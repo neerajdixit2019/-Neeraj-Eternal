@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_app/companion")({
 });
 
 type Phase = "listening" | "grounding" | "ready" | "crisis" | null;
-type Mode = "listen" | "reset" | "habit" | "journal" | "wisdom" | "decision" | "grounding";
+type Mode = "listen" | "reset" | "habit" | "journal" | "wisdom" | "decision" | "grounding" | "safety";
 type Msg = { id?: string; role: "user" | "assistant"; content: string; pending?: boolean; phase?: Phase; mode?: Mode };
 type Chip = { label: string; prompt?: string; to?: string };
 
@@ -97,6 +97,14 @@ const CHIPS_BY_MODE: Record<Mode, Chip[]> = {
     { label: "60-second reset", to: "/sos" },
     { label: "Name 5 things", prompt: "Walk me through naming 5 things I can see right now." },
     { label: "Breathe with me", prompt: "Breathe with me — guide me through 4-4-6 for one minute." },
+  ],
+  // Safety mode: no reflection, no journaling — only safety answers,
+  // grounding, and the door to SOS.
+  safety: [
+    { label: "I can stay safe", prompt: "safe" },
+    { label: "I may not be safe", prompt: "not safe" },
+    { label: "Ground me for 2 minutes", prompt: "Ground me for the next two minutes, one small step at a time." },
+    { label: "Open SOS", to: "/sos" },
   ],
 };
 
@@ -146,6 +154,7 @@ const FACETS: Record<Mode, { line: string; tint: string }> = {
   journal:   { line: "turning toward the page",   tint: "var(--sky)" },
   wisdom:    { line: "in slightly deeper water",  tint: "var(--lavender)" },
   decision:  { line: "slowing it down, together", tint: "var(--sky)" },
+  safety:    { line: "right here with you",       tint: "var(--rose)" },
 };
 
 type QuickReply = {
@@ -414,10 +423,29 @@ function Companion() {
   });
 
   useEffect(() => { focusTextarea(); }, [activeId]);
-  useEffect(() => { setOptimistic([]); setLastMode("listen"); }, [activeId, thread]);
+  useEffect(() => {
+    setOptimistic([]);
+    // Safety mode must survive thread refetches: restore it from the
+    // persisted risk_label of the latest assistant message instead of
+    // snapping back to "listen" and re-showing reflection chips.
+    const msgs = thread?.messages ?? [];
+    const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant") as
+      | { risk_label?: string | null }
+      | undefined;
+    const label = lastAssistant?.risk_label;
+    setLastMode(label === "crisis" || label === "support" ? "safety" : "listen");
+  }, [activeId, thread]);
 
   const messages: Msg[] = useMemo(() => ([
-    ...(thread?.messages ?? []).map(m => ({ id: m.id, role: m.role as "user"|"assistant", content: m.content })),
+    ...(thread?.messages ?? []).map(m => ({
+      id: m.id,
+      role: m.role as "user"|"assistant",
+      content: m.content,
+      mode: ((m as { risk_label?: string | null }).risk_label === "crisis" ||
+             (m as { risk_label?: string | null }).risk_label === "support")
+        ? ("safety" as Mode)
+        : undefined,
+    })),
     ...optimistic,
   ]), [thread, optimistic]);
 
@@ -514,7 +542,7 @@ function Companion() {
             } catch { /* noop */ }
           } else if (type === "mode") {
             const md = payload.trim() as Mode;
-            const valid: Mode[] = ["listen","reset","habit","journal","wisdom","decision","grounding"];
+            const valid: Mode[] = ["listen","reset","habit","journal","wisdom","decision","grounding","safety"];
             if (valid.includes(md)) {
               setLastMode(md);
               setOptimistic(prev => prev.map((msg, i) =>
@@ -821,22 +849,24 @@ function Companion() {
                                   </button>
                                 ))}
                               </motion.div>
-                              <motion.div
-                                initial={{ opacity: 0, y: 4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.4, delay: 0.35 }}
-                                className="mt-2 flex flex-wrap gap-2"
-                              >
-                                {personalizedReplies.slice(0, 4).map(r => (
-                                  <button
-                                    key={r.label}
-                                    onClick={() => onSuggestion(r.label)}
-                                    className="qs-chip"
-                                  >
-                                    {r.label}
-                                  </button>
-                                ))}
-                              </motion.div>
+                              {(m.mode ?? lastMode) !== "safety" && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 4 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.4, delay: 0.35 }}
+                                  className="mt-2 flex flex-wrap gap-2"
+                                >
+                                  {personalizedReplies.slice(0, 4).map(r => (
+                                    <button
+                                      key={r.label}
+                                      onClick={() => onSuggestion(r.label)}
+                                      className="qs-chip"
+                                    >
+                                      {r.label}
+                                    </button>
+                                  ))}
+                                </motion.div>
+                              )}
                             </>
                           )}
                         </MessageContent>
@@ -886,7 +916,13 @@ function Companion() {
               className="bg-transparent"
               value={draft}
               onChange={(e) => setDraft(e.currentTarget.value)}
-              placeholder={listening ? "Listening… speak gently" : "What is here right now?"}
+              placeholder={
+                listening
+                  ? "Listening… speak gently"
+                  : lastMode === "safety"
+                    ? "Reply with safe or not safe…"
+                    : "What is here right now?"
+              }
               aria-label="Message InnerMate"
             />
             <PromptInputFooter>
