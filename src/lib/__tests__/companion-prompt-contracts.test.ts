@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { COMPANION_SYSTEM_PROMPT } from "../ai-gateway.server.ts";
 import { buildActiveDangerReply, buildSafetyCheckFallback, crisisResourcesFor } from "../crisis-resources.ts";
 import { BANNED_REPLY_PHRASES, findBannedPhrases } from "../companion-quality.ts";
+import { parseArrivalQuestions, parseArrivalRead, FALLBACK_QUESTIONS, fallbackRead } from "../arrival-schema.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const apiRouteSource = readFileSync(
@@ -158,6 +159,47 @@ test("Voice: no chatbot tells — em-dash rule present, examples and templates d
   // Deterministic user-facing templates must be dash-free too
   assert.ok(!buildActiveDangerReply("IN").includes("—"));
   assert.ok(!buildSafetyCheckFallback().includes("—"));
+});
+
+// ── Arrival questions: AI output contract ───────────────────────────────────
+
+test("Arrival: valid AI JSON parses, including fenced replies", () => {
+  const raw = '```json\n{"questions":[{"title":"What is pulling at you most?","options":["the day ahead","one person","my own thoughts","nothing specific"]},{"title":"What would help right now?","options":["quiet","company","movement","a plan"]}]}\n```';
+  const qs = parseArrivalQuestions(raw);
+  assert.ok(qs);
+  assert.equal(qs!.length, 2);
+  assert.equal(qs![0].opts.length, 4);
+});
+
+test("Arrival: malformed AI output falls back to null (never breaks the ritual)", () => {
+  assert.equal(parseArrivalQuestions("Sure! Here are some questions..."), null);
+  assert.equal(parseArrivalQuestions('{"questions":[{"title":"only one","options":["a","b","c","d"]}]}'), null);
+  assert.equal(parseArrivalQuestions('{"questions":[{"title":"bad opts","options":["a"]},{"title":"x","options":["a","b","c","d"]}]}'), null);
+});
+
+test("Arrival: em-dashes are cleaned from AI questions and reads", () => {
+  const raw = '{"questions":[{"title":"Heavy morning — what sits closest?","options":["work — deadlines","someone I miss","my health","the future"]},{"title":"What would soften it?","options":["rest","talking","a walk","writing"]}]}';
+  const qs = parseArrivalQuestions(raw);
+  assert.ok(qs);
+  for (const q of qs!) {
+    assert.ok(!q.title.includes("—"));
+    for (const o of q.opts) assert.ok(!o.l.includes("—"));
+  }
+  const read = parseArrivalRead("You came in heavy — and still came. That counts.");
+  assert.ok(read && !read.includes("—"));
+});
+
+test("Arrival: reads are clamped and short garbage rejected", () => {
+  assert.equal(parseArrivalRead("ok"), null);
+  const long = parseArrivalRead("a".repeat(400));
+  assert.ok(long && long.length <= 220);
+});
+
+test("Arrival: fallback set is intact and composes a read", () => {
+  assert.equal(FALLBACK_QUESTIONS.length, 2);
+  const read = fallbackRead([FALLBACK_QUESTIONS[0].opts[1], FALLBACK_QUESTIONS[1].opts[3]]);
+  assert.ok(read.includes("circling one thing"));
+  assert.ok(read.includes("rest"));
 });
 
 test("Voice: dependency and role boundaries", () => {

@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { listMoods, listJournal, getProfile, listPaths, logMood, annotateMood, saveJournal } from "@/lib/data.functions";
+import { generateArrivalQuestions, generateArrivalRead } from "@/lib/arrival.functions";
+import { FALLBACK_QUESTIONS, fallbackRead, type ArrivalQuestion, type ArrivalOption } from "@/lib/arrival-schema";
 import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions";
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import {
@@ -524,86 +526,115 @@ function OnThisDay() {
 
 // ── Inner-sky widgets ───────────────────────────────────────────
 
-// After the orb, two soft questions. The answers are stitched into the
-// mood log's note, which flows into InnerMate's silent context — so the
-// companion quietly understands how the user is arriving, in parallel.
-const MINDSET_QS: { title: string; opts: { l: string; r: string }[] }[] = [
-  {
-    title: "Where is your mind right now?",
-    opts: [
-      { l: "racing ahead", r: "Your mind is racing ahead" },
-      { l: "circling one thing", r: "Your mind keeps circling one thing" },
-      { l: "scattered everywhere", r: "Your attention is pulled in many directions" },
-      { l: "fairly quiet", r: "Your mind is fairly quiet" },
-    ],
-  },
-  {
-    title: "What do you need most?",
-    opts: [
-      { l: "to be heard", r: "being heard matters most today. InnerMate is close" },
-      { l: "to see clearly", r: "clarity matters most. Bring it to the page when you're ready" },
-      { l: "a gentle push", r: "one small step counts today" },
-      { l: "rest", r: "rest is the wisest thing on your list" },
-    ],
-  },
-];
+// After the orb, two soft questions — generated fresh by the AI for how
+// this user is arriving today, with the hand-written set as an instant
+// fallback. The answers are stitched into the mood log's note, which
+// flows into InnerMate's silent context.
+const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
+  Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), ms))]);
 
 function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
   const qc = useQueryClient();
   const logFn = useServerFn(logMood);
   const annotateFn = useServerFn(annotateMood);
+  const genQsFn = useServerFn(generateArrivalQuestions);
+  const genReadFn = useServerFn(generateArrivalRead);
   const [selected, setSelected] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [moodLogId, setMoodLogId] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<ArrivalQuestion[]>(FALLBACK_QUESTIONS);
+  const [aiQs, setAiQs] = useState(false);
+  const [qLoading, setQLoading] = useState(false);
   const [qStep, setQStep] = useState<number>(-1); // -1 hidden, 0/1 asking, 2 done
-  const [answers, setAnswers] = useState<{ l: string; r: string }[]>([]);
+  const [answers, setAnswers] = useState<ArrivalOption[]>([]);
+  const [read, setRead] = useState<string | null>(null);
+  const [readLoading, setReadLoading] = useState(false);
   const chosen = MOOD_ORBS.find((o) => o.score === selected) ?? null;
 
   const pick = async (score: number) => {
-    if (saving || alreadyLogged) {
-      setSelected(score);
-      setQStep((s) => (s === -1 ? 0 : s));
-      return;
-    }
+    const orb = MOOD_ORBS.find((o) => o.score === score);
     setSelected(score);
-    setQStep(0);
     setAnswers([]);
-    setSaving(true);
-    try {
-      const res = (await logFn({ data: { mood_score: score, emotion_tags: [], trigger_tags: [] } })) as
-        | { id?: string | null }
-        | undefined;
-      setMoodLogId(res?.id ?? null);
-      qc.invalidateQueries({ queryKey: ["moods"] });
-      toast.success("Kept.", { duration: 1500 });
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setSaving(false);
+    setRead(null);
+    setQStep(-1);
+    setQLoading(true);
+
+    // Ask the AI for personalized questions while the mood saves —
+    // 6 seconds max, then the hand-written set carries the ritual.
+    const qsPromise = orb
+      ? withTimeout(
+          genQsFn({ data: { mood_word: orb.word, mood_score: score } })
+            .then((r) => (r as { questions: ArrivalQuestion[] | null })?.questions ?? null)
+            .catch(() => null),
+          6000,
+        )
+      : Promise.resolve(null);
+
+    if (!saving && !alreadyLogged) {
+      setSaving(true);
+      try {
+        const res = (await logFn({ data: { mood_score: score, emotion_tags: [], trigger_tags: [] } })) as
+          | { id?: string | null }
+          | undefined;
+        setMoodLogId(res?.id ?? null);
+        qc.invalidateQueries({ queryKey: ["moods"] });
+        toast.success("Kept.", { duration: 1500 });
+      } catch (e) {
+        toast.error((e as Error).message);
+      } finally {
+        setSaving(false);
+      }
     }
+
+    const ai = await qsPromise;
+    setQuestions(ai && ai.length === 2 ? ai : FALLBACK_QUESTIONS);
+    setAiQs(!!ai);
+    setQLoading(false);
+    setQStep(0);
   };
 
-  const answer = (opt: { l: string; r: string }) => {
+  const answer = async (opt: ArrivalOption) => {
     const next = [...answers, opt];
     setAnswers(next);
-    if (qStep < MINDSET_QS.length - 1) {
+    if (qStep < questions.length - 1) {
       setQStep(qStep + 1);
       return;
     }
-    setQStep(MINDSET_QS.length);
-    // Quietly attach the answers to the mood entry (best-effort — the
-    // read still shows even if persistence hiccups).
+    setQStep(questions.length);
+
+    // Quietly attach the answers to the mood entry (best-effort).
     if (moodLogId && chosen) {
-      const note = `arriving: ${chosen.word.toLowerCase()} · mind: ${next[0].l} · needs: ${next[1].l}`;
-      annotateFn({ data: { id: moodLogId, note } })
+      const note = `arriving: ${chosen.word.toLowerCase()} · ${questions
+        .map((q, i) => `${q.title.toLowerCase().replace(/\?$/, "")}: ${next[i]?.l ?? ""}`)
+        .join(" · ")}`;
+      annotateFn({ data: { id: moodLogId, note: note.slice(0, 500) } })
         .then(() => qc.invalidateQueries({ queryKey: ["moods"] }))
         .catch(() => { /* silent */ });
     }
+
+    // Closing read: AI-personalized when the questions were AI-made,
+    // hand-written synthesis otherwise. Never blocks longer than 6s.
+    if (aiQs && chosen) {
+      setReadLoading(true);
+      const aiRead = await withTimeout(
+        genReadFn({
+          data: {
+            mood_word: chosen.word,
+            qa: questions.map((q, i) => ({ q: q.title, a: next[i]?.l ?? "" })),
+          },
+        })
+          .then((r) => (r as { read: string | null })?.read ?? null)
+          .catch(() => null),
+        6000,
+      );
+      setRead(aiRead ?? fallbackRead(next));
+      setReadLoading(false);
+    } else {
+      setRead(fallbackRead(next));
+    }
   };
 
-  const mindsetRead = answers.length === MINDSET_QS.length
-    ? `${answers[0].r}, and ${answers[1].r}.`
-    : null;
+  const mindsetRead = qStep >= questions.length ? read : null;
 
   return (
     <div
@@ -644,14 +675,26 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
         </div>
       )}
 
-      {/* Two soft follow-up questions — the answers quietly deepen what
-          InnerMate understands about how the user is arriving. */}
-      {chosen && qStep >= 0 && qStep < MINDSET_QS.length && (
+      {/* While the AI shapes today's questions */}
+      {chosen && qLoading && (
+        <div className="mt-4 flex items-center gap-2 fade-in" aria-live="polite">
+          <span className="qs-typing-dot" />
+          <span className="qs-typing-dot" style={{ animationDelay: "0.18s" }} />
+          <span className="qs-typing-dot" style={{ animationDelay: "0.36s" }} />
+          <span className="font-serif text-[12px] italic text-muted-foreground">
+            finding today's questions…
+          </span>
+        </div>
+      )}
+
+      {/* Two soft follow-up questions — AI-shaped for today, and the
+          answers quietly deepen what InnerMate understands. */}
+      {chosen && qStep >= 0 && qStep < questions.length && (
         <div className="mt-4 fade-in" key={qStep}>
           <div className="flex items-center justify-between gap-2">
-            <p className="font-serif text-[14px] leading-snug">{MINDSET_QS[qStep].title}</p>
+            <p className="font-serif text-[14px] leading-snug">{questions[qStep].title}</p>
             <span className="flex shrink-0 gap-1" aria-hidden>
-              {MINDSET_QS.map((_, i) => (
+              {questions.map((_, i) => (
                 <span
                   key={i}
                   className="h-1.5 w-1.5 rounded-full"
@@ -661,17 +704,28 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {MINDSET_QS[qStep].opts.map((o) => (
+            {questions[qStep].opts.map((o) => (
               <button
                 key={o.l}
                 type="button"
-                onClick={() => answer(o)}
+                onClick={() => void answer(o)}
                 className="rounded-xl border border-white/10 bg-card/50 px-3 py-2.5 text-left text-[12.5px] leading-snug text-foreground transition hover:border-[color-mix(in_oklab,var(--dawn)_45%,transparent)] hover:bg-[color-mix(in_oklab,var(--dawn)_8%,transparent)]"
               >
                 {o.l}
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {readLoading && (
+        <div className="mt-4 flex items-center gap-2 fade-in" aria-live="polite">
+          <span className="qs-typing-dot" />
+          <span className="qs-typing-dot" style={{ animationDelay: "0.18s" }} />
+          <span className="qs-typing-dot" style={{ animationDelay: "0.36s" }} />
+          <span className="font-serif text-[12px] italic text-muted-foreground">
+            taking that in…
+          </span>
         </div>
       )}
 
@@ -688,7 +742,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
             <p className="text-[12.5px] leading-relaxed text-foreground/90">{mindsetRead}</p>
             <button
               type="button"
-              onClick={() => { setQStep(0); setAnswers([]); }}
+              onClick={() => { setQStep(0); setAnswers([]); setRead(null); }}
               className="mt-1.5 font-serif text-[11px] italic text-muted-foreground transition hover:text-foreground"
             >
               ask me again

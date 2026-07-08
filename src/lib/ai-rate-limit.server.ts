@@ -24,6 +24,7 @@ export const AI_RATE_LIMITS: Record<string, RateLimitConfig> = {
   "companion.stream": { limit: 40, windowSeconds: 60 * 10 },     // 40 / 10 min
   "companion.fallback": { limit: 40, windowSeconds: 60 * 10 },
   "weekly_letter.generate": { limit: 5, windowSeconds: 60 * 60 * 24 }, // 5 / day
+  "arrival.generate": { limit: 30, windowSeconds: 60 * 60 },     // 30 / hour (2 calls per check-in)
 };
 
 /**
