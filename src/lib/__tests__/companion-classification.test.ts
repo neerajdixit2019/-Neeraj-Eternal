@@ -114,3 +114,28 @@ test("G: emergency mode overrides every other mode", () => {
   assert.equal(c.responseMode, "safety");
   assert.ok(c.riskLevel >= 2);
 });
+
+// ── Category J: scripture / spiritual routing ──────────────────────────────
+
+test("J: scripture and meaning questions route to deep_thinking / wisdom", () => {
+  const cases = [
+    "what does the gita say about attachment",
+    "does karma mean i deserve this pain",
+    "how do i act without ego",
+    "what is the lesson here",
+    "how do i forgive myself",
+    "how do i accept what happened",
+  ];
+  for (const msg of cases) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.riskLevel, 0, `"${msg}" got Level ${c.riskLevel}`);
+    assert.equal(c.responseMode, "deep_thinking", `"${msg}" mode was ${c.responseMode}`);
+    assert.equal(toWireMode(c), "wisdom");
+  }
+});
+
+test("J: a meaning question that also carries risk still goes to safety", () => {
+  const c = classifyInnerMateMessage("what is the point of living anymore");
+  assert.equal(c.responseMode, "safety");
+  assert.ok(c.riskLevel >= 2);
+});

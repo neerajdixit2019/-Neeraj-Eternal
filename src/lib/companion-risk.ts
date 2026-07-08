@@ -271,7 +271,15 @@ const PATTERN_SIGNALS = [
 ];
 const DEEP_SIGNALS = [
   "meaning of", "purpose of", "why do we", "philosoph", "attachment",
-  "letting go of", "what does it all mean",
+  "letting go of", "let go of", "what does it all mean", "the lesson",
+  "the point of it all", "why do i suffer", "why is there suffering",
+  "surrender", "acceptance", "how do i accept", "forgive myself",
+  "self forgiveness", "act without", "without ego", "spiritual",
+  "the soul", "my dharma", "detachment",
+  // Named scriptures / traditions — explicit wisdom asks
+  "gita", "geeta", "bhagavad", "krishna", "karma", "stoic", "seneca",
+  "buddha", "buddhist", "rumi", "sufi", "kabir", "tao", "lao tzu",
+  "quran", "bible", "scripture", "shloka",
 ];
 
 // Emotion naming — first match wins, order matters.

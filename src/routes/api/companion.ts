@@ -17,6 +17,7 @@ import {
 } from "@/lib/ai-prompt-registry.server";
 import { classifyInnerMateMessage, toWireMode } from "@/lib/companion-risk";
 import { buildActiveDangerReply, buildSafetyCheckFallback } from "@/lib/crisis-resources";
+import { wisdomGroundingBlock } from "@/lib/wisdom";
 
 // One companion, one mind: the facets (steadying, building, the page,
 // deeper water) live inside the system prompt, not in separate sub-agents.
@@ -491,7 +492,7 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
             case "action":
               return `\n\nTHIS TURN asks for direction: give up to three tiny, concrete steps (short numbered lines are allowed here), starting with the very next 25 minutes. One priority, not a system. No productivity platitudes.`;
             case "deep_thinking":
-              return `\n\nTHIS TURN reaches for meaning: DEEPER WATER is welcome — one idea in plain language, tied to their situation. If they explicitly asked what a tradition says (the Gita, Stoics, Buddhism), you may name it and take a few extra sentences — still no verses, no preaching.`;
+              return `\n\nTHIS TURN reaches for meaning: DEEPER WATER is welcome, one idea in plain language, tied to their situation. If they explicitly asked what a tradition says (the Gita, Stoics, Buddhism), you may name it and take a few extra sentences, still no verse numbers, no preaching.${wisdomGroundingBlock(body.message)}`;
             case "pattern":
               return `\n\nTHIS TURN asks about their patterns. Be honest about your window: you can only see a small, recent, user-approved slice of their writing — never invent history, counts, or trends. Reflect only what is actually in the silent context, say plainly that it's a partial view, and point them to their Insights page, where the full pattern picture (weeks of moods, themes, and rhythms) lives. One real observation at most, then one question.`;
             default:

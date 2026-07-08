@@ -14,6 +14,7 @@ import { COMPANION_SYSTEM_PROMPT } from "../ai-gateway.server.ts";
 import { buildActiveDangerReply, buildSafetyCheckFallback, crisisResourcesFor } from "../crisis-resources.ts";
 import { BANNED_REPLY_PHRASES, findBannedPhrases } from "../companion-quality.ts";
 import { parseArrivalQuestions, parseArrivalRead, FALLBACK_QUESTIONS, fallbackRead } from "../arrival-schema.ts";
+import { TEACHINGS, selectTeachings, namesTradition, wisdomGroundingBlock } from "../wisdom.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const apiRouteSource = readFileSync(
@@ -39,8 +40,9 @@ test("E: guilt handling forbids verdicts in both directions", () => {
 
 test("F: deeper-water facet exists with restraint rules", () => {
   assert.ok(P.includes("DEEPER WATER"));
-  assert.ok(P.includes("Never preach, never quote verse numbers"));
-  assert.ok(P.includes("never blame karma"));
+  assert.ok(P.includes("Never quote verse numbers"));
+  assert.ok(/never blame karma/i.test(P));
+  assert.ok(P.includes("Honor the feeling FIRST"));
 });
 
 test("F/J: explicit tradition asks get the named-tradition carve-out", () => {
@@ -200,6 +202,55 @@ test("Arrival: fallback set is intact and composes a read", () => {
   const read = fallbackRead([FALLBACK_QUESTIONS[0].opts[1], FALLBACK_QUESTIONS[1].opts[3]]);
   assert.ok(read.includes("circling one thing"));
   assert.ok(read.includes("rest"));
+});
+
+// ── Wisdom / scripture ───────────────────────────────────────────────────────
+
+test("Wisdom: teachings span multiple traditions, none preachy", () => {
+  const traditions = new Set(TEACHINGS.map((t) => t.tradition));
+  assert.ok(traditions.has("Gita"));
+  assert.ok(traditions.size >= 5, `only ${traditions.size} traditions`);
+  assert.ok(TEACHINGS.length >= 12);
+});
+
+test("Wisdom: NO teaching contains a verse number or em-dash", () => {
+  for (const t of TEACHINGS) {
+    assert.ok(!t.plain.includes("—"), `${t.id} has an em-dash`);
+    // No "chapter N", "verse N", or "N.N" citation patterns
+    assert.ok(!/\b(chapter|verse|shloka)\s*\d/i.test(t.plain), `${t.id} cites a number`);
+    assert.ok(!/\b\d+[.:]\d+\b/.test(t.plain), `${t.id} has a verse-number pattern`);
+  }
+});
+
+test("Wisdom: 'what does the Gita say about attachment' selects a real teaching", () => {
+  const picks = selectTeachings("what does the gita say about attachment");
+  assert.ok(picks.length >= 1);
+  assert.ok(namesTradition("what does the gita say about attachment"));
+  const block = wisdomGroundingBlock("what does the gita say about attachment");
+  assert.ok(block.includes("WISDOM TO DRAW FROM"));
+  assert.ok(block.includes("you may say which tradition"));
+});
+
+test("Wisdom: self-forgiveness maps to the be-your-own-friend teaching", () => {
+  const picks = selectTeachings("how do i forgive myself, i can't forgive myself");
+  assert.ok(picks.some((t) => t.id === "gita-be-your-friend"));
+});
+
+test("Wisdom: an ordinary message with no meaning-seeking yields no grounding", () => {
+  assert.equal(wisdomGroundingBlock("had a long day at work"), "");
+  assert.equal(selectTeachings("what's for dinner").length, 0);
+});
+
+test("Wisdom: grounding block hides the tradition name when not asked", () => {
+  const block = wisdomGroundingBlock("i can't stop clinging to the past, how do i let go");
+  assert.ok(block.length > 0);
+  assert.ok(block.includes("do not name the tradition unless they ask"));
+});
+
+test("Wisdom: persona knows the traditions and forbids bypassing", () => {
+  assert.ok(P.includes("You genuinely know these traditions"));
+  assert.ok(P.includes("never use wisdom to bypass"));
+  assert.ok(P.includes("Never quote verse numbers"));
 });
 
 test("Voice: dependency and role boundaries", () => {
