@@ -175,6 +175,20 @@ function Journal() {
 
   const savedLabel = savingNow ? "saving…" : savedAt ? "saved a moment ago" : "nothing saved yet";
 
+  // Month-grouped timeline. MUST live above the editor's early return —
+  // hooks after a conditional return break React's hook ordering the
+  // moment `editing` flips ("Rendered fewer hooks than expected").
+  const grouped = useMemo(() => {
+    const map = new Map<string, typeof entries>();
+    for (const e of entries ?? []) {
+      const key = monthKey(new Date(e.created_at));
+      const arr = map.get(key) ?? [];
+      arr.push(e);
+      map.set(key, arr);
+    }
+    return Array.from(map.entries());
+  }, [entries]);
+
   if (editing) return (
     <div className="motion-calm mx-auto max-w-2xl px-5 py-8 sm:px-8">
       <div className="flex items-center justify-between">
@@ -222,17 +236,6 @@ function Journal() {
   );
 
   // ---- Timeline list ----
-  const grouped = useMemo(() => {
-    const map = new Map<string, typeof entries>();
-    for (const e of entries ?? []) {
-      const key = monthKey(new Date(e.created_at));
-      const arr = map.get(key) ?? [];
-      arr.push(e);
-      map.set(key, arr);
-    }
-    return Array.from(map.entries());
-  }, [entries]);
-
   return (
     <div className="motion-calm relative mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14">
       <span aria-hidden className="qs-firefly" style={{ top: "6%", left: "82%", pointerEvents: "none" }} />
