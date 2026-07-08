@@ -41,9 +41,8 @@ import {
 
 export const Route = createFileRoute("/_app/companion")({
   component: Companion,
-  validateSearch: (s: Record<string, unknown>) => ({
-    seed: typeof s.seed === "string" && s.seed.length <= 500 ? s.seed : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>): { seed?: string } =>
+    typeof s.seed === "string" && s.seed.length <= 500 ? { seed: s.seed } : {},
   head: () => ({
     meta: [
       { title: "InnerMate — your private companion | My Quiet Space" },
