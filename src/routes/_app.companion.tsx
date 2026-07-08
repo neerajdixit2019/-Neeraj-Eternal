@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listConversations, getConversation, deleteConversation } from "@/lib/companion.functions";
-import { getProfile, setCompanionTone, listMoods } from "@/lib/data.functions";
+import { getProfile, setCompanionTone } from "@/lib/data.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,29 +107,6 @@ const CHIPS_BY_MODE: Record<Mode, Chip[]> = {
   ],
 };
 
-const SUGGESTIONS_BY_TOD: Record<"morning" | "afternoon" | "evening" | "night", string[]> = {
-  morning: [
-    "Set a gentle intention for today",
-    "I woke up heavy — sit with me",
-    "A small grounding exercise",
-  ],
-  afternoon: [
-    "I'm stuck in a loop",
-    "Sort through a difficult conversation",
-    "A 60-second reset",
-  ],
-  evening: [
-    "Help me put the day down",
-    "Something is still tugging at me",
-    "Understand a feeling from today",
-  ],
-  night: [
-    "My mind won't quiet",
-    "I'm up late. Sit with me.",
-    "A wind-down before sleep",
-  ],
-};
-
 // Empty-state invitations — quiet openings, no wrong door.
 const EMPTY_STATE_CHIPS = [
   "help me put the day down",
@@ -155,48 +132,6 @@ const FACETS: Record<Mode, { line: string; tint: string }> = {
   decision:  { line: "slowing it down, together", tint: "var(--sky)" },
   safety:    { line: "right here with you",       tint: "var(--rose)" },
 };
-
-type QuickReply = {
-  label: string;
-  tags: string[];        // emotion / topic tags
-  modes?: Mode[];        // assistant modes that boost this reply
-  lowMood?: boolean;     // boost when recent mood is low
-  night?: boolean;       // boost late-night
-  morning?: boolean;
-};
-
-const QUICK_REPLIES: QuickReply[] = [
-  { label: "I'm overwhelmed",         tags: ["overwhelm","stress","anxious","panic","too much"], modes: ["grounding","reset","listen"], lowMood: true },
-  { label: "I miss them",             tags: ["miss","them","ex","heartbreak","lonely","attached"], modes: ["listen","wisdom"] },
-  { label: "Help me calm down",       tags: ["calm","anxious","panic","racing","breath"], modes: ["grounding","reset"], lowMood: true },
-  { label: "What should I do next?",  tags: ["next","decide","stuck","should","choice"], modes: ["decision","habit"] },
-  { label: "I feel lonely",           tags: ["lonely","alone","empty","isolated"], modes: ["listen","wisdom"], lowMood: true },
-  { label: "I can't stop overthinking", tags: ["overthink","loop","spiral","ruminate","thinking"], modes: ["listen","grounding"] },
-  { label: "Help me sleep",           tags: ["sleep","tired","awake","night","rest"], modes: ["grounding"], night: true },
-  { label: "I need to reset",         tags: ["reset","fresh","start","again","habit"], modes: ["reset","habit"], morning: true },
-];
-
-function scoreQuickReply(
-  q: QuickReply,
-  ctx: {
-    mode: Mode;
-    tod: "morning"|"afternoon"|"evening"|"night";
-    recentText: string;       // lowercased last few user messages
-    moodAvg: number | null;   // 1..10
-    emotionTags: Set<string>; // lowercased
-  }
-): number {
-  let s = 0;
-  if (q.modes?.includes(ctx.mode)) s += 3;
-  if (ctx.moodAvg !== null && ctx.moodAvg <= 5 && q.lowMood) s += 2;
-  if (q.night && ctx.tod === "night") s += 2;
-  if (q.morning && ctx.tod === "morning") s += 1;
-  for (const tag of q.tags) {
-    if (ctx.recentText.includes(tag)) s += 2;
-    if (ctx.emotionTags.has(tag)) s += 2;
-  }
-  return s;
-}
 
 function todOf(h: number): "morning" | "afternoon" | "evening" | "night" {
   if (h < 5) return "night";
@@ -272,7 +207,6 @@ function Companion() {
   const delFn = useServerFn(deleteConversation);
   const profileFn = useServerFn(getProfile);
   const setToneFn = useServerFn(setCompanionTone);
-  const moodsFn = useServerFn(listMoods);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -319,7 +253,6 @@ function Companion() {
   }, [lang]);
 
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: () => profileFn() });
-  const { data: moods } = useQuery({ queryKey: ["moods"], queryFn: () => moodsFn() });
   const profileTyped = profile as { display_name?: string | null; companion_tone?: ToneStyle } | null | undefined;
   const firstName = profileTyped?.display_name?.split(" ")[0] ?? null;
 
@@ -447,26 +380,6 @@ function Companion() {
     })),
     ...optimistic,
   ]), [thread, optimistic]);
-
-  const personalizedReplies = useMemo(() => {
-    const moodList = (moods ?? []) as Array<{ mood_score?: number | null; emotion_tags?: string[] | null }>;
-    const recent = moodList.slice(0, 5);
-    const scores = recent.map(m => m.mood_score).filter((n): n is number => typeof n === "number");
-    const moodAvg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
-    const emotionTags = new Set<string>();
-    recent.forEach(m => (m.emotion_tags ?? []).forEach(t => t && emotionTags.add(String(t).toLowerCase())));
-    const recentText = messages
-      .filter(m => m.role === "user")
-      .slice(-4)
-      .map(m => m.content)
-      .join(" ")
-      .toLowerCase();
-    const ctx = { mode: lastMode, tod, recentText, moodAvg, emotionTags };
-    return [...QUICK_REPLIES]
-      .map((q, i) => ({ q, s: scoreQuickReply(q, ctx), i }))
-      .sort((a, b) => (b.s - a.s) || (a.i - b.i))
-      .map(({ q }) => q);
-  }, [moods, messages, lastMode, tod]);
 
   const send = useCallback(async (textOverride?: string) => {
     const text = (textOverride ?? draft).trim();
@@ -827,46 +740,29 @@ function Companion() {
                       ) : m.role === "assistant" ? (
                         <MessageContent className={ASSISTANT_BUBBLE}>
                           <MessageResponse>{m.content}</MessageResponse>
-                          {isLatestCompletedAssistant && (
-                            <>
-                              <motion.div
-                                initial={{ opacity: 0, y: 4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.4, delay: 0.2 }}
-                                className="mt-3 flex flex-wrap gap-2"
-                              >
-                                {CHIPS_BY_MODE[m.mode ?? lastMode].map(chip => (
-                                  <button
-                                    key={chip.label}
-                                    onClick={() => {
-                                      if (chip.to) navigate({ to: chip.to });
-                                      else if (chip.prompt) onSuggestion(chip.prompt);
-                                    }}
-                                    className="qs-chip"
-                                  >
-                                    {chip.label}
-                                  </button>
-                                ))}
-                              </motion.div>
-                              {(m.mode ?? lastMode) !== "safety" && (
-                                <motion.div
-                                  initial={{ opacity: 0, y: 4 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ duration: 0.4, delay: 0.35 }}
-                                  className="mt-2 flex flex-wrap gap-2"
+                          {/* Suggestion chips stay out of normal conversation —
+                              they render ONLY in safety mode, where the
+                              safe/not-safe/SOS buttons are load-bearing. */}
+                          {isLatestCompletedAssistant && (m.mode ?? lastMode) === "safety" && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.4, delay: 0.2 }}
+                              className="mt-3 flex flex-wrap gap-2"
+                            >
+                              {CHIPS_BY_MODE.safety.map(chip => (
+                                <button
+                                  key={chip.label}
+                                  onClick={() => {
+                                    if (chip.to) navigate({ to: chip.to });
+                                    else if (chip.prompt) onSuggestion(chip.prompt);
+                                  }}
+                                  className="qs-chip"
                                 >
-                                  {personalizedReplies.slice(0, 4).map(r => (
-                                    <button
-                                      key={r.label}
-                                      onClick={() => onSuggestion(r.label)}
-                                      className="qs-chip"
-                                    >
-                                      {r.label}
-                                    </button>
-                                  ))}
-                                </motion.div>
-                              )}
-                            </>
+                                  {chip.label}
+                                </button>
+                              ))}
+                            </motion.div>
                           )}
                         </MessageContent>
                       ) : (

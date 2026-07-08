@@ -75,7 +75,7 @@ launch-blocking regardless of category totals.
 | K1 | Chat send/stream | Typing dots + phase line ("Quietly thinking…"), smooth stream |
 | K2 | Facet line under "InnerMate" | Changes with mode (listening → steadying the wave → right here with you) with tinted dot |
 | K3 ⚠ | Safety mode UI | Chips = I can stay safe / I may not be safe / Ground me / Open SOS; placeholder = "Reply with safe or not safe…"; persists after reload; calm design, not alarming |
-| K4 | Mode chips after replies | Relevant to the conversation; chips route OUT (Journal, Urge Shield, SOS) |
+| K4 | Chips under replies | NO suggestion chips in normal conversation (clean bubbles); chips appear ONLY in safety mode (I can stay safe / I may not be safe / Ground me / Open SOS) |
 | K5 | Journal autosave | "saving… / saved a moment ago"; no phantom entries when backing out of a mode |
 | K6 | Mobile 390px | 5-tab nav, no horizontal scroll, night sky renders, composer above keyboard |
 | K7 | Rate limit behavior | Rapid-fire messages → graceful notice (or the Level-2 safety fallback if in a risk flow), never a raw error |
