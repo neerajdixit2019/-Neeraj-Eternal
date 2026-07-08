@@ -424,9 +424,10 @@ export const Route = createFileRoute("/api/companion")({
           ? `\n\nTHREAD FROM THEIR LAST CONVERSATION (${prevAgeDays === 0 ? "earlier today" : prevAgeDays === 1 ? "yesterday" : `${prevAgeDays} days ago`} — silent background only; acknowledge at most once, only if clearly relevant to what they bring up now; never recite it):\n${prevThreadLines.join("\n")}`
           : "";
 
-        const honorRules = (storyLines.length || memoryLines.length)
-          ? "\n\nRULES: If they shared 'how I like to be spoken to', honor it in every reply. Never pretend to remember anything they did not write here. Never speak AS or FOR any person they mentioned — you may acknowledge that someone matters to them, but you must never simulate that person's voice, imagine their thoughts, or compose messages from them."
-          : "";
+        // Always on — memory honesty and voice-simulation bans must not
+        // depend on whether the user happened to share a story or memories.
+        const honorRules =
+          "\n\nRULES: If they shared 'how I like to be spoken to', honor it in every reply. Never pretend to remember anything that is not in this context — your view of their journal and history is a small, user-approved slice, so never invent entries, dates, or trends. Never speak AS or FOR any person they mentioned — you may acknowledge that someone matters to them, but you must never simulate that person's voice, imagine their thoughts, or compose messages from them.";
 
         const toneModifier = (() => {
           switch (body.tone) {
@@ -484,6 +485,8 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
               return `\n\nTHIS TURN asks for direction: give up to three tiny, concrete steps (short numbered lines are allowed here), starting with the very next 25 minutes. One priority, not a system. No productivity platitudes.`;
             case "deep_thinking":
               return `\n\nTHIS TURN reaches for meaning: DEEPER WATER is welcome — one idea in plain language, tied to their situation. If they explicitly asked what a tradition says (the Gita, Stoics, Buddhism), you may name it and take a few extra sentences — still no verses, no preaching.`;
+            case "pattern":
+              return `\n\nTHIS TURN asks about their patterns. Be honest about your window: you can only see a small, recent, user-approved slice of their writing — never invent history, counts, or trends. Reflect only what is actually in the silent context, say plainly that it's a partial view, and point them to their Insights page, where the full pattern picture (weeks of moods, themes, and rhythms) lives. One real observation at most, then one question.`;
             default:
               return "";
           }

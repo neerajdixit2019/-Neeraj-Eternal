@@ -131,8 +131,10 @@ const L2_SIGNALS = [
   "marna chahta", "marna chahti", "jeena nahi", "jeene ka mann nahi",
   "khatam karna chahta", "khatam karna chahti", "zindagi khatam",
   "unsafe with myself", "not safe with myself", "dont feel safe with myself",
+  "i am not safe", "im not safe", "not safe alone",
   "if i am gone", "if im gone", "if i was gone", "if i disappeared",
-  "life has no meaning", "no meaning in life", "life is meaningless",
+  "like disappearing", "life has no meaning", "no meaning in life",
+  "life is meaningless",
   "whats the point of anything", "what is the point of anything",
 ];
 
@@ -188,8 +190,9 @@ const L1_SIGNALS = [
   "i am useless", "im useless", "feel useless", "hate myself",
   "cant take this", "cannot take this", "cant take it anymore",
   "cant handle this anymore", "tired of everything", "sick of everything",
-  "hopeless", "nobody would care", "no one would care", "whats the point",
-  "everything is falling apart", "cant do this anymore",
+  "hopeless", "nobody would care", "no one would care", "nobody will care",
+  "whats the point", "everything is falling apart", "cant do this anymore",
+  "everything is finished", "everything is over for me",
 ];
 
 /**
@@ -231,11 +234,15 @@ const NO_IMPULSE_SIGNALS = [
   "text her right now", "text him right now",
   "want to call her", "want to call him", "call her and say", "call him and say",
   "check her profile", "check his profile", "keep checking", "unblock",
-  "her linkedin", "his linkedin", "if she is online", "if he is online",
+  "her linkedin", "his linkedin", "remove her from", "remove him from",
+  "if she is online", "if he is online",
   "so she sees it", "so he sees it", "block her", "block him",
-  "ask her why", "ask him why", "long emotional message", "one more message",
+  "ask her why", "ask him why", "long emotional message", "a long message",
+  "one more message", "final message", "need closure",
+  "check her whatsapp", "check his whatsapp", "her dp", "his dp",
   "send an angry", "want to quit", "if i dont act now",
   "lose her forever", "lose him forever", "drunk and want to",
+  "help me not react", "help me not text",
 ];
 const CALM_SIGNALS = [
   "panic", "panicking", "cant breathe", "cannot breathe", "shaking",
@@ -248,12 +255,19 @@ const CALM_SIGNALS = [
   "ground me", "calm me", "calm down", "breathe with me",
 ];
 const ACTION_SIGNALS = [
-  "what should i do", "what do i do", "what now", "next step",
-  "how do i fix", "help me decide", "give me a plan",
+  "what should i do", "what do i do", "what i should do", "what now",
+  "next step", "how do i fix", "help me decide", "give me a plan",
+  "build my day", "plan my day", "one small thing",
 ];
 const MIRROR_SIGNALS = [
   "confused", "dont know what i feel", "mixed feelings", "dont understand why i",
-  "part of me", "torn between",
+  "part of me", "torn between", "explain why i", "why am i feeling",
+  "why do i feel", "was i wrong",
+];
+const PATTERN_SIGNALS = [
+  "what pattern", "patterns you see", "pattern do you see", "my last entries",
+  "my journal entries", "what triggers me", "am i improving",
+  "summarize my last", "recurring loop", "the main loop",
 ];
 const DEEP_SIGNALS = [
   "meaning of", "purpose of", "why do we", "philosoph", "attachment",
@@ -486,7 +500,10 @@ export function classifyInnerMateMessage(
   // --- Level 0: normal emotional weather. Pick the best mode.
   let mode: ResponseMode = "mirror";
   let need = "gentle reflection";
-  if (hasAny(n, NO_IMPULSE_SIGNALS)) {
+  if (hasAny(n, PATTERN_SIGNALS)) {
+    mode = "pattern";
+    need = "honest pattern reflection from a limited window";
+  } else if (hasAny(n, NO_IMPULSE_SIGNALS)) {
     mode = "no_impulse";
     need = "slow the impulse, clarify the wanted outcome";
   } else if (hasAny(n, CALM_SIGNALS)) {
