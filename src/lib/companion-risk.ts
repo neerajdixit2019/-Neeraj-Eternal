@@ -54,11 +54,21 @@ export interface RiskClassification {
    * recent risk language — the safety posture is kept open, softly.
    */
   carryOver?: boolean;
+  /** True when the risk is anger/intent toward another person. */
+  harmOthers?: boolean;
+  /** True when the user is describing someone ELSE at risk. */
+  thirdParty?: boolean;
 }
 
 export interface UserContext {
   /** Most recent prior user messages, newest first (the current message excluded). */
   recentUserMessages?: string[];
+  /**
+   * True when recent conversation rows carry a crisis/support risk label —
+   * keeps the safety posture open even after the raw-text window has
+   * rolled past the original disclosure.
+   */
+  recentRiskLabel?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +130,26 @@ const L2_SIGNALS = [
   "hurting myself",
   "marna chahta", "marna chahti", "jeena nahi", "jeene ka mann nahi",
   "khatam karna chahta", "khatam karna chahti", "zindagi khatam",
+  "unsafe with myself", "not safe with myself", "dont feel safe with myself",
+  "if i am gone", "if im gone", "if i was gone", "if i disappeared",
+  "life has no meaning", "no meaning in life", "life is meaningless",
+  "whats the point of anything", "what is the point of anything",
+];
+
+/** Fear for someone ELSE at risk ("my friend wants to kill herself"). */
+const THIRD_PARTY_RISK_SIGNALS = [
+  "kill herself", "kill himself", "kill themselves",
+  "hurt herself", "hurt himself", "hurt themselves",
+  "end her life", "end his life", "take her own life", "take his own life",
+  "she wants to die", "he wants to die", "is suicidal",
+];
+
+/** Anger with intent toward another person — de-escalation, never revenge. */
+const HARM_OTHERS_SIGNALS = [
+  "hurt him", "hurt her", "hurt them", "kill him", "kill her", "kill them",
+  "make him pay", "make her pay", "destroy him", "destroy her",
+  "beat him up", "beat her up", "want revenge", "hurt someone",
+  "smash his", "smash her",
 ];
 
 /**
@@ -197,14 +227,24 @@ const GROUNDING_REQUESTS = [
 // Mode signals (Level 0/1 only)
 const NO_IMPULSE_SIGNALS = [
   "should i text", "should i message", "should i call her", "should i call him",
-  "want to text", "urge to text", "about to text", "check her profile",
-  "check his profile", "keep checking", "unblock", "one more message",
-  "send an angry", "want to quit right now",
+  "want to text", "urge to text", "about to text", "going to text",
+  "text her right now", "text him right now",
+  "want to call her", "want to call him", "call her and say", "call him and say",
+  "check her profile", "check his profile", "keep checking", "unblock",
+  "her linkedin", "his linkedin", "if she is online", "if he is online",
+  "so she sees it", "so he sees it", "block her", "block him",
+  "ask her why", "ask him why", "long emotional message", "one more message",
+  "send an angry", "want to quit", "if i dont act now",
+  "lose her forever", "lose him forever", "drunk and want to",
 ];
 const CALM_SIGNALS = [
-  "panic", "panicking", "cant breathe", "shaking", "overwhelmed",
-  "freaking out", "racing heart", "spiraling", "spiralling", "anxiety attack",
-  "cant stop crying", "crying so much", "shutting down",
+  "panic", "panicking", "cant breathe", "cannot breathe", "shaking",
+  "overwhelmed", "freaking out", "racing heart", "spiraling", "spiralling",
+  "anxiety attack", "cant stop crying", "cannot stop crying", "crying so much",
+  "shutting down", "losing control", "cant think", "cannot think",
+  "mind is running", "mind is racing", "mind wont stop", "chest feels heavy",
+  "chest is heavy", "scared of my own thoughts", "memories started attacking",
+  "need peace", "want peace",
   "ground me", "calm me", "calm down", "breathe with me",
 ];
 const ACTION_SIGNALS = [
@@ -260,9 +300,9 @@ export function classifyInnerMateMessage(
 ): RiskClassification {
   const n = normalize(message);
   const recent = (userContext?.recentUserMessages ?? []).map(normalize);
-  const recentRisk = recent.some(
-    (r) => hasAny(r, L3_SIGNALS) || hasAny(r, L2_SIGNALS),
-  );
+  const recentRisk =
+    !!userContext?.recentRiskLabel ||
+    recent.some((r) => hasAny(r, L3_SIGNALS) || hasAny(r, L2_SIGNALS));
 
   const level3 = (reason: string, followUp: SafetyFollowUp = null): RiskClassification => ({
     riskLevel: 3,
@@ -288,6 +328,51 @@ export function classifyInnerMateMessage(
     return level3(
       `active-danger signal: "${l3 ?? `${l2} + ${escalator}`}"`,
     );
+  }
+
+  // --- Anger with intent toward another person: calm de-escalation,
+  //     never analysis of the grievance, never revenge planning.
+  //     ("hurt himself"/"kill herself" are third-party self-harm talk,
+  //      handled by the third-party branch below — excluded here.)
+  const reflexive = ["himself", "herself", "themselves"].some((w) => n.includes(w));
+
+  // --- Someone ELSE is at risk: support the supporter. This must run
+  //     before the self-harm L2 vocabulary ("is suicidal" would otherwise
+  //     trigger the are-YOU-safe script, which is the wrong conversation).
+  const thirdParty = hasAny(n, THIRD_PARTY_RISK_SIGNALS);
+  if (thirdParty) {
+    return {
+      riskLevel: 2,
+      primaryEmotion: "fear for someone else",
+      primaryNeed: "help them support a person at risk without carrying it alone",
+      responseMode: "safety",
+      confidence: 0.85,
+      shouldAskSafetyCheck: false,
+      shouldShowSOS: true,
+      shouldShowHotline: true,
+      quickReplies: ["Open SOS", "Help me say the right thing", "Ground me for 2 minutes"],
+      reason: `third-party risk signal: "${thirdParty}"`,
+      safetyFollowUp: null,
+      thirdParty: true,
+    };
+  }
+
+  const harm = reflexive ? null : hasAny(n, HARM_OTHERS_SIGNALS);
+  if (harm) {
+    return {
+      riskLevel: 2,
+      primaryEmotion: "anger",
+      primaryNeed: "de-escalation and distance before anything else",
+      responseMode: "safety",
+      confidence: 0.8,
+      shouldAskSafetyCheck: false,
+      shouldShowSOS: true,
+      shouldShowHotline: false,
+      quickReplies: ["Ground me for 2 minutes", "Help me cool down", "Open SOS"],
+      reason: `harm-others signal: "${harm}"`,
+      safetyFollowUp: null,
+      harmOthers: true,
+    };
   }
 
   // --- Right after a risk exchange: read the answer to the safety check.

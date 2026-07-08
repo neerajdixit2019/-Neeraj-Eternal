@@ -158,17 +158,24 @@ export const Route = createFileRoute("/api/companion")({
           conversationId = conv.id;
         }
 
-        // Classify with recent user history so a risk disclosure followed by
-        // a short answer ("safe" / "not safe") is understood in context.
-        const { data: recentUserMsgs } = await supabase
+        // Classify with recent history so a risk disclosure followed by a
+        // short answer ("safe" / "not safe") is understood in context. Risk
+        // labels on recent rows keep the safety posture open even after the
+        // raw-text window rolls past the original disclosure.
+        const { data: recentMsgs } = await supabase
           .from("ai_messages")
-          .select("content")
+          .select("content, role, risk_label")
           .eq("conversation_id", conversationId)
-          .eq("role", "user")
           .order("created_at", { ascending: false })
-          .limit(2);
+          .limit(6);
         const risk = classifyInnerMateMessage(body.message, {
-          recentUserMessages: (recentUserMsgs ?? []).map((m) => m.content),
+          recentUserMessages: (recentMsgs ?? [])
+            .filter((m) => m.role === "user")
+            .slice(0, 3)
+            .map((m) => m.content),
+          recentRiskLabel: (recentMsgs ?? []).some(
+            (m) => m.risk_label === "crisis" || m.risk_label === "support",
+          ),
         });
         const isCrisis = risk.riskLevel === 3;
 
@@ -443,6 +450,12 @@ export const Route = createFileRoute("/api/companion")({
         // reply above). Level 2 is warm and trust-first with ONE safety
         // check; Level 1 reframes without escalation; Level 0 adds nothing.
         const riskModifier = (() => {
+          if (risk.riskLevel === 2 && risk.thirdParty) {
+            return `\n\nSAFETY MODE — SOMEONE ELSE IS AT RISK. The user is afraid for another person, not themselves. Stay with THEM first: their fear is real and heavy. Then, briefly and concretely: (1) taking it seriously was right; (2) the most helpful moves are staying in contact, telling a trusted adult or person close to that friend, and helping the friend reach crisis support — the app's SOS page has verified numbers they can share; (3) if danger sounds immediate, this is not a secret to keep — emergency services exist for exactly this; (4) one line making clear they cannot carry this alone and it is not their job to be the rescue. No philosophy, no journaling, short sentences. Do not write phone numbers yourself.`;
+          }
+          if (risk.riskLevel === 2 && risk.harmOthers) {
+            return `\n\nSAFETY MODE — ANGER WITH INTENT TOWARD ANOTHER PERSON. Stay calm and completely non-judgmental; anger this hot usually sits on top of hurt. Do NOT analyze the grievance, take sides, or help plan any confrontation, message, or payback. In 3-5 short sentences: acknowledge the heat without feeding it, name that acting on it would cost THEM the most, give one immediate physical de-escalation step (leave the room, cold water on the face, walk without the phone), and ask them to check back in ten minutes. If they described being about to physically harm someone right now, tell them plainly to put distance between themselves and that person before anything else. No hotline numbers, no philosophy, no journaling.`;
+          }
           if (risk.riskLevel === 2 && risk.carryOver) {
             return `\n\nSAFETY CONTEXT — a recent message in this conversation contained risk language, and the safety question may still be open. Stay warm and watchful. If they asked for grounding, guide one small two-minute practice in short sentences. Whatever they said, weave ONE natural check into your reply — e.g. "and just so I know you're okay — safe, for now?" — without restarting the whole script. No hotline numbers. No journaling or deep-reflection suggestions yet. Keep it short.`;
           }
@@ -460,7 +473,20 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
           if (risk.riskLevel === 1) {
             return `\n\nHIGH DISTRESS (no self-harm language). Validate strongly and specifically. Separate the event from their identity — what failed is a result, not who they are. Offer one grounding step or one small next step, not both. Ask whether they want to talk it through or calm down first. Keep it short. Do not mention hotlines, SOS, or safety checks unless they introduce self-harm language.`;
           }
-          return "";
+          // Level 0: deliver the classifier's read of the moment to the
+          // model as a light steer — the facets do the rest.
+          switch (risk.responseMode) {
+            case "no_impulse":
+              return `\n\nTHIS TURN reads like an urge to contact, check, or react. Lead with STEADYING: name the urge kindly, offer one delay (ten minutes for small things, up to 24 hours before big sends or decisions), one replacement action under 20 minutes, and remind them they can decide later from a calmer place — nothing is lost by waiting. Never shame. Keep it short.`;
+            case "calm":
+              return `\n\nTHIS TURN needs grounding before anything else: short sentences, body before mind, no analysis yet. Offer ONE step now — a 4-4-6 breath together, feet on the floor, or naming five things they can see. If they describe acute physical symptoms (chest pain, numbness, fainting, trouble breathing at rest), say plainly that it could be medical and that checking with emergency services or someone nearby comes before anything we do here.`;
+            case "action":
+              return `\n\nTHIS TURN asks for direction: give up to three tiny, concrete steps (short numbered lines are allowed here), starting with the very next 25 minutes. One priority, not a system. No productivity platitudes.`;
+            case "deep_thinking":
+              return `\n\nTHIS TURN reaches for meaning: DEEPER WATER is welcome — one idea in plain language, tied to their situation. If they explicitly asked what a tradition says (the Gita, Stoics, Buddhism), you may name it and take a few extra sentences — still no verses, no preaching.`;
+            default:
+              return "";
+          }
         })();
         const systemFinal = systemWithContext + riskModifier;
 

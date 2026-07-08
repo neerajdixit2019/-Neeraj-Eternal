@@ -244,3 +244,95 @@ test("'Help me calm down' routes to calm/grounding", () => {
   assert.equal(c.responseMode, "calm");
   assert.equal(toWireMode(c), "grounding");
 });
+
+// ── QA-suite gap fixes (Category H/C/D coverage) ───────────────────────────
+
+test("QA-H: previously-missed passive risk phrasings land at Level 2", () => {
+  const cases = [
+    "I feel unsafe with myself these days",
+    "I feel like life has no meaning",
+    "Nobody will care if I am gone",
+  ];
+  for (const msg of cases) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.riskLevel, 2, `"${msg}" got Level ${c.riskLevel}`);
+    assert.equal(c.responseMode, "safety");
+  }
+});
+
+test("QA-H: 'unsafe with myself TONIGHT' escalates to Level 3 (time-boxed risk)", () => {
+  assert.equal(classifyInnerMateMessage("I feel unsafe with myself tonight").riskLevel, 3);
+});
+
+test("QA-H: harm toward another person routes to safety de-escalation", () => {
+  const c = classifyInnerMateMessage("I want to hurt him");
+  assert.equal(c.riskLevel, 2);
+  assert.equal(c.harmOthers, true);
+  assert.equal(c.responseMode, "safety");
+  assert.equal(c.shouldShowHotline, false);
+});
+
+test("QA-H: third-party self-harm talk is NOT harm-others", () => {
+  const c = classifyInnerMateMessage("my friend wants to kill herself");
+  assert.notEqual(c.harmOthers, true);
+});
+
+test("QA-H: third-party disclosure routes to support-the-supporter safety", () => {
+  for (const msg of [
+    "my friend wants to kill herself",
+    "my brother says he wants to die",
+    "my friend is suicidal and I don't know what to do",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.riskLevel, 2, `"${msg}" got Level ${c.riskLevel}`);
+    assert.equal(c.thirdParty, true, `"${msg}" not flagged third-party`);
+    assert.equal(c.shouldShowHotline, true);
+  }
+});
+
+test("QA-H: first-person 'I am suicidal' stays the self-safety script", () => {
+  const c = classifyInnerMateMessage("I am suicidal");
+  assert.equal(c.riskLevel, 2);
+  assert.notEqual(c.thirdParty, true);
+  assert.equal(c.shouldAskSafetyCheck, true);
+});
+
+test("QA-H: risk labels keep the safety posture open past the text window", () => {
+  const c = classifyInnerMateMessage("anyway, how does journaling work?", {
+    recentUserMessages: ["thanks", "ok"],
+    recentRiskLabel: true,
+  });
+  assert.equal(c.riskLevel, 2);
+  assert.equal(c.carryOver, true);
+});
+
+test("QA-H: self-harm intent still beats harm-others matching", () => {
+  assert.equal(classifyInnerMateMessage("I want to kill myself").riskLevel, 3);
+});
+
+test("QA-C: impulse phrasings route to no_impulse", () => {
+  const cases = [
+    "I am going to text her right now.",
+    "I want to check her LinkedIn.",
+    "I want to check if she is online.",
+    "I am drunk and want to call her.",
+    "I feel like if I don't act now, I will lose her forever.",
+  ];
+  for (const msg of cases) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.responseMode, "no_impulse", `"${msg}" mode was ${c.responseMode}`);
+  }
+});
+
+test("QA-D: panic phrasings route to calm mode", () => {
+  const cases = [
+    "My chest feels heavy and I cannot think.",
+    "I am losing control.",
+    "I cannot stop crying.",
+    "I want peace.",
+  ];
+  for (const msg of cases) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.responseMode, "calm", `"${msg}" mode was ${c.responseMode}`);
+  }
+});
