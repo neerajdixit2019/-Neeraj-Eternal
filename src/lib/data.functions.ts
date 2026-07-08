@@ -94,9 +94,28 @@ export const logMood = createServerFn({ method: "POST" })
     note: z.string().max(2000).optional(),
   }).parse(i))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("mood_logs").insert({
+    const { data: row, error } = await context.supabase.from("mood_logs").insert({
       user_id: context.userId, ...data, note: data.note ?? null,
-    });
+    }).select("id").single();
+    if (error) throw new Error(error.message);
+    return { ok: true, id: row?.id ?? null };
+  });
+
+/**
+ * Attach the mindset-question answers (or any short reflection) to an
+ * existing mood log. The companion's silent context reads mood notes, so
+ * this is how the check-in flow deepens what InnerMate understands.
+ */
+export const annotateMood = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({
+    id: z.string().uuid(),
+    note: z.string().max(500),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("mood_logs")
+      .update({ note: data.note })
+      .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

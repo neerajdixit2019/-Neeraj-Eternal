@@ -2,12 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { listMoods, listJournal, getProfile, listPaths, logMood, saveJournal } from "@/lib/data.functions";
+import { listMoods, listJournal, getProfile, listPaths, logMood, annotateMood, saveJournal } from "@/lib/data.functions";
 import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions";
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import {
   Heart, Moon, PenLine, Mail, Clock, ArrowRight, HeartHandshake, MessageCircle,
-  Wind, X, AlertTriangle, Settings, Shield, Eye, Sparkles,
+  Wind, X, AlertTriangle, Settings, Shield, Eye, Sparkles, Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
 import { VerseQuote } from "@/components/VerseQuote";
@@ -524,22 +524,56 @@ function OnThisDay() {
 
 // ── Inner-sky widgets ───────────────────────────────────────────
 
+// After the orb, two soft questions. The answers are stitched into the
+// mood log's note, which flows into InnerMate's silent context — so the
+// companion quietly understands how the user is arriving, in parallel.
+const MINDSET_QS: { title: string; opts: { l: string; r: string }[] }[] = [
+  {
+    title: "Where is your mind right now?",
+    opts: [
+      { l: "racing ahead", r: "Your mind is racing ahead" },
+      { l: "circling one thing", r: "Your mind keeps circling one thing" },
+      { l: "scattered everywhere", r: "Your attention is pulled in many directions" },
+      { l: "fairly quiet", r: "Your mind is fairly quiet" },
+    ],
+  },
+  {
+    title: "What do you need most?",
+    opts: [
+      { l: "to be heard", r: "being heard matters most today. InnerMate is close" },
+      { l: "to see clearly", r: "clarity matters most. Bring it to the page when you're ready" },
+      { l: "a gentle push", r: "one small step counts today" },
+      { l: "rest", r: "rest is the wisest thing on your list" },
+    ],
+  },
+];
+
 function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
   const qc = useQueryClient();
   const logFn = useServerFn(logMood);
+  const annotateFn = useServerFn(annotateMood);
   const [selected, setSelected] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [moodLogId, setMoodLogId] = useState<string | null>(null);
+  const [qStep, setQStep] = useState<number>(-1); // -1 hidden, 0/1 asking, 2 done
+  const [answers, setAnswers] = useState<{ l: string; r: string }[]>([]);
   const chosen = MOOD_ORBS.find((o) => o.score === selected) ?? null;
 
   const pick = async (score: number) => {
     if (saving || alreadyLogged) {
       setSelected(score);
+      setQStep((s) => (s === -1 ? 0 : s));
       return;
     }
     setSelected(score);
+    setQStep(0);
+    setAnswers([]);
     setSaving(true);
     try {
-      await logFn({ data: { mood_score: score, emotion_tags: [], trigger_tags: [] } });
+      const res = (await logFn({ data: { mood_score: score, emotion_tags: [], trigger_tags: [] } })) as
+        | { id?: string | null }
+        | undefined;
+      setMoodLogId(res?.id ?? null);
       qc.invalidateQueries({ queryKey: ["moods"] });
       toast.success("Kept.", { duration: 1500 });
     } catch (e) {
@@ -548,6 +582,28 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
       setSaving(false);
     }
   };
+
+  const answer = (opt: { l: string; r: string }) => {
+    const next = [...answers, opt];
+    setAnswers(next);
+    if (qStep < MINDSET_QS.length - 1) {
+      setQStep(qStep + 1);
+      return;
+    }
+    setQStep(MINDSET_QS.length);
+    // Quietly attach the answers to the mood entry (best-effort — the
+    // read still shows even if persistence hiccups).
+    if (moodLogId && chosen) {
+      const note = `arriving: ${chosen.word.toLowerCase()} · mind: ${next[0].l} · needs: ${next[1].l}`;
+      annotateFn({ data: { id: moodLogId, note } })
+        .then(() => qc.invalidateQueries({ queryKey: ["moods"] }))
+        .catch(() => { /* silent */ });
+    }
+  };
+
+  const mindsetRead = answers.length === MINDSET_QS.length
+    ? `${answers[0].r}, and ${answers[1].r}.`
+    : null;
 
   return (
     <div
@@ -584,6 +640,59 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
           <div className="min-w-0">
             <p className="font-serif text-[17px] leading-tight">{chosen.word}</p>
             <p className="mt-0.5 font-serif text-[13px] italic leading-snug text-muted-foreground">{chosen.weather}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Two soft follow-up questions — the answers quietly deepen what
+          InnerMate understands about how the user is arriving. */}
+      {chosen && qStep >= 0 && qStep < MINDSET_QS.length && (
+        <div className="mt-4 fade-in" key={qStep}>
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-serif text-[14px] leading-snug">{MINDSET_QS[qStep].title}</p>
+            <span className="flex shrink-0 gap-1" aria-hidden>
+              {MINDSET_QS.map((_, i) => (
+                <span
+                  key={i}
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: i <= qStep ? "var(--dawn)" : "oklch(1 0 0 / 0.18)" }}
+                />
+              ))}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {MINDSET_QS[qStep].opts.map((o) => (
+              <button
+                key={o.l}
+                type="button"
+                onClick={() => answer(o)}
+                className="rounded-xl border border-white/10 bg-card/50 px-3 py-2.5 text-left text-[12.5px] leading-snug text-foreground transition hover:border-[color-mix(in_oklab,var(--dawn)_45%,transparent)] hover:bg-[color-mix(in_oklab,var(--dawn)_8%,transparent)]"
+              >
+                {o.l}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mindsetRead && (
+        <div
+          className="mt-4 flex items-start gap-2.5 rounded-xl border px-3.5 py-3 fade-in"
+          style={{
+            background: "color-mix(in oklab, var(--dawn) 8%, transparent)",
+            borderColor: "color-mix(in oklab, var(--dawn) 20%, transparent)",
+          }}
+        >
+          <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={1.7} />
+          <div className="min-w-0">
+            <p className="text-[12.5px] leading-relaxed text-foreground/90">{mindsetRead}</p>
+            <button
+              type="button"
+              onClick={() => { setQStep(0); setAnswers([]); }}
+              className="mt-1.5 font-serif text-[11px] italic text-muted-foreground transition hover:text-foreground"
+            >
+              ask me again
+            </button>
           </div>
         </div>
       )}

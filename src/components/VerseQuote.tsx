@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { VERSES, type Verse, type VerseAccent } from "@/lib/verses";
 
 const ACCENT_VAR: Record<VerseAccent, string> = {
@@ -25,19 +26,28 @@ export function VerseQuote({
   const [verse, setVerse] = useState<Verse>(start);
   const [fade, setFade] = useState(true);
 
+  const swapTo = (next: Verse) => {
+    setFade(false);
+    setTimeout(() => { setVerse(next); setFade(true); }, 350);
+  };
+
+  // Each visit begins somewhere new (client-only so SSR and hydration
+  // agree on the initial verse), then drifts onward every 12 seconds.
   useEffect(() => {
     if (!rotate) return;
-    let i = VERSES.indexOf(start);
+    let i = Math.floor(Math.random() * VERSES.length);
+    swapTo(VERSES[i]);
     const id = setInterval(() => {
-      setFade(false);
-      setTimeout(() => {
-        i = (i + 1) % VERSES.length;
-        setVerse(VERSES[i]);
-        setFade(true);
-      }, 350);
-    }, 9000);
+      i = (i + 1) % VERSES.length;
+      swapTo(VERSES[i]);
+    }, 12000);
     return () => clearInterval(id);
-  }, [rotate, start]);
+  }, [rotate]);
+
+  const shuffle = () => {
+    const others = VERSES.filter((v) => v.text !== verse.text);
+    swapTo(others[Math.floor(Math.random() * others.length)]);
+  };
 
   if (variant === "plain") {
     return (
@@ -47,8 +57,19 @@ export function VerseQuote({
         >
           "{verse.text}"
         </blockquote>
-        <figcaption className="mt-3 text-xs uppercase tracking-[0.25em] text-muted-foreground">
-          — {verse.author}
+        <figcaption className="mt-3 flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+          <span>— {verse.author}</span>
+          {rotate && (
+            <button
+              type="button"
+              onClick={shuffle}
+              aria-label="Another quote"
+              title="another"
+              className="rounded-full p-1 text-muted-foreground/70 transition hover:text-foreground"
+            >
+              <RefreshCw className="h-3 w-3" strokeWidth={1.7} />
+            </button>
+          )}
         </figcaption>
       </figure>
     );

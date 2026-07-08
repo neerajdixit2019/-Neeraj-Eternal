@@ -389,10 +389,17 @@ export const Route = createFileRoute("/api/companion")({
           hour < 5 ? "late night" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night";
         const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
 
+        // The latest check-in note carries the Home mindset answers
+        // ("arriving: heavy · mind: circling one thing · needs: rest") —
+        // the quiet channel through which the companion understands how
+        // they arrived today.
+        const latestNote = (moods[0]?.note ?? "").trim().slice(0, 160);
+
         const contextBrief = [
           `It is ${weekday} ${timeOfDay}.`,
           displayName ? `Their name: ${displayName} (use sparingly, never in every reply).` : "",
           moodLine ? `Recent moods on a 1–10 scale (1–2 very low, 3–4 heavy, 5–6 neutral, 7–8 steady, 9–10 peaceful), newest first: ${moodLine}${moodTrend ? ` — overall ${moodTrend}` : ""}.` : "",
+          latestNote ? `Their latest check-in, in their words or from the arrival questions: "${latestNote}".` : "",
           journalSnippets.length ? `Recent journal notes: ${journalSnippets.map((s) => `"${s}"`).join(" · ")}.` : "",
         ].filter(Boolean).join(" ");
 

@@ -44,6 +44,14 @@ export const VERSES: Verse[] = [
   { text: "I am not what happened to me. I am what I choose to become.", author: "Carl Jung", image: v16, accent: "lavender" },
   { text: "Even after all this time the sun never says to the earth, 'You owe me.'", author: "Hafiz", image: v17, accent: "amber" },
   { text: "You, as much as anybody in the entire universe, deserve your love and affection.", author: "Buddha", image: v18, accent: "lavender" },
+  { text: "Wherever you are is the entry point.", author: "Kabir", image: v01, accent: "mint" },
+  { text: "Be patient toward all that is unsolved in your heart and try to love the questions themselves.", author: "Rainer Maria Rilke", image: v03, accent: "sky" },
+  { text: "Feelings come and go like clouds in a windy sky. Conscious breathing is my anchor.", author: "Thich Nhat Hanh", image: v05, accent: "mint" },
+  { text: "You have a right to your actions, but never to your actions' fruits.", author: "Bhagavad Gita", image: v07, accent: "amber" },
+  { text: "We suffer more often in imagination than in reality.", author: "Seneca", image: v09, accent: "sky" },
+  { text: "The moon lives in the lining of your skin.", author: "Mirabai", image: v11, accent: "lavender" },
+  { text: "Sit quietly, doing nothing. Spring comes, and the grass grows by itself.", author: "Bashō", image: v13, accent: "mint" },
+  { text: "Your task is not to seek for love, but merely to seek and find all the barriers within yourself that you have built against it.", author: "Rumi", image: v15, accent: "rose" },
 ];
 
 export function dailyVerse(): Verse {
