@@ -141,12 +141,21 @@ test("L: clean replies pass the detector", () => {
 
 // ── Voice contracts ─────────────────────────────────────────────────────────
 
-test("Voice: hard length rule, one question, contractions, language mirroring", () => {
+test("Voice: hard length rule, question restraint, contractions, language mirroring", () => {
   assert.ok(P.includes("HARD LENGTH RULE"));
-  assert.ok(P.includes("Ask exactly one simple, easy-to-answer question"));
+  assert.ok(P.includes("At most ONE question per reply"));
   assert.ok(P.includes("use contractions"));
   assert.ok(P.includes("Mirror their language"));
   assert.ok(P.includes("Never open two replies in a row"));
+});
+
+test("Voice: discussion stance — thread-following, varied moves, honest pushback", () => {
+  assert.ok(P.includes("A DISCUSSION, NOT AN INTERVIEW"));
+  assert.ok(P.includes("Follow ONE thread across turns"));
+  assert.ok(P.includes("tentative reading they can correct"));
+  assert.ok(P.includes("Being corrected is progress"));
+  assert.ok(P.includes("Disagree sometimes"));
+  assert.ok(P.includes("A companion who agrees with everything isn't listening"));
 });
 
 test("Voice: no chatbot tells — em-dash rule present, examples and templates dash-free", () => {
