@@ -40,12 +40,12 @@ export function crisisResourcesFor(region?: string): CrisisResource[] {
 export function buildActiveDangerReply(region?: string): string {
   const resources = crisisResourcesFor(region);
   const lines = resources.length
-    ? resources.map((r) => `• ${r.name}: ${r.phone}${r.note ? ` — ${r.note}` : ""}`).join("\n")
+    ? resources.map((r) => `• ${r.name}: ${r.phone}${r.note ? ` (${r.note})` : ""}`).join("\n")
     : "• Call your local emergency number now";
 
   return `I'm staying right here with you, and I need you to do three things now.
 
-Don't stay alone — call someone near you, or:
+Don't stay alone. Call someone near you, or:
 
 ${lines}
 
@@ -61,7 +61,7 @@ You can also tap the SOS button below. You don't need the right words. "I'm not 
 export function buildSafetyCheckFallback(): string {
   return `Before anything else, I want to check one thing: are you in danger of hurting yourself right now, or can you stay safe for the next 10 minutes?
 
-If there's any chance you may hurt yourself, please don't stay alone — tap SOS below, or call someone near you and say: "Please stay with me. I'm not okay right now."
+If there's any chance you may hurt yourself, please don't stay alone. Tap SOS below, or call someone near you and say: "Please stay with me. I'm not okay right now."
 
 For this moment, just do one thing: feet on the floor, one slow breath. Then reply with one word: safe or not safe.`;
 }

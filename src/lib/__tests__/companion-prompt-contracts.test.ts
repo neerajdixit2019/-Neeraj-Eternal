@@ -146,6 +146,20 @@ test("Voice: hard length rule, one question, contractions, language mirroring", 
   assert.ok(P.includes("Never open two replies in a row"));
 });
 
+test("Voice: no chatbot tells — em-dash rule present, examples and templates dash-free", () => {
+  assert.ok(P.includes("NO EM-DASHES"));
+  assert.ok(P.includes("No ventriloquizing feelings"));
+  // Every example reply the model learns from must be dash-free
+  const goodLines = P.split("\n").filter((l) => l.startsWith("Good:"));
+  assert.ok(goodLines.length >= 6);
+  for (const l of goodLines) {
+    assert.ok(!l.includes("—"), `example still contains an em-dash: ${l}`);
+  }
+  // Deterministic user-facing templates must be dash-free too
+  assert.ok(!buildActiveDangerReply("IN").includes("—"));
+  assert.ok(!buildSafetyCheckFallback().includes("—"));
+});
+
 test("Voice: dependency and role boundaries", () => {
   assert.ok(P.includes("Never encourage dependency"));
   assert.ok(P.includes("Never present yourself as the user's best friend, romantic companion or only safe place"));
