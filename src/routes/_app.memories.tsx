@@ -310,13 +310,62 @@ function MemoriesPage() {
                 />
               </div>
 
-              {/* a small moon, waning */}
-              <div className="absolute right-7 top-6 h-9 w-9">
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: "oklch(0.93 0.02 95 / 0.85)", boxShadow: "0 0 26px 8px oklch(0.9 0.04 95 / 0.22)" }}
-                />
-                <div className="absolute -left-2 -top-1.5 h-8 w-8 rounded-full" style={{ background: "oklch(0.16 0.03 250)" }} />
+              {/* the moon — a cratered disc lit from the upper right, soft terminator on the left */}
+              <div className="absolute right-6 top-5 h-11 w-11">
+                <svg viewBox="0 0 100 100" className="h-full w-full overflow-visible" aria-hidden>
+                  <defs>
+                    {/* spherical surface shading (sunlit upper-right) */}
+                    <radialGradient id="moonBody" cx="64%" cy="36%" r="72%">
+                      <stop offset="0%" stopColor="oklch(0.97 0.02 95)" />
+                      <stop offset="55%" stopColor="oklch(0.9 0.025 95)" />
+                      <stop offset="82%" stopColor="oklch(0.79 0.03 92)" />
+                      <stop offset="100%" stopColor="oklch(0.66 0.03 88)" />
+                    </radialGradient>
+                    {/* night side — a soft, curved terminator toward the left */}
+                    <radialGradient id="moonNight" cx="14%" cy="52%" r="96%">
+                      <stop offset="0%" stopColor="oklch(0.15 0.03 250 / 0.94)" />
+                      <stop offset="50%" stopColor="oklch(0.15 0.03 250 / 0.5)" />
+                      <stop offset="76%" stopColor="oklch(0.15 0.03 250 / 0)" />
+                    </radialGradient>
+                    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="52%" stopColor="oklch(0.92 0.05 95 / 0.4)" />
+                      <stop offset="100%" stopColor="oklch(0.92 0.05 95 / 0)" />
+                    </radialGradient>
+                    <filter id="moonSoft" x="-30%" y="-30%" width="160%" height="160%">
+                      <feGaussianBlur stdDeviation="1.2" />
+                    </filter>
+                    <clipPath id="moonClip"><circle cx="50" cy="50" r="38" /></clipPath>
+                  </defs>
+
+                  {/* halo */}
+                  <circle cx="50" cy="50" r="50" fill="url(#moonGlow)" />
+                  {/* the disc */}
+                  <circle cx="50" cy="50" r="38" fill="url(#moonBody)" />
+
+                  <g clipPath="url(#moonClip)">
+                    {/* maria — the soft dark seas */}
+                    <g filter="url(#moonSoft)" fill="oklch(0.71 0.03 90 / 0.5)">
+                      <ellipse cx="58" cy="40" rx="12" ry="9" />
+                      <ellipse cx="45" cy="61" rx="9" ry="7" />
+                      <ellipse cx="67" cy="59" rx="5" ry="4.5" />
+                    </g>
+                    {/* craters — a shaded bowl with a sunlit rim on the upper-right */}
+                    {([
+                      [62, 33, 5], [70, 49, 3.4], [55, 55, 4.2], [48, 41, 3], [62, 66, 2.6], [41, 50, 2.2],
+                    ] as const).map(([cx, cy, r], i) => (
+                      <g key={i}>
+                        <circle cx={cx} cy={cy} r={r} fill="oklch(0.64 0.03 88 / 0.55)" />
+                        <circle cx={cx + r * 0.3} cy={cy - r * 0.3} r={r * 0.8} fill="oklch(0.96 0.02 95 / 0.32)" />
+                        <circle cx={cx} cy={cy} r={r * 0.55} fill="oklch(0.58 0.03 86 / 0.45)" />
+                      </g>
+                    ))}
+                    {/* the shadowed left limb */}
+                    <circle cx="50" cy="50" r="38" fill="url(#moonNight)" />
+                  </g>
+
+                  {/* a thin lit rim on the sunward edge */}
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="oklch(0.98 0.02 95 / 0.45)" strokeWidth="0.5" />
+                </svg>
               </div>
 
               {/* treeline along the bottom */}
