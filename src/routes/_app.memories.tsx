@@ -14,7 +14,7 @@ import { listKeptLetters } from "@/lib/letters.functions";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Flame, Mail, Plus, Sparkles, Video, X, Image as ImageIcon } from "lucide-react";
+import { Flame, Mail, Plus, Sparkles, Video, X, Image as ImageIcon, Music } from "lucide-react";
 
 export const Route = createFileRoute("/_app/memories")({
   component: MemoriesPage,
@@ -477,6 +477,8 @@ function MemoriesPage() {
                   >
                     {selectedStar.memory.media_type === "video" ? (
                       <Video className="h-4 w-4" strokeWidth={1.7} style={{ color: selectedStar.tint }} />
+                    ) : selectedStar.memory.media_type === "audio" ? (
+                      <Music className="h-4 w-4" strokeWidth={1.7} style={{ color: selectedStar.tint }} />
                     ) : selectedStar.memory.media_url ? (
                       <ImageIcon className="h-4 w-4" strokeWidth={1.7} style={{ color: selectedStar.tint }} />
                     ) : (
@@ -562,7 +564,8 @@ function MemoriesPage() {
                     ? new Date(m.memory_date).toLocaleDateString(undefined, { month: "short", year: "numeric" })
                     : "undated";
                   const tint = tintFor(m.feeling_tag);
-                  const hasImage = !!m.media_url && m.media_type !== "video";
+                  const hasImage = !!m.media_url && m.media_type === "image";
+                  const MediaIcon = m.media_type === "video" ? Video : m.media_type === "audio" ? Music : null;
                   return (
                     <button
                       key={m.id}
@@ -593,6 +596,11 @@ function MemoriesPage() {
                               boxShadow: `0 0 10px 1px color-mix(in oklab, ${tint} 60%, transparent)`,
                             }}
                           />
+                          {MediaIcon && (
+                            <span className="absolute left-3 top-3 text-foreground/55" aria-hidden>
+                              <MediaIcon className="h-3.5 w-3.5" strokeWidth={1.7} />
+                            </span>
+                          )}
                         </>
                       )}
                       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/40 to-transparent" />
@@ -703,17 +711,30 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
   const [memoryDate, setMemoryDate] = useState("");
   const [aiReadable, setAiReadable] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [kind, setKind] = useState<"image" | "video" | "audio">("image");
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setTitle(""); setStory(""); setFeeling(""); setMemoryDate("");
-    setAiReadable(false); setFile(null);
+    setAiReadable(false); setFile(null); setKind("image");
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  // Photo / Video / Audio — one tap opens the native picker filtered to that kind.
+  const pick = (k: "image" | "video" | "audio") => {
+    setKind(k);
+    setFile(null);
+    const input = fileRef.current;
+    if (input) {
+      input.value = "";
+      input.accept = k === "image" ? "image/*" : k === "video" ? "video/*" : "audio/*";
+      input.click();
+    }
+  };
+
   const submit = async () => {
-    if (!file) { toast.error("Choose a photo or video to keep."); return; }
+    if (!file) { toast.error("Choose a photo, video, or audio clip to keep."); return; }
     if (file.size > MAX_BYTES) { toast.error("File is over 50MB."); return; }
     setSaving(true);
     try {
@@ -731,7 +752,11 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
         feeling_tag: (feeling || null) as Feeling | null,
         memory_date: memoryDate || null,
         media_path: path,
-        media_type: file.type.startsWith("video") ? "video" : "image",
+        media_type: file.type.startsWith("video")
+          ? "video"
+          : file.type.startsWith("audio")
+            ? "audio"
+            : "image",
         is_ai_readable: aiReadable,
       }});
       toast.success("Kept. Look up — it's already shining.");
@@ -769,14 +794,57 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
       <h2 className="mt-2 font-serif text-xl">What should this one hold?</h2>
       <div className="mt-5 space-y-4">
         <div>
-          <Label>Photo or short video (max 50MB)</Label>
-          <Input
+          <Label>What are you keeping? (max 50MB)</Label>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {([
+              { k: "image", label: "Photo", Icon: ImageIcon },
+              { k: "video", label: "Video", Icon: Video },
+              { k: "audio", label: "Audio", Icon: Music },
+            ] as const).map(({ k, label, Icon }) => {
+              const active = kind === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => pick(k)}
+                  aria-pressed={active}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-medium transition ${
+                    active ? "text-foreground" : "border-border/50 text-muted-foreground hover:border-border/80"
+                  }`}
+                  style={active ? {
+                    borderColor: "color-mix(in oklab, var(--dawn) 45%, transparent)",
+                    background: "color-mix(in oklab, var(--dawn) 10%, transparent)",
+                    color: "var(--dawn)",
+                  } : undefined}
+                >
+                  <Icon className="h-5 w-5" strokeWidth={1.6} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          {/* the picker itself stays hidden; the three cards drive it */}
+          <input
             ref={fileRef}
             type="file"
-            accept="image/*,video/*"
+            accept="image/*"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="mt-1.5 rounded-xl"
+            className="sr-only"
+            aria-hidden
+            tabIndex={-1}
           />
+          {file ? (
+            <p className="mt-2.5 flex items-center gap-2 text-[13px]">
+              <span className="truncate text-foreground">{file.name}</span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">
+                {(file.size / (1024 * 1024)).toFixed(1)}MB
+              </span>
+            </p>
+          ) : (
+            <p className="mt-2.5 text-[12px] text-muted-foreground">
+              Tap Photo, Video, or Audio to choose from your device.
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor="m-title">Title (optional)</Label>
@@ -826,7 +894,7 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
             <span className="text-sm">
               <span className="font-medium">Let InnerMate know about this memory</span>
               <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                If on, InnerMate may gently remember the story you wrote here. It never sees the photo or video itself — only your words about it.
+                If on, InnerMate may gently remember the story you wrote here. It never sees the photo, video, or audio itself, only your words about it.
               </span>
             </span>
           </label>
@@ -890,13 +958,23 @@ function ReliveDialog({
         </DialogHeader>
 
         {memory.media_url && (
-          <div className="-mx-6 -mt-6 overflow-hidden bg-muted/40 sm:rounded-t-lg">
-            {memory.media_type === "video" ? (
-              <video src={memory.media_url} muted controls playsInline className="w-full" />
-            ) : (
-              <img src={memory.media_url} alt={memory.title ?? "memory"} className="w-full object-cover" loading="lazy" />
-            )}
-          </div>
+          memory.media_type === "audio" ? (
+            <div className="rounded-2xl border border-border/50 bg-muted/20 p-4">
+              <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
+                <Music className="h-4 w-4" strokeWidth={1.7} style={{ color: tint }} />
+                a sound you kept
+              </div>
+              <audio src={memory.media_url} controls className="w-full" />
+            </div>
+          ) : (
+            <div className="-mx-6 -mt-6 overflow-hidden bg-muted/40 sm:rounded-t-lg">
+              {memory.media_type === "video" ? (
+                <video src={memory.media_url} muted controls playsInline className="w-full" />
+              ) : (
+                <img src={memory.media_url} alt={memory.title ?? "memory"} className="w-full object-cover" loading="lazy" />
+              )}
+            </div>
+          )
         )}
 
         <div>
@@ -922,7 +1000,7 @@ function ReliveDialog({
             <span className="text-sm">
               <span className="font-medium">Share with InnerMate</span>
               <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                If on, InnerMate may gently remember the story you wrote here. It never sees the photo or video itself — only your words about it.
+                If on, InnerMate may gently remember the story you wrote here. It never sees the photo, video, or audio itself, only your words about it.
               </span>
             </span>
           </label>
@@ -943,7 +1021,7 @@ function ReliveDialog({
           </button>
         </div>
         <p className="text-[11px] italic leading-relaxed text-muted-foreground">
-          letting go is a true goodbye — the memory and its photo or video leave your sky for good.
+          letting go is a true goodbye. the memory and whatever you kept with it leave your sky for good.
         </p>
 
         <BurnRitual
