@@ -707,8 +707,58 @@
     animation: qs-dot 1.3s ease-in-out infinite;
   }
 
+  /* Diffraction spikes — the four soft rays that make a bright memory
+     read as a star, not a dot. Colour comes from --spike (the feeling tint). */
+  .qs-spike { position: absolute; inset: 0; pointer-events: none; }
+  .qs-spike::before,
+  .qs-spike::after {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: color-mix(in oklab, var(--spike) 82%, transparent);
+    opacity: 0.55;
+  }
+  .qs-spike::before { width: 1.4px; height: 320%; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 50%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 50%, transparent); }
+  .qs-spike::after  { height: 1.4px; width: 320%;  -webkit-mask-image: linear-gradient(to right, transparent, #000 50%, transparent);  mask-image: linear-gradient(to right, transparent, #000 50%, transparent); }
+
+  /* Floating memory name, revealed when a star is hovered or focused */
+  .qs-star-label {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 5px);
+    transform: translateX(-50%);
+    max-width: 44vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 11.5px;
+    line-height: 1;
+    color: oklch(0.98 0.005 90 / 0.96);
+    text-shadow: 0 0 10px oklch(0.15 0.03 250 / 0.95), 0 1px 3px oklch(0 0 0 / 0.7);
+    pointer-events: none;
+  }
+
+  /* Empty-sky seed — a single breathing star inviting the first memory */
+  .qs-seed-star {
+    width: 12px; height: 12px; border-radius: 9999px;
+    background: radial-gradient(circle at 40% 36%, oklch(1 0 0 / 0.98) 0%, var(--dawn) 55%, color-mix(in oklab, var(--dawn) 28%, transparent) 100%);
+    box-shadow: 0 0 18px 4px color-mix(in oklab, var(--dawn) 55%, transparent);
+    animation: qs-seed-breath 3.6s ease-in-out infinite;
+  }
+  @keyframes qs-seed-breath {
+    0%, 100% { transform: scale(1);    opacity: 0.78; }
+    50%      { transform: scale(1.28); opacity: 1; }
+  }
+  @keyframes qs-sel-ring {
+    0%, 100% { opacity: 0.5;  transform: scale(1); }
+    50%      { opacity: 0.95; transform: scale(1.14); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .qs-firefly, .qs-typing-dot { animation: none; opacity: 0.5; }
+    .qs-firefly, .qs-typing-dot, .qs-seed-star { animation: none; opacity: 0.7; }
   }
 }
 

@@ -90,6 +90,10 @@ const STAR_BASE_SIZE: Record<string, number> = {
   heavy: 9,
 };
 
+// The brightest feelings earn diffraction spikes — the ones that matter most
+// literally shine brightest. Size threshold keeps spikes for the big stars only.
+const BRIGHT_FEELINGS = new Set(["grateful", "warm", "peaceful"]);
+
 // FNV-1a — stable hash of a memory id, same on server and client.
 function hashStr(s: string): number {
   let h = 2166136261;
@@ -172,6 +176,7 @@ function MemoriesPage() {
   });
   const [tab, setTab] = useState<"memories" | "letters">("memories");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [activeFeeling, setActiveFeeling] = useState<string | null>(null);
   const [reliveId, setReliveId] = useState<string | null>(null);
 
@@ -183,6 +188,20 @@ function MemoriesPage() {
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [memories]);
+  // The feeling that colours the sky most — a quiet line of self-knowledge.
+  // Only when it genuinely leads (2+ and a clear margin over the runner-up).
+  const dominantFeeling =
+    constellations[0] && constellations[0][1] > 1 && constellations[0][1] > (constellations[1]?.[1] ?? 0)
+      ? constellations[0][0]
+      : null;
+
+  // Wander: step into a memory the sky chooses. Serendipity, not search.
+  const wander = () => {
+    const pool = memories ?? [];
+    if (pool.length === 0) return;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    setReliveId(pick.id);
+  };
   const activeStars = useMemo(
     () => (activeFeeling
       ? stars.filter((s) => (s.memory.feeling_tag ?? "") === activeFeeling).sort((a, b) => a.hash - b.hash)
@@ -202,6 +221,7 @@ function MemoriesPage() {
       <div>
         <p className="qs-section-label">
           a sky of what stays{typeof n === "number" ? ` · ${n} star${n === 1 ? "" : "s"}` : ""}
+          {dominantFeeling ? ` · mostly ${dominantFeeling}` : ""}
         </p>
         <h1 className="mt-3 font-serif font-light tracking-tight text-3xl sm:text-[2.4rem] leading-tight">Your night sky</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -352,6 +372,11 @@ function MemoriesPage() {
             {stars.map((s) => {
               const dim = activeFeeling !== null && (s.memory.feeling_tag ?? "") !== activeFeeling;
               const isSelected = s.memory.id === selectedId;
+              const active = isSelected || s.memory.id === hoveredId;
+              const bright = BRIGHT_FEELINGS.has(s.memory.feeling_tag ?? "");
+              const label = s.memory.title
+                || (s.memory.story ?? "").split("\n")[0].slice(0, 40)
+                || "an untitled moment";
               return (
                 <button
                   key={s.memory.id}
@@ -359,31 +384,64 @@ function MemoriesPage() {
                   aria-label={s.memory.title || "an untitled memory"}
                   aria-pressed={isSelected}
                   onClick={() => setSelectedId(isSelected ? null : s.memory.id)}
-                  className="group absolute z-[6] flex h-10 w-10 items-center justify-center rounded-full"
+                  onMouseEnter={() => setHoveredId(s.memory.id)}
+                  onMouseLeave={() => setHoveredId((id) => (id === s.memory.id ? null : id))}
+                  onFocus={() => setHoveredId(s.memory.id)}
+                  onBlur={() => setHoveredId((id) => (id === s.memory.id ? null : id))}
+                  className="group absolute z-[6] flex h-10 w-10 items-center justify-center rounded-full outline-none"
                   style={{
                     left: `${s.x}%`,
                     top: `${s.y}%`,
                     marginLeft: -20,
                     marginTop: -20,
                     opacity: dim ? 0.22 : 1,
+                    zIndex: active ? 9 : 6,
                     transition: "opacity 480ms ease",
                   }}
                 >
+                  {/* name, revealed on hover or keyboard focus */}
                   <span
-                    className="relative block transition-transform duration-300 group-hover:scale-[1.3]"
+                    className="qs-star-label transition-opacity duration-200"
+                    style={{ opacity: active ? 1 : 0 }}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    className="relative block transition-transform duration-300 group-hover:scale-[1.35] group-focus-visible:scale-[1.35]"
                     style={{ width: s.size, height: s.size }}
                   >
+                    {/* diffraction spikes for the brightest feelings */}
+                    {bright && (
+                      <span
+                        aria-hidden
+                        className="qs-spike"
+                        style={{
+                          // @ts-expect-error css var
+                          "--spike": s.tint,
+                          opacity: active ? 0.9 : 0.5,
+                          transition: "opacity 300ms ease",
+                        }}
+                      />
+                    )}
                     <span
                       aria-hidden
                       className="absolute inset-0 rounded-full"
                       style={{
                         background: `radial-gradient(circle at 38% 34%, oklch(1 0 0 / 0.98) 0%, ${s.tint} 58%, color-mix(in oklab, ${s.tint} 30%, transparent) 100%)`,
-                        boxShadow: `0 0 ${Math.round(s.size * 1.7)}px 1px color-mix(in oklab, ${s.tint} 65%, transparent)`,
+                        boxShadow: `0 0 ${Math.round(s.size * (active ? 2.4 : 1.7))}px ${active ? 2 : 1}px color-mix(in oklab, ${s.tint} 65%, transparent)`,
                         animation: `qs-twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
+                        transition: "box-shadow 300ms ease",
                       }}
                     />
                     {isSelected && (
-                      <span aria-hidden className="absolute -inset-1 rounded-full" style={{ boxShadow: "0 0 0 1px oklch(1 0 0 / 0.85)" }} />
+                      <span
+                        aria-hidden
+                        className="absolute -inset-1.5 rounded-full"
+                        style={{
+                          boxShadow: "0 0 0 1px oklch(1 0 0 / 0.85)",
+                          animation: "qs-sel-ring 2.4s ease-in-out infinite",
+                        }}
+                      />
                     )}
                   </span>
                 </button>
@@ -392,9 +450,12 @@ function MemoriesPage() {
 
             {/* an empty sky, still listening */}
             {!isLoading && stars.length === 0 && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8">
-                <p className="text-center font-serif italic text-sm" style={{ color: "oklch(0.92 0.015 90 / 0.75)" }}>
-                  your sky is waiting for its first star
+              <div className="pointer-events-none absolute inset-0 z-[6] flex flex-col items-center justify-center gap-4 px-8">
+                <span className="qs-seed-star" aria-hidden />
+                <p className="text-center font-serif italic text-sm leading-relaxed" style={{ color: "oklch(0.92 0.015 90 / 0.8)" }}>
+                  your sky is waiting for its first star.
+                  <br />
+                  keep a moment below, and watch it light up here.
                 </p>
               </div>
             )}
@@ -452,6 +513,25 @@ function MemoriesPage() {
             )}
           </div>
 
+          {/* wander — let the sky pick a memory to step back into */}
+          {(memories?.length ?? 0) >= 2 && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={wander}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] transition hover:brightness-110"
+                style={{
+                  color: "var(--dawn)",
+                  background: "color-mix(in oklab, var(--dawn) 8%, transparent)",
+                  border: "1px solid color-mix(in oklab, var(--dawn) 30%, transparent)",
+                }}
+              >
+                <Sparkles className="h-3.5 w-3.5" strokeWidth={1.7} />
+                let the sky surprise you
+              </button>
+            </div>
+          )}
+
           {/* constellations — the sky, sorted by feeling */}
           {constellations.length > 0 && (
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Constellations">
@@ -481,24 +561,48 @@ function MemoriesPage() {
                   const when = m.memory_date
                     ? new Date(m.memory_date).toLocaleDateString(undefined, { month: "short", year: "numeric" })
                     : "undated";
+                  const tint = tintFor(m.feeling_tag);
+                  const hasImage = !!m.media_url && m.media_type !== "video";
                   return (
                     <button
                       key={m.id}
                       type="button"
                       onClick={() => setReliveId(m.id)}
-                      className="parchment relative flex aspect-[3/4] w-32 shrink-0 flex-col justify-end overflow-hidden p-3 text-left transition hover:-translate-y-0.5"
+                      className="parchment group relative flex aspect-[3/4] w-32 shrink-0 flex-col justify-end overflow-hidden p-3 text-left transition hover:-translate-y-0.5"
                     >
-                      {m.media_url && m.media_type !== "video" && (
+                      {hasImage ? (
                         <img
-                          src={m.media_url}
+                          src={m.media_url!}
                           alt=""
                           className="absolute inset-0 h-full w-full object-cover opacity-70"
                           loading="lazy"
                         />
+                      ) : (
+                        // No photo? Let the feeling paint the card, with a small star.
+                        <>
+                          <div
+                            aria-hidden
+                            className="absolute inset-0"
+                            style={{ background: `radial-gradient(120% 90% at 50% 8%, color-mix(in oklab, ${tint} 30%, transparent) 0%, transparent 62%)` }}
+                          />
+                          <span
+                            aria-hidden
+                            className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full transition-transform duration-300 group-hover:scale-125"
+                            style={{
+                              background: `radial-gradient(circle at 38% 34%, oklch(1 0 0 / 0.95) 0%, ${tint} 60%, transparent 100%)`,
+                              boxShadow: `0 0 10px 1px color-mix(in oklab, ${tint} 60%, transparent)`,
+                            }}
+                          />
+                        </>
                       )}
                       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/40 to-transparent" />
                       <div className="relative">
-                        <p className="font-serif text-[13px] leading-tight line-clamp-2">{label}</p>
+                        {m.feeling_tag && (
+                          <p className="text-[9px] uppercase tracking-[0.16em]" style={{ color: `color-mix(in oklab, ${tint} 55%, var(--foreground))` }}>
+                            {m.feeling_tag}
+                          </p>
+                        )}
+                        <p className="mt-0.5 font-serif text-[13px] leading-tight line-clamp-2">{label}</p>
                         <p className="mt-1 text-[10px] italic text-muted-foreground">{when}</p>
                       </div>
                     </button>
