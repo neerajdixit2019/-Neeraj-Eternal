@@ -230,7 +230,22 @@ function Journal() {
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Link to="/companion" className="inline-flex items-center rounded-full border border-border px-4 py-2 text-sm transition hover:border-primary/30 hover:bg-card/50">reflect with InnerMate</Link>
+        <Link
+          to="/companion"
+          onClick={() => {
+            // Carry this entry into InnerMate. We stash it in sessionStorage
+            // (never the URL — a journal entry is private) so the companion
+            // can open the conversation with what was just written, at any length.
+            const t = editing.title.trim();
+            const b = editing.body.trim();
+            const titlePart = t && t !== editing.mode.label ? t : "";
+            const text = [titlePart, b].filter(Boolean).join("\n\n").trim();
+            try { if (text) sessionStorage.setItem("innermate.reflect", text); } catch { /* noop */ }
+          }}
+          className="inline-flex items-center rounded-full border border-border px-4 py-2 text-sm transition hover:border-primary/30 hover:bg-card/50"
+        >
+          reflect with InnerMate
+        </Link>
       </div>
     </div>
   );

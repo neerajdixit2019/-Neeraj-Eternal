@@ -415,6 +415,7 @@ function Companion() {
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantText = "";
+      let streamedMode: Mode | null = null;
       let convId: string | null = activeId;
 
       // eslint-disable-next-line no-constant-condition
@@ -433,7 +434,11 @@ function Companion() {
             try {
               const parsed = JSON.parse(payload) as { conversationId: string };
               convId = parsed.conversationId;
-              if (!activeId) setActiveId(parsed.conversationId);
+              // Do NOT adopt activeId mid-stream. Switching the active
+              // conversation here re-runs the reset effect (which clears
+              // `optimistic`), wiping the reply as it streams and blanking
+              // the screen. We adopt the id at completion, after priming
+              // the thread cache so the messages never disappear.
             } catch { /* noop */ }
           } else if (type === "phase") {
             const phase = payload as Phase;
@@ -456,6 +461,7 @@ function Companion() {
             const md = payload.trim() as Mode;
             const valid: Mode[] = ["listen","reset","habit","journal","wisdom","decision","grounding","safety"];
             if (valid.includes(md)) {
+              streamedMode = md;
               setLastMode(md);
               setOptimistic(prev => prev.map((msg, i) =>
                 i === prev.length - 1 && msg.role === "assistant"
@@ -468,10 +474,40 @@ function Companion() {
       }
 
       if (convId) {
-        qc.invalidateQueries({ queryKey: ["thread", convId] });
+        const cid = convId;
+        // Fold the finished exchange straight into the thread cache and clear
+        // the optimistic copy in the SAME commit. This is what keeps the
+        // screen from blanking: the messages never disappear (no gap) and
+        // they aren't shown twice (no duplicate). A background refetch then
+        // reconciles with the server's real ids and safety labels.
+        qc.setQueryData(
+          ["thread", cid],
+          (old: { conversation: unknown; messages: unknown[] } | undefined) => {
+            const base = old ?? { conversation: null, messages: [] };
+            const msgs = base.messages ?? [];
+            const dup = msgs.some(
+              (m) => (m as { role?: string }).role === "assistant" &&
+                     (m as { content?: string }).content === assistantText,
+            );
+            if (dup) return base;
+            return {
+              ...base,
+              messages: [
+                ...msgs,
+                { id: `local-u-${cid}`, role: "user", content: text, risk_label: null },
+                { id: `local-a-${cid}`, role: "assistant", content: assistantText,
+                  risk_label: streamedMode === "safety" ? "support" : null },
+              ],
+            };
+          },
+        );
+        setOptimistic([]);
+        if (!activeId) setActiveId(cid);
+        qc.invalidateQueries({ queryKey: ["thread", cid] });
         qc.invalidateQueries({ queryKey: ["convs"] });
+      } else {
+        setOptimistic([]);
       }
-      setOptimistic([]);
     } catch (e) {
       if ((e as Error).name !== "AbortError") toast.error((e as Error).message);
       setOptimistic([]);
@@ -498,6 +534,20 @@ function Companion() {
     navigate({ to: "/companion", search: {}, replace: true });
     void send(text);
   }, [search.seed, sending, send, navigate]);
+
+  // Consume a journal entry handed over from the Journal's "reflect with
+  // InnerMate" button (stashed in sessionStorage, never the URL). Open the
+  // conversation with what was just written, once, then clear the stash.
+  useEffect(() => {
+    if (seededRef.current) return;
+    if (sending) return;
+    let stashed: string | null = null;
+    try { stashed = sessionStorage.getItem("innermate.reflect"); } catch { /* noop */ }
+    if (!stashed) return;
+    seededRef.current = true;
+    try { sessionStorage.removeItem("innermate.reflect"); } catch { /* noop */ }
+    void send(stashed);
+  }, [sending, send]);
 
   const newConversation = useCallback(() => {
     setActiveId(null);
