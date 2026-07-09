@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, BookHeart, HeartHandshake, MessageCircle, LifeBuoy, Settings, Eye, EyeOff, Shield, HeartPulse, Sparkles, Star } from "lucide-react";
+import { Home, BookHeart, HeartHandshake, MessageCircle, LifeBuoy, Settings, Eye, EyeOff, Shield, Sparkles, Star } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,9 +14,8 @@ export const Route = createFileRoute("/_app")({ component: AppLayout });
 const nav = [
   { to: "/home", label: "Home", icon: Home, desc: "Today's inner sky" },
   { to: "/companion", label: "InnerMate", icon: MessageCircle, desc: "The companion" },
-  { to: "/checkin", label: "Check-in", icon: HeartPulse, desc: "Your inner weather" },
   { to: "/journal", label: "Journal", icon: BookHeart, desc: "Your private vault" },
-  { to: "/insights", label: "Insights", icon: Sparkles, desc: "Your pattern constellation" },
+  { to: "/insights", label: "Insights", icon: Sparkles, desc: "Check-in & your constellation" },
   { to: "/heal", label: "Heal", icon: HeartHandshake, desc: "Gentle guided paths" },
   { to: "/memories", label: "Memories", icon: Star, desc: "Your night sky" },
 ] as const;

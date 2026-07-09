@@ -6,15 +6,16 @@ import { ArrowRight, Feather, Hand, MoonStar, Sparkles, type LucideIcon } from "
 import { listMoods, listJournal } from "@/lib/data.functions";
 import { TactileCard } from "@/components/TactileCard";
 import { WeekArc, moodsToWeekArc } from "@/components/WeekArc";
+import { CheckinRitual } from "@/components/CheckinRitual";
 
 export const Route = createFileRoute("/_app/insights")({
   component: Insights,
   head: () => ({
     meta: [
-      { title: "Insights | My Quiet Space" },
-      { name: "description", content: "A calm, non-clinical mirror of your mood check-ins over time." },
-      { property: "og:title", content: "Insights" },
-      { property: "og:description", content: "A calm, non-clinical mirror of your mood over time." },
+      { title: "Check-in & Insights | My Quiet Space" },
+      { name: "description", content: "Name what you're feeling in under a minute, then watch your patterns take shape. Private to you." },
+      { property: "og:title", content: "Check-in & Insights" },
+      { property: "og:description", content: "Check in gently, then see a calm, non-clinical mirror of your mood over time." },
       { property: "og:url", content: "https://neeraj2019.lovable.app/insights" },
       { name: "robots", content: "noindex" },
     ],
@@ -99,7 +100,8 @@ function constellationStars(tags: { label: string; count: number }[]): Star[] {
 
 /* ── Gentle heuristics — computed from data already on the page ── */
 
-type NextStep = { title: string; body: string; cta: string; to: "/wind-down" | "/urge-shield" | "/checkin"; icon: LucideIcon };
+// to: null means the check-in at the top of this page — rendered as a scroll, not a link
+type NextStep = { title: string; body: string; cta: string; to: "/wind-down" | "/urge-shield" | null; icon: LucideIcon };
 
 function pickNextStep(stats: {
   topTriggers: { label: string; count: number }[];
@@ -128,9 +130,9 @@ function pickNextStep(stats: {
   }
   return {
     title: "A two-minute check-in",
-    body: "The simplest way to add a star to this sky — pause, name the feeling, let it be seen.",
+    body: "The simplest way to add a star to this sky — pause, name the feeling, let it be seen. It's waiting at the top of this page.",
     cta: "Check in gently",
-    to: "/checkin",
+    to: null,
     icon: Feather,
   };
 }
@@ -180,13 +182,28 @@ function Insights() {
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-      <p className="qs-section-label">your pattern constellation</p>
+      {/* The check-in ritual — merged in from the old /checkin page */}
+      <p className="qs-section-label">a moment to check in</p>
       <h1 className="mt-3 font-serif text-[28px] font-light leading-tight tracking-tight sm:text-[2.3rem]">
-        Patterns, becoming visible.
+        How does today feel?
       </h1>
-      <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-        Not a report card. A sky slowly taking shape.
+      <p className="mt-3 max-w-md text-[14.5px] leading-relaxed text-muted-foreground">
+        Under a minute. Nothing here is a wrong answer — and every save adds a star to the sky below.
       </p>
+      <div className="mt-8">
+        <CheckinRitual />
+      </div>
+
+      {/* Patterns, built from the check-ins above */}
+      <div className="mt-14 border-t border-border/40 pt-10">
+        <p className="qs-section-label">your pattern constellation</p>
+        <h2 className="mt-3 font-serif text-[24px] font-light leading-tight tracking-tight sm:text-[1.9rem]">
+          Patterns, becoming visible.
+        </h2>
+        <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
+          Not a report card. A sky slowly taking shape.
+        </p>
+      </div>
 
       {/* The constellation */}
       <ConstellationSky stars={stars} />
@@ -276,12 +293,22 @@ function Insights() {
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{nextStep.body}</p>
             </div>
           </div>
-          <Link
-            to={nextStep.to}
-            className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground"
-          >
-            {nextStep.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
-          </Link>
+          {nextStep.to ? (
+            <Link
+              to={nextStep.to}
+              className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground"
+            >
+              {nextStep.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground"
+            >
+              {nextStep.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
+            </button>
+          )}
         </TactileCard>
         <TactileCard tint="lavender">
           <p className="qs-section-label">one deeper question</p>

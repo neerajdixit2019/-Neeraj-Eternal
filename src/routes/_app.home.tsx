@@ -236,7 +236,7 @@ function Home() {
       </TactileCard>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Link to="/checkin" className="block">
+        <Link to="/insights" className="block">
           <TactileCard tint="sky" className="h-full transition hover:-translate-y-0.5">
             <p className="qs-section-label">today's check-in</p>
             <p className={`mt-2 font-serif text-2xl ${privacy ? "blur-sm select-none" : ""}`}>
