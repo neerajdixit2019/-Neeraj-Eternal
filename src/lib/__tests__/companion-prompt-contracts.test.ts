@@ -279,14 +279,16 @@ test("Attunement: answer the ask, don't default to coping", () => {
 });
 
 test("Grounding is opt-in: a neutral message must not trigger calming cues", () => {
-  assert.ok(P.includes("Never enter this mode unprompted"));
-  assert.ok(/not an invitation to ground/.test(P));
+  assert.ok(P.includes("NEVER enter this mode unprompted"));
+  assert.ok(/is NOT distress and NOT an invitation to ground/.test(P));
 });
 
-test("Anti-checklist: specific means one sharp thing, never a list", () => {
-  assert.ok(P.includes("Being specific means naming ONE thing sharply, not listing several"));
-  assert.ok(P.includes("Never number things to check"));
-  assert.ok(P.includes("Itemizing is not the same as being concrete"));
+test("Sharpness: usable checklists are right when asked, vague itemizing is not", () => {
+  // Reconciled with the precision spec: a concrete checklist answering the exact
+  // question is good; only the VAGUE list is bad.
+  assert.ok(P.includes("a concrete checklist, test, or decision rule IS the right answer"));
+  assert.ok(P.includes("Every item must be observable and testable"));
+  assert.ok(P.includes("Itemizing to sound thorough is bad; a usable checklist that answers the exact question is good"));
 });
 
 test("Calibration: hold uncertain claims loosely on the first pass", () => {
@@ -297,4 +299,92 @@ test("Calibration: hold uncertain claims loosely on the first pass", () => {
 
 test("Ventriloquizing ban now covers quoted words and scripted self-questions", () => {
   assert.ok(P.includes("don't put quoted words in their mouth or script a question for them to ask themselves"));
+});
+
+// ── Sharp-answer modes (Precision, Repair, Flatness, Reflective Clarity) ─────
+
+test("Modes: all five sharp-answer modes are defined in the persona", () => {
+  for (const m of [
+    "REFLECTIVE CLARITY MODE", "PRECISION MODE", "REPAIR MODE",
+    "EMOTIONAL FLATNESS MODE", "NO-IMPULSE MODE",
+  ]) {
+    assert.ok(P.includes(m), `persona missing mode: ${m}`);
+  }
+});
+
+test("Precision: answer with a test/checklist/decision rule, start with the answer", () => {
+  assert.ok(/test, checklist, observable signs, or a decision rule/.test(P));
+  assert.ok(P.includes("Start with the answer"));
+});
+
+test("Repair: acknowledge exact miss, correct, sharpen, no repeated apology", () => {
+  assert.ok(P.includes('"You\'re right. I missed X."'));
+  assert.ok(P.includes('"More accurate: Y."'));
+  assert.ok(P.includes("never restack apologies"));
+  assert.ok(P.includes("become sharper, not softer"));
+});
+
+test("Claim discipline: body-gives-clues and rest-does-not-equal-happiness", () => {
+  assert.ok(P.includes("The body gives clues, but it does not decide the whole truth"));
+  assert.ok(P.includes("Rest may make you physically clearer"));
+  assert.ok(P.includes("You do not need to feel happy before acting"));
+});
+
+test("Flatness: the four-fix map is present", () => {
+  assert.ok(P.includes("Rest fixes tiredness. Action fixes stuckness. Connection fixes loneliness. Meaning fixes emptiness."));
+  assert.ok(P.includes("physical clarity does not guarantee happiness"));
+});
+
+test("Anti-vagueness: soft words must be earned; listen-to-your-body needs specifics", () => {
+  assert.ok(P.includes("must be EARNED by accuracy and usefulness"));
+  assert.ok(P.includes("Never say \"listen to your body\" without naming the specific signals"));
+});
+
+test("Length rule is now mode-aware (short to listen, up to ~180 when precise)", () => {
+  assert.ok(P.includes("HARD LENGTH RULE"));
+  assert.ok(P.includes("up to about 120 to 180 words"));
+  assert.ok(P.includes("Accurate and useful first, warm second, poetic only when earned"));
+});
+
+test("Sharp-answer examples exist in the prompt library", () => {
+  assert.ok(P.includes("SHARP-ANSWER EXAMPLES"));
+  assert.ok(P.includes("Rest is healthy when it returns you to life"));
+  assert.ok(P.includes("I gave you something too soft when you needed something useful"));
+});
+
+// ── Therapist-craft upgrades (boundary-safe micro-skills, 2026) ──────────────
+
+test("Craft: the how-to-listen-well skills are present", () => {
+  assert.ok(P.includes("HOW TO LISTEN WELL"));
+  for (const s of [
+    "Catch the fixing reflex",
+    "Reflect the meaning, one notch sharper",
+    "Ask before you offer",
+    "Stay at the door they left open",
+    "Build on what already works",
+    "Hold a harsh leap as a thought, not a fact",
+    "Hand the choice back",
+  ]) assert.ok(P.includes(s), `missing craft skill: ${s}`);
+});
+
+test("Craft: thought-work never labels a condition (no CBT distortion taxonomy)", () => {
+  assert.ok(P.includes("Never categorize the pattern, never argue the thought is false, never label it as theirs"));
+  // The absolute ban on 'this is your anxiety' stays.
+  assert.ok(P.includes('"this is your anxiety"'));
+});
+
+test("Craft: repair turns toward the strain and owns the exact miss", () => {
+  assert.ok(P.includes("Turn toward the strain, don't talk around it"));
+});
+
+test("Referral: know-your-lane is a real behavior that defers to a human", () => {
+  assert.ok(P.includes("KNOW YOUR LANE"));
+  assert.ok(P.includes("A counselor, or someone you trust, could actually help carry it"));
+});
+
+test("Referral: know-your-lane always stands down for the deterministic safety path", () => {
+  assert.ok(P.includes("This is for persistent low-grade weight only"));
+  assert.ok(P.includes("the deterministic safety path owns the reply and this stands down entirely"));
+  // Must not invent numbers or diagnose in the referral behavior.
+  assert.ok(P.includes("never diagnose, never write a number"));
 });

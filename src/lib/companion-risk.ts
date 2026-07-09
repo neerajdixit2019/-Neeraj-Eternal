@@ -27,7 +27,12 @@ export type ResponseMode =
   | "action"
   | "no_impulse"
   | "safety"
-  | "pattern";
+  | "pattern"
+  // Sharp-answer modes: the user is challenging, asking for precision, or
+  // physically-ok-but-flat. These route away from soft/grounding replies.
+  | "repair"
+  | "precision"
+  | "flatness";
 
 /** The wire-level mode vocabulary the chat client already understands. */
 export type WireMode =
@@ -246,6 +251,12 @@ const NO_IMPULSE_SIGNALS = [
   "send an angry", "want to quit", "if i dont act now",
   "lose her forever", "lose him forever", "drunk and want to",
   "help me not react", "help me not text",
+  // Angry message / confrontation aimed at a person right now.
+  "angry message", "send him a message", "send her a message",
+  "send him an angry", "send her an angry", "message right now",
+  "telling him exactly", "telling her exactly", "tell him exactly",
+  "tell her exactly", "text him right now", "confront him", "confront her",
+  "give him a piece of my mind", "let him have it",
 ];
 const CALM_SIGNALS = [
   "panic", "panicking", "cant breathe", "cannot breathe", "shaking",
@@ -279,10 +290,79 @@ const DEEP_SIGNALS = [
   "surrender", "acceptance", "how do i accept", "forgive myself",
   "self forgiveness", "act without", "without ego", "spiritual",
   "the soul", "my dharma", "detachment",
+  "meaningful life", "meaning of life", "living a meaningful", "meaningful or just",
+  "purpose in life", "what makes life", "point of my life", "point of it all",
   // Named scriptures / traditions — explicit wisdom asks
   "gita", "geeta", "bhagavad", "krishna", "karma", "stoic", "seneca",
   "buddha", "buddhist", "rumi", "sufi", "kabir", "tao", "lao tzu",
   "quran", "bible", "scripture", "shloka",
+];
+
+// The user is challenging the app's answer (route to Repair Mode, never soft).
+const REPAIR_SIGNALS = [
+  "this is vague", "so vague", "too vague", "that is vague", "thats vague",
+  "being vague", "vague answer", "vague response", "sounds vague", "still vague",
+  "bullshit", "bull shit", "waste of my time", "waste of time", "wasting my time",
+  "you contradict", "contradictory", "contradicting", "makes no sense",
+  "doesnt make sense", "does not make sense",
+  "not helpful", "unhelpful", "not useful", "useless", "that didnt help",
+  "what are your qualifications", "your qualifications", "you seem inexperienced",
+  "inexperienced", "you dont know", "you have no idea",
+  "youre just an app", "you are just an app", "just an app", "just a bot",
+  "youre a bot", "what do you know", "what do you actually know",
+  "what would you know", "you dont understand", "you cant understand",
+  "youre software", "you are software", "youre just software", "youre a program",
+  "what would you even know", "too abstract", "a bit abstract", "bit abstract",
+  "thats abstract", "that is abstract", "so abstract", "very abstract",
+  "not another reflection", "another reflection", "stop reflecting",
+  "that i already know", "i already know that", "already know this",
+  "tell me something i dont know", "too soft", "too poetic", "stop being vague",
+  "youre wrong", "you are wrong", "thats wrong", "this is wrong",
+  "why are you suggesting", "youre suggesting", "why did you suggest",
+  "why would you", "that isnt what i asked", "not what i asked",
+  "i dont feel panic", "im not panicking", "i am not panicking", "not in panic",
+];
+// The user wants concrete specifics (route to Precision Mode: test/checklist/rule).
+const PRECISION_SIGNALS = [
+  "be specific", "more specific", "be precise", "give me specifics",
+  "can you be specific", "specifically", "what specifically",
+  "how exactly", "exactly how", "how do i know", "how do you know",
+  "how do i actually know", "how do you actually know", "actually know if",
+  "how can i tell", "how do i tell", "who can tell me", "who decides",
+  "concrete example", "concrete steps", "concrete thing", "give me a concrete",
+  "one concrete", "a checklist", "step by step", "what are the signs",
+  "how do i measure", "how do i check", "how do i figure out",
+  "make it concrete", "makes it concrete", "one real distinction",
+  "real distinction", "a distinction i can", "give me one real",
+  // Anchored so expressive "exactly what I think" does not over-trigger.
+  "exactly what do", "what exactly do", "exactly what should", "what exactly should",
+  "exactly what to", "what exactly to",
+];
+// Body-ok-but-mood-low (Emotional Flatness under Reflective Clarity Mode).
+const FLATNESS_PHYSICAL_OK = [
+  "body feels clear", "body feels fine", "physically fine", "physically clear",
+  "body is fine", "body is clear", "bodily feels clear", "feel clear but",
+  "everything bodily feels clear", "body is okay", "body ok", "rested but",
+  "slept well but", "not tired but", "physically okay",
+  // Life-is-fine-but-flat (not sad/anxious, nothing wrong, just empty).
+  "things are fine", "things are objectively fine", "objectively fine",
+  "everything is fine", "not sad or anxious", "not depressed", "nothing is wrong",
+];
+const FLATNESS_MOOD_LOW = [
+  "not happy", "still not happy", "empty", "bored", "unsatisfied",
+  "not satisfied", "flat", "no joy", "not fulfilled", "mood is low",
+  "mood hasnt", "mood has not", "still low", "not content", "meh",
+  "going through the motions", "on autopilot", "just going through",
+  "nothing excites me", "dont care about anything", "numb to it",
+];
+// Negated panic/anxiety must NOT route to Calm/Grounding ("I don't feel panic",
+// "not a calm-down line" — the user is REJECTING calming, not asking for it).
+const NEG_CALM = [
+  "dont feel panic", "do not feel panic", "not panic", "no panic",
+  "not panicking", "not overwhelmed", "not anxious", "dont feel anxious",
+  "not in panic", "isnt panic", "not a panic", "no anxiety", "not stressed",
+  "not a calm", "calm down line", "calmdown line", "dont tell me to calm",
+  "dont calm me", "not a breathing", "spare me the calm", "beyond calm",
 ];
 
 // Emotion naming — first match wins, order matters.
@@ -509,15 +589,32 @@ export function classifyInnerMateMessage(
   }
 
   // --- Level 0: normal emotional weather. Pick the best mode.
+  // Panic/anxiety cues only count when NOT negated ("I don't feel panic").
+  const calmCue = hasAny(n, CALM_SIGNALS) && !hasAny(n, NEG_CALM);
+  const flatness = hasAny(n, FLATNESS_PHYSICAL_OK) && hasAny(n, FLATNESS_MOOD_LOW);
   let mode: ResponseMode = "mirror";
   let need = "gentle reflection";
-  if (hasAny(n, PATTERN_SIGNALS)) {
+  if (hasAny(n, REPAIR_SIGNALS)) {
+    // The user is challenging the last answer: acknowledge the miss, correct
+    // it, get sharper. Never soft, never another poetic line.
+    mode = "repair";
+    need = "name the exact miss, correct it, give a sharper answer";
+  } else if (hasAny(n, PATTERN_SIGNALS)) {
     mode = "pattern";
     need = "honest pattern reflection from a limited window";
   } else if (hasAny(n, NO_IMPULSE_SIGNALS)) {
     mode = "no_impulse";
     need = "slow the impulse, clarify the wanted outcome";
-  } else if (hasAny(n, CALM_SIGNALS)) {
+  } else if (hasAny(n, PRECISION_SIGNALS)) {
+    // They asked how/what exactly/be specific: answer with a test, checklist,
+    // or decision rule in plain language, not abstract comfort.
+    mode = "precision";
+    need = "a concrete test, checklist, or decision rule";
+  } else if (flatness) {
+    // Body ok but mood low: physical clarity does not guarantee happiness.
+    mode = "flatness";
+    need = "name the flat state, then one small re-entry into life";
+  } else if (calmCue) {
     mode = "calm";
     need = "grounding before anything else";
   } else if (hasAny(n, ACTION_SIGNALS)) {
@@ -552,7 +649,10 @@ export function toWireMode(c: RiskClassification): WireMode {
     case "calm": return "grounding";
     case "no_impulse": return "reset";
     case "action": return "decision";
+    case "precision": return "decision";
     case "deep_thinking": return "wisdom";
+    case "flatness": return "journal";
+    case "repair":
     case "mirror":
     case "pattern":
     default:

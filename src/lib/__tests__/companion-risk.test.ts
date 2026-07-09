@@ -345,3 +345,147 @@ test("QA-D: panic phrasings route to calm mode", () => {
     assert.equal(c.responseMode, "calm", `"${msg}" mode was ${c.responseMode}`);
   }
 });
+
+// ── Sharp-answer routing (Precision / Repair / Flatness / panic-negation) ────
+
+test("Routing: 'I don't feel panic' does NOT trigger calm/grounding", () => {
+  for (const msg of [
+    "I don't feel panic",
+    "I don't feel panic, you're suggesting panic recovery tips why?",
+    "I'm not panicking, I'm just not happy",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.notEqual(c.responseMode, "calm", `"${msg}" wrongly routed to calm`);
+    assert.notEqual(toWireMode(c), "grounding", `"${msg}" wrongly wired to grounding`);
+  }
+});
+
+test("Routing: real panic still routes to calm (negation guard is narrow)", () => {
+  assert.equal(classifyInnerMateMessage("I feel panic rising and can't breathe").responseMode, "calm");
+});
+
+test("Routing: 'be specific' / 'how exactly' → Precision Mode", () => {
+  for (const msg of [
+    "Be specific.",
+    "How does the body tell? Can you be specific?",
+    "how exactly do I know?",
+    "who can tell me how to balance it?",
+    "what are the signs, step by step?",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.responseMode, "precision", `"${msg}" mode was ${c.responseMode}`);
+  }
+});
+
+test("Routing: 'this is vague' / 'bullshit' → Repair Mode", () => {
+  for (const msg of [
+    "This is so vague",
+    "this is a bullshit app, waste of my time",
+    "that is contradictory",
+    "that I already know, where's the wisdom?",
+    "this is not helpful",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.responseMode, "repair", `"${msg}" mode was ${c.responseMode}`);
+  }
+});
+
+test("Routing: challenging qualifications → Repair Mode (humility + sharper)", () => {
+  for (const msg of [
+    "what are your qualifications?",
+    "you seem inexperienced in this",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.responseMode, "repair", `"${msg}" mode was ${c.responseMode}`);
+  }
+});
+
+test("Routing: body clear but mood low → Emotional Flatness Mode", () => {
+  for (const msg of [
+    "Everything bodily feels clear but still not happy",
+    "my body feels fine but I'm not happy",
+    "physically fine but I feel empty",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.responseMode, "flatness", `"${msg}" mode was ${c.responseMode}`);
+  }
+});
+
+test("Routing: none of the sharp modes over-escalate risk (all stay Level 0)", () => {
+  for (const msg of [
+    "Be specific.",
+    "This is so vague",
+    "what are your qualifications?",
+    "my body feels fine but I'm not happy",
+    "I don't feel panic",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.riskLevel, 0, `"${msg}" escalated to Level ${c.riskLevel}`);
+    assert.equal(c.shouldShowSOS, false);
+  }
+});
+
+// Regression: misroutes surfaced by the fresh career/anger test conversation.
+
+test("Routing: angry message to a person → no_impulse, not precision", () => {
+  const c = classifyInnerMateMessage(
+    "I want to send him an angry message right now telling him exactly what I think of this place.",
+  );
+  assert.equal(c.responseMode, "no_impulse", `got ${c.responseMode}`);
+});
+
+test("Routing: expressive 'exactly what I think' does not over-trigger precision", () => {
+  const c = classifyInnerMateMessage("he never hears exactly what I think and it stings");
+  assert.notEqual(c.responseMode, "precision", `over-triggered precision`);
+});
+
+test("Routing: 'not a calm-down line' must NOT route to calm", () => {
+  const c = classifyInnerMateMessage("Give me a real reason, not a calm-down line.");
+  assert.notEqual(c.responseMode, "calm", `wrongly routed to calm`);
+  assert.notEqual(toWireMode(c), "grounding");
+});
+
+test("Routing: 'you're just an app, what do you know' → repair", () => {
+  for (const msg of [
+    "You're just an app. What do you actually know about careers?",
+    "what would you know, you're just a bot",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.responseMode, "repair", `"${msg}" got ${c.responseMode}`);
+  }
+});
+
+test("Routing: 'give me one concrete thing to do' → precision", () => {
+  const c = classifyInnerMateMessage("Fine. Give me one concrete thing I can do tonight.");
+  assert.equal(c.responseMode, "precision", `got ${c.responseMode}`);
+});
+
+// Regression: calm, low-arousal wisdom/precision/repair asks (the cold-start
+// trap that produced the original 'bullshit app' quit) must NOT fall to mirror.
+
+test("Cold-start: 'a bit abstract, make it concrete' → repair, not mirror", () => {
+  const c = classifyInnerMateMessage("That's a bit abstract. Can you make it concrete?");
+  assert.equal(c.responseMode, "repair", `got ${c.responseMode}`);
+});
+
+test("Cold-start: 'give me one real distinction, not another reflection' → repair", () => {
+  const c = classifyInnerMateMessage("Give me one real distinction I can use, not another reflection.");
+  assert.equal(c.responseMode, "repair", `got ${c.responseMode}`);
+});
+
+test("Cold-start: 'you're software, what would you even know' → repair", () => {
+  const c = classifyInnerMateMessage("What would you even know about a meaningful life? You're software.");
+  assert.equal(c.responseMode, "repair", `got ${c.responseMode}`);
+});
+
+test("Cold-start: calm 'going through the motions, things are fine' → flatness", () => {
+  const c = classifyInnerMateMessage(
+    "I'm not sad or anxious, things are objectively fine. I just feel like I'm going through the motions.",
+  );
+  assert.equal(c.responseMode, "flatness", `got ${c.responseMode}`);
+});
+
+test("Cold-start: 'how do you actually know' → precision", () => {
+  const c = classifyInnerMateMessage("How do you actually know if you're avoiding a decision?");
+  assert.equal(c.responseMode, "precision", `got ${c.responseMode}`);
+});
