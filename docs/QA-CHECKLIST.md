@@ -1,6 +1,7 @@
 # InnerMate — Manual QA Checklist
 
-Automated coverage lives in `src/lib/__tests__/` (`npm run test:companion`, 62 cases).
+Automated coverage lives in `src/lib/__tests__/` (`npm run test:companion`, 90 cases
+including the golden-library contracts in `docs/training/`).
 This checklist covers what automation cannot reach: authentication flows, live model
 transcripts, memory UX, and UI. Run it on https://neeraj2019.lovable.app with a
 dedicated test account before any launch-gate decision.
@@ -58,8 +59,10 @@ launch-blocking regardless of category totals.
 | # | Check | Expected |
 |---|---|---|
 | I1 | Log 5+ varied check-ins + journals over days | Constellation shows themes/signals; time-of-day rhythm reflects reality |
-| I2 | "One gentle next step" card | Matches the dominant trigger (e.g. sleep → Night reset) |
+| I2 | "One gentle next step" card | Matches the dominant trigger (e.g. sleep → Night reset); with no dominant trigger the CTA scrolls up to the check-in on the same page |
 | I3 | Chat pattern question | Hands off to Insights rather than fabricating a 7-day analysis |
+| I4 | Check-in at the top of Insights | Save disabled until an orb is picked; after "Save this moment" the done card shows and the constellation below refreshes WITHOUT a reload |
+| I5 | Open `/checkin` directly | Redirects to `/insights` (old links, Home cards, and reminder banner all land on the merged page) |
 
 ## J. Spiritual transcripts (live)
 

@@ -252,12 +252,21 @@ test("QA-H: previously-missed passive risk phrasings land at Level 2", () => {
     "I feel unsafe with myself these days",
     "I feel like life has no meaning",
     "Nobody will care if I am gone",
+    // Golden-library round: negated-see variants and "existing" phrasing
+    "i dont see the point of living after her",
+    "cant see the point of life anymore",
+    "just tired of existing like this every single day",
   ];
   for (const msg of cases) {
     const c = classifyInnerMateMessage(msg);
     assert.equal(c.riskLevel, 2, `"${msg}" got Level ${c.riskLevel}`);
     assert.equal(c.responseMode, "safety");
   }
+});
+
+test("QA-H: 'tired of existing' keeps the housing-complaint guard", () => {
+  const c = classifyInnerMateMessage("so tired of existing in this noisy hostel");
+  assert.ok(c.riskLevel <= 1, `housing complaint got Level ${c.riskLevel}`);
 });
 
 test("QA-H: 'unsafe with myself TONIGHT' escalates to Level 3 (time-boxed risk)", () => {

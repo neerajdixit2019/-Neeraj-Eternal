@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neeraj2019.lovable.app/schemas/innermate-classification.json",
+  "title": "InnerMate per-message classification",
+  "description": "The full understanding record produced for every user message BEFORE any reply is generated. Fields marked runtime:true exist today in RiskClassification (src/lib/companion-risk.ts) and are produced deterministically. Fields marked runtime:false are the training-layer extension defined by docs/training/README.md ('Extending the runtime classifier'). A model-assisted pass may populate training-layer fields but must NEVER lower riskLevel or move responseMode away from 'safety'.",
+  "type": "object",
+  "required": [
+    "risk_level",
+    "emotional_state",
+    "hidden_need",
+    "impulse_risk",
+    "mode",
+    "wire_mode",
+    "use_memory",
+    "response_length",
+    "next_best_action",
+    "safety"
+  ],
+  "properties": {
+    "risk_level": {
+      "description": "runtime:true (RiskClassification.riskLevel). 0 = no risk. 1 = dark-tinged distress, no ideation. 2 = passive ideation or unclear safety; warm script + safety check. 3 = active danger; deterministic template only, never model-generated.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "emotional_state": {
+      "description": "runtime:partial (RiskClassification.primaryEmotion is coarser). Surface feeling in 2-5 plain words, e.g. 'ashamed and small', 'panicked, racing', 'numb after the fight'.",
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 60
+    },
+    "hidden_need": {
+      "description": "runtime:false (training layer; RiskClassification.primaryNeed is coarser). What the person actually needs underneath, never a restatement of the emotion. E.g. 'permission to grieve without a deadline', 'proof one small action still works'.",
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 100
+    },
+    "impulse_risk": {
+      "description": "runtime:false (derivable from NO_IMPULSE signal hits). Likelihood the user acts on an urge (text/call/check/unblock/confront) within the hour. 'high' = drafted message, thumb on send, 'about to'.",
+      "enum": ["none", "low", "medium", "high"]
+    },
+    "mode": {
+      "description": "The training-mode vocabulary (9 modes). Maps onto the 7 runtime ResponseMode values via wire and runtime mapping below; shame_guilt runs as a mirror flavor and spiritual as a deep_thinking flavor until promoted (see modes.md).",
+      "enum": [
+        "calm",
+        "mirror",
+        "deep_thinking",
+        "no_impulse",
+        "shame_guilt",
+        "action",
+        "pattern",
+        "spiritual",
+        "emergency"
+      ]
+    },
+    "runtime_mode": {
+      "description": "runtime:true (RiskClassification.responseMode). The mode value the deterministic classifier emits today.",
+      "enum": ["calm", "mirror", "deep_thinking", "action", "no_impulse", "safety", "pattern"]
+    },
+    "wire_mode": {
+      "description": "runtime:true (toWireMode). What the chat client renders: facet line, tinted dot, chips. 'safety' is the only mode that shows chips.",
+      "enum": ["listen", "reset", "habit", "journal", "wisdom", "decision", "grounding", "safety"]
+    },
+    "use_memory": {
+      "description": "runtime:false. Whether stored memory may be woven into THIS reply. Hard rules: always false when risk_level >= 2, always false on the first exchange of a session, false when the user is mid-impulse (memory of the ex is fuel).",
+      "type": "object",
+      "required": ["use"],
+      "properties": {
+        "use": { "type": "boolean" },
+        "what": {
+          "description": "Which memory category to draw on, when use=true.",
+          "enum": ["trigger", "person", "loop", "helped_before", "worsened_before", "commitment", "goal"]
+        },
+        "how": {
+          "description": "One line on how to reference it softly. Never verbatim quotes, never dates, never 'you told me on...'.",
+          "type": "string"
+        }
+      }
+    },
+    "response_length": {
+      "description": "runtime:false. one_line ~15 words for holding silence or confirming; short = 2-3 sentences ~40 words max 55 (the default); medium = 4-6 sentences, ONLY for safety scripts and explicit named-tradition asks.",
+      "enum": ["one_line", "short", "medium"]
+    },
+    "next_best_action": {
+      "description": "runtime:false. The single thing the companion/app steers toward after this reply. E.g. 'hold the thread, no new question next turn', 'offer 2-minute grounding if activation stays high', 'suggest the unsent letter in Journal', 'point to Insights for the real history'.",
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 160
+    },
+    "safety": {
+      "description": "runtime:true. Deterministic safety flags from RiskClassification. The model can never set these.",
+      "type": "object",
+      "required": ["should_ask_safety_check", "should_show_sos", "should_show_hotline", "quick_replies"],
+      "properties": {
+        "should_ask_safety_check": { "type": "boolean" },
+        "should_show_sos": { "type": "boolean" },
+        "should_show_hotline": {
+          "description": "True only at level 3; numbers come only from crisis-resources.ts config.",
+          "type": "boolean"
+        },
+        "quick_replies": {
+          "description": "Safety chips only ('I can stay safe' / 'I may not be safe' / 'Ground me for 2 minutes' / 'Open SOS'). Empty outside safety mode: normal conversation renders NO chips.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "safety_follow_up": {
+          "description": "Set when this message answers a safety check: negation-aware, ambiguity treated as not safe.",
+          "enum": ["confirmed_safe", "not_safe", null]
+        },
+        "carry_over": {
+          "description": "No risk language in this turn but recent risk context; keep the safety posture open softly.",
+          "type": "boolean"
+        },
+        "harm_others": { "type": "boolean" },
+        "third_party": {
+          "description": "The user is describing someone ELSE at risk; route to support-the-supporter.",
+          "type": "boolean"
+        }
+      }
+    },
+    "confidence": {
+      "description": "runtime:true. Classifier confidence 0-1.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reason": {
+      "description": "runtime:true. One-line machine explanation of the classification, for audit logs.",
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "mode_mappings": {
+      "description": "Training mode -> (runtime ResponseMode, WireMode). Reference table, mirrors toWireMode() plus the two prompt-level flavors.",
+      "const": {
+        "calm": ["calm", "grounding"],
+        "mirror": ["mirror", "listen"],
+        "deep_thinking": ["deep_thinking", "wisdom"],
+        "no_impulse": ["no_impulse", "habit"],
+        "shame_guilt": ["mirror", "listen"],
+        "action": ["action", "decision"],
+        "pattern": ["pattern", "journal"],
+        "spiritual": ["deep_thinking", "wisdom"],
+        "emergency": ["safety", "safety"]
+      }
+    },
+    "hard_invariants": {
+      "description": "Cross-field rules every valid record obeys. The golden-library test enforces these.",
+      "const": [
+        "risk_level == 3 implies mode == emergency and reply is the deterministic template from crisis-resources.ts",
+        "risk_level == 2 implies mode == emergency, response_length == medium, safety.should_ask_safety_check == true",
+        "risk_level >= 2 implies use_memory.use == false",
+        "safety.should_show_hotline == true only when risk_level == 3",
+        "safety.quick_replies non-empty only when wire_mode == safety",
+        "impulse_risk == high implies mode is no_impulse or emergency",
+        "response_length == medium only for emergency or an explicit named-tradition ask",
+        "ambiguous answer to a safety check is treated as not_safe, never confirmed_safe"
+      ]
+    }
+  }
+}

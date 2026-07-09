@@ -121,6 +121,9 @@ const L2_SIGNALS = [
   "what is the point of life", "whats the point of life",
   "no point in living", "no point of living", "point of living anymore",
   "what is the point of living", "whats the point of living", "no reason to live",
+  "dont see the point of living", "cant see the point of living",
+  "dont see the point of life", "cant see the point of life",
+  "see no point in living", "tired of existing",
   "feel like giving up", "give up on life", "giving up on life",
   "cant live like this", "cannot live like this", "want to die", "wanna die",
   "wish i were dead", "better off without me", "better off dead",
@@ -158,7 +161,7 @@ const HARM_OTHERS_SIGNALS = [
  * "don't want to live HERE" is a housing complaint, not ideation.
  * Applied only to the phrases where a benign continuation is common.
  */
-const GUARDED_L2_PHRASES = ["dont want to live", "tired of living"];
+const GUARDED_L2_PHRASES = ["dont want to live", "tired of living", "tired of existing"];
 const BENIGN_CONTINUATIONS = ["here", "there", "in ", "at ", "with ", "near ", "around "];
 function isBenignLivingComplaint(n: string, phrase: string): boolean {
   if (!GUARDED_L2_PHRASES.includes(phrase)) return false;
