@@ -160,7 +160,7 @@ test("Voice: discussion stance — thread-following, varied moves, honest pushba
 
 test("Voice: no chatbot tells — em-dash rule present, examples and templates dash-free", () => {
   assert.ok(P.includes("NO EM-DASHES"));
-  assert.ok(P.includes("No ventriloquizing feelings"));
+  assert.ok(P.includes("No ventriloquizing"));
   // Every example reply the model learns from must be dash-free
   const goodLines = P.split("\n").filter((l) => l.startsWith("Good:"));
   assert.ok(goodLines.length >= 6);
@@ -266,4 +266,35 @@ test("Voice: dependency and role boundaries", () => {
   assert.ok(P.includes("Never encourage dependency"));
   assert.ok(P.includes("Never present yourself as the user's best friend, romantic companion or only safe place"));
   assert.ok(P.includes("You are not a work tool"));
+});
+
+// ── Transcript-review contracts (real production failure, 2026) ──────────────
+// A frustrated user asked for wisdom/specificity and got grounding tips and
+// symptom-checklists across nine turns. These pin the steers that prevent it.
+
+test("Attunement: answer the ask, don't default to coping", () => {
+  assert.ok(P.includes("ANSWER THE ASK YOU WERE GIVEN"));
+  assert.ok(P.includes("on the FIRST reply"));
+  assert.ok(P.includes("not a coping tip or a breathing cue"));
+});
+
+test("Grounding is opt-in: a neutral message must not trigger calming cues", () => {
+  assert.ok(P.includes("Never enter this mode unprompted"));
+  assert.ok(/not an invitation to ground/.test(P));
+});
+
+test("Anti-checklist: specific means one sharp thing, never a list", () => {
+  assert.ok(P.includes("Being specific means naming ONE thing sharply, not listing several"));
+  assert.ok(P.includes("Never number things to check"));
+  assert.ok(P.includes("Itemizing is not the same as being concrete"));
+});
+
+test("Calibration: hold uncertain claims loosely on the first pass", () => {
+  assert.ok(P.includes("Hold uncertain things loosely"));
+  assert.ok(P.includes("not \"the body tells you first\""));
+  assert.ok(P.includes("that honesty belongs in the first reply, not only after you're challenged"));
+});
+
+test("Ventriloquizing ban now covers quoted words and scripted self-questions", () => {
+  assert.ok(P.includes("don't put quoted words in their mouth or script a question for them to ask themselves"));
 });
