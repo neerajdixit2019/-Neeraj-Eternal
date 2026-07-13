@@ -87,7 +87,7 @@
   --secondary: oklch(0.29 0.036 278);
   --secondary-foreground: oklch(0.95 0.011 285);
   --muted: oklch(0.27 0.034 278);
-  --muted-foreground: oklch(0.760 0.026 285);    /* readable indigo mist */
+  --muted-foreground: oklch(0.795 0.024 285);    /* readable indigo mist — AA on navy */
   --accent: var(--moss);
   --accent-foreground: oklch(0.96 0.010 290);
   --destructive: oklch(0.62 0.16 28);
@@ -116,7 +116,7 @@
   --border-active: color-mix(in oklab, var(--violet) 45%, transparent);
   --text-primary: var(--foreground);
   --text-secondary: var(--muted-foreground);
-  --text-muted: oklch(0.62 0.024 285);
+  --text-muted: oklch(0.675 0.024 285);
   --accent-primary: var(--violet);
   --accent-secondary: var(--lavender);
   --emotion-calm: var(--mint);
