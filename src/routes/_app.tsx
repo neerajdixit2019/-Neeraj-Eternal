@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, BookHeart, HeartHandshake, MessageCircle, LifeBuoy, Settings, Eye, EyeOff, Shield, Sparkles, Star } from "lucide-react";
+import { Home, BookHeart, HeartHandshake, MessageCircle, LifeBuoy, Settings, Eye, EyeOff, Shield, Sparkles, Star, User } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,16 +18,17 @@ const nav = [
   { to: "/insights", label: "Insights", icon: Sparkles, desc: "Check-in & your constellation" },
   { to: "/heal", label: "Tools", icon: HeartHandshake, desc: "Practices & gentle paths" },
   { to: "/memories", label: "Memories", icon: Star, desc: "Your night sky" },
+  { to: "/you", label: "You", icon: User, desc: "Your week & controls" },
 ] as const;
 
-// Mobile bottom — five essentials. Journal and Insights stay (they're core,
-// real destinations); Tools lives inside Today's quick support + desktop nav.
+// Mobile bottom — the reference boards' four tabs. Journal, Insights, and
+// Tools stay one tap away inside Today (quick support, write box,
+// constellation) and the You tab's "your places" list.
 const mobileNav = [
   { to: "/home", label: "Today", icon: Home },
-  { to: "/journal", label: "Journal", icon: BookHeart },
   { to: "/companion", label: "InnerMate", icon: MessageCircle },
-  { to: "/insights", label: "Insights", icon: Sparkles },
   { to: "/memories", label: "Memories", icon: Star },
+  { to: "/you", label: "You", icon: User },
 ] as const;
 
 function AppLayout() {

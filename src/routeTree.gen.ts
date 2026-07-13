@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiCompanionRouteImport } from './routes/api/companion'
+import { Route as AppYouRouteImport } from './routes/_app.you'
 import { Route as AppWindDownRouteImport } from './routes/_app.wind-down'
 import { Route as AppUrgeShieldRouteImport } from './routes/_app.urge-shield'
 import { Route as AppSosRouteImport } from './routes/_app.sos'
@@ -65,6 +66,11 @@ const ApiCompanionRoute = ApiCompanionRouteImport.update({
   id: '/api/companion',
   path: '/api/companion',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppYouRoute = AppYouRouteImport.update({
+  id: '/you',
+  path: '/you',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppWindDownRoute = AppWindDownRouteImport.update({
   id: '/wind-down',
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/sos': typeof AppSosRoute
   '/urge-shield': typeof AppUrgeShieldRoute
   '/wind-down': typeof AppWindDownRoute
+  '/you': typeof AppYouRoute
   '/api/companion': typeof ApiCompanionRoute
   '/heal/$slug': typeof AppHealSlugRoute
   '/letter/$id': typeof AppLetterIdRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/sos': typeof AppSosRoute
   '/urge-shield': typeof AppUrgeShieldRoute
   '/wind-down': typeof AppWindDownRoute
+  '/you': typeof AppYouRoute
   '/api/companion': typeof ApiCompanionRoute
   '/heal/$slug': typeof AppHealSlugRoute
   '/letter/$id': typeof AppLetterIdRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/_app/sos': typeof AppSosRoute
   '/_app/urge-shield': typeof AppUrgeShieldRoute
   '/_app/wind-down': typeof AppWindDownRoute
+  '/_app/you': typeof AppYouRoute
   '/api/companion': typeof ApiCompanionRoute
   '/_app/heal/$slug': typeof AppHealSlugRoute
   '/_app/letter/$id': typeof AppLetterIdRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/sos'
     | '/urge-shield'
     | '/wind-down'
+    | '/you'
     | '/api/companion'
     | '/heal/$slug'
     | '/letter/$id'
@@ -257,6 +267,7 @@ export interface FileRouteTypes {
     | '/sos'
     | '/urge-shield'
     | '/wind-down'
+    | '/you'
     | '/api/companion'
     | '/heal/$slug'
     | '/letter/$id'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/_app/sos'
     | '/_app/urge-shield'
     | '/_app/wind-down'
+    | '/_app/you'
     | '/api/companion'
     | '/_app/heal/$slug'
     | '/_app/letter/$id'
@@ -346,6 +358,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/companion'
       preLoaderRoute: typeof ApiCompanionRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/you': {
+      id: '/_app/you'
+      path: '/you'
+      fullPath: '/you'
+      preLoaderRoute: typeof AppYouRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/wind-down': {
       id: '/_app/wind-down'
@@ -480,6 +499,7 @@ interface AppRouteChildren {
   AppSosRoute: typeof AppSosRoute
   AppUrgeShieldRoute: typeof AppUrgeShieldRoute
   AppWindDownRoute: typeof AppWindDownRoute
+  AppYouRoute: typeof AppYouRoute
   AppLetterIdRoute: typeof AppLetterIdRoute
 }
 
@@ -497,6 +517,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSosRoute: AppSosRoute,
   AppUrgeShieldRoute: AppUrgeShieldRoute,
   AppWindDownRoute: AppWindDownRoute,
+  AppYouRoute: AppYouRoute,
   AppLetterIdRoute: AppLetterIdRoute,
 }
 
