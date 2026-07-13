@@ -372,11 +372,11 @@ function MemoriesPage() {
               <svg className="absolute inset-x-0 bottom-0 h-14 w-full" viewBox="0 0 400 56" preserveAspectRatio="none">
                 <path
                   d="M0 56 L0 34 L14 40 L26 24 L38 37 L54 29 L68 40 L84 24 L98 36 L114 30 L128 41 L146 26 L162 38 L182 20 L200 37 L218 30 L234 42 L252 28 L268 39 L286 24 L302 37 L322 30 L338 42 L356 28 L372 38 L388 31 L400 37 L400 56 Z"
-                  fill="oklch(0.2 0.04 150 / 0.85)"
+                  fill="oklch(0.19 0.045 278 / 0.85)"
                 />
                 <path
                   d="M0 56 L0 44 L18 49 L32 38 L48 49 L66 42 L82 51 L100 40 L118 50 L136 43 L154 52 L174 39 L192 50 L212 44 L232 53 L252 43 L272 52 L292 45 L312 53 L332 43 L352 51 L372 44 L390 51 L400 46 L400 56 Z"
-                  fill="oklch(0.14 0.03 155)"
+                  fill="oklch(0.13 0.032 275)"
                 />
               </svg>
 

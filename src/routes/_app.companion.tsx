@@ -41,8 +41,12 @@ import {
 
 export const Route = createFileRoute("/_app/companion")({
   component: Companion,
-  validateSearch: (s: Record<string, unknown>): { seed?: string } =>
-    typeof s.seed === "string" && s.seed.length <= 500 ? { seed: s.seed } : {},
+  validateSearch: (s: Record<string, unknown>): { seed?: string; open?: string } => {
+    const out: { seed?: string; open?: string } = {};
+    if (typeof s.seed === "string" && s.seed.length <= 500) out.seed = s.seed;
+    if (typeof s.open === "string" && /^[0-9a-f-]{8,40}$/i.test(s.open)) out.open = s.open;
+    return out;
+  },
   head: () => ({
     meta: [
       { title: "InnerMate — your private companion | My Quiet Space" },
@@ -523,6 +527,17 @@ function Companion() {
     void send(text);
   }, [send]);
 
+  // Consume ?open=<conversationId> from Today's continue-thread card: adopt
+  // the conversation, then clear the param so refresh/back stays clean.
+  const openedRef = useRef(false);
+  useEffect(() => {
+    if (openedRef.current) return;
+    if (!search.open) return;
+    openedRef.current = true;
+    setActiveId(search.open);
+    navigate({ to: "/companion", search: {}, replace: true });
+  }, [search.open, navigate]);
+
   // Consume ?seed=… from Home's feeling chips once, then clear it so refresh doesn't resend.
   const seededRef = useRef(false);
   useEffect(() => {
@@ -924,7 +939,7 @@ function Companion() {
                 status={sendStatus}
                 disabled={!draft.trim() && sendStatus === "ready"}
                 onStop={() => { abortRef.current?.abort(); }}
-                className="h-9 w-9 rounded-full bg-[linear-gradient(140deg,var(--dawn),color-mix(in_oklab,var(--dawn)_78%,oklch(0.6_0.05_100)))] text-[oklch(0.26_0.02_155)] shadow-[0_12px_26px_-14px_color-mix(in_oklab,var(--dawn)_70%,transparent)] hover:brightness-110"
+                className="h-9 w-9 rounded-full bg-[linear-gradient(140deg,var(--violet),color-mix(in_oklab,var(--violet)_72%,oklch(0.52_0.14_305)))] text-[oklch(0.975_0.008_290)] shadow-[0_12px_26px_-14px_color-mix(in_oklab,var(--violet)_70%,transparent)] hover:brightness-110"
               >
                 {sendStatus === "ready" ? <ArrowUp className="h-4 w-4" strokeWidth={1.7} /> : null}
               </PromptInputSubmit>

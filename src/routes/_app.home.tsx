@@ -8,9 +8,11 @@ import { FALLBACK_QUESTIONS, fallbackRead, type ArrivalQuestion, type ArrivalOpt
 import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions";
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import {
-  Heart, Moon, PenLine, Mail, Clock, ArrowRight, HeartHandshake, MessageCircle,
-  Wind, X, AlertTriangle, Settings, Shield, Eye, Sparkles, Lightbulb,
+  Heart, PenLine, Mail, Clock, ArrowRight, MessageCircle, HeartHandshake,
+  Wind, X, AlertTriangle, Settings, Shield, Sparkles, Lightbulb,
 } from "lucide-react";
+import { listConversations } from "@/lib/companion.functions";
+import { CompanionCloud } from "@/components/CompanionCloud";
 import { toast } from "sonner";
 import { VerseQuote } from "@/components/VerseQuote";
 import { dailyVerse } from "@/lib/verses";
@@ -140,13 +142,20 @@ function Home() {
         <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "4%", left: "76%" }} />
         <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "48%", left: "91%", animationDelay: "-4.5s" }} />
         <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "78%", left: "58%", animationDelay: "-9s" }} />
-        <p className="qs-section-label">
-          today's inner sky{firstName ? ` · for ${firstName}` : ""}
-        </p>
+        <p className="qs-section-label">today's inner sky</p>
         <h1 className="mt-3 font-serif text-[2.05rem] font-light leading-[1.08] tracking-tight sm:text-[2.5rem]">
-          Come here before<br className="hidden sm:inline" /> you <em className="italic text-primary">react</em>.
+          {hour == null
+            ? <>Welcome{firstName ? `, ${firstName}` : ""}.</>
+            : hour < 5 ? <>Still up{firstName ? `, ${firstName}` : ""}?</>
+            : hour < 12 ? <>Good morning{firstName ? `, ${firstName}` : ""}.</>
+            : hour < 17 ? <>Good afternoon{firstName ? `, ${firstName}` : ""}.</>
+            : hour < 21 ? <>Good evening{firstName ? `, ${firstName}` : ""}.</>
+            : <>Winding down{firstName ? `, ${firstName}` : ""}?</>}
         </h1>
-        <p className="mt-3 max-w-[38ch] text-[15px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 font-serif text-[17px] font-light text-foreground/85">
+          How are you arriving today?
+        </p>
+        <p className="mt-2 max-w-[38ch] text-[13.5px] leading-relaxed text-muted-foreground">
           {skyLine ?? "A quiet place, ready when you are."}
         </p>
       </div>
@@ -177,27 +186,46 @@ function Home() {
         </div>
       </div>
 
-      {/* 7 · The companion */}
-      <div className="glass mt-8 rounded-3xl p-5 rise-in">
-        <p className="qs-section-label">the companion</p>
-        <p className="mt-2 font-serif text-[20px] font-light leading-snug">
-          Someone to think alongside — never to judge.
-        </p>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          Whatever arrived with you today, you don't have to sort it alone.
-        </p>
-        <Link to="/companion" className="qs-pill-cta mt-4">
-          <MessageCircle className="h-4 w-4" strokeWidth={1.7} /> Talk to InnerMate
-        </Link>
+      {/* 7 · Continue with InnerMate — the real last thread, or meet it fresh */}
+      <ContinueWithInnerMate />
+
+      {/* 8 · Quick support — three doors, with honest durations */}
+      <div className="mt-8">
+        <p className="qs-section-label">quick support</p>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">choose what you need right now</p>
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          <Link to="/sos" className="glass block rounded-3xl p-4 transition hover:-translate-y-0.5">
+            <Wind className="h-4 w-4" strokeWidth={1.7} style={{ color: "var(--emotion-calm)" }} />
+            <p className="mt-2.5 font-serif text-[14.5px] leading-snug">Calm me now</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">2 min · breathing</p>
+          </Link>
+          <Link to="/checkin" className="glass block rounded-3xl p-4 transition hover:-translate-y-0.5">
+            <Lightbulb className="h-4 w-4" strokeWidth={1.7} style={{ color: "var(--emotion-clarity)" }} />
+            <p className="mt-2.5 font-serif text-[14.5px] leading-snug">Think this through</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">3–5 min · check-in</p>
+          </Link>
+          <Link to="/urge-shield" className="glass block rounded-3xl p-4 transition hover:-translate-y-0.5">
+            <Shield className="h-4 w-4" strokeWidth={1.7} style={{ color: "oklch(0.72 0.11 45)" }} />
+            <p className="mt-2.5 font-serif text-[14.5px] leading-snug">Stop an impulse</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">2 min · pause first</p>
+          </Link>
+        </div>
+        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[12px] text-muted-foreground">
+          {isEvening && (
+            <Link to="/wind-down" className="transition hover:text-foreground">night reset →</Link>
+          )}
+          <Link to="/reflect" className="transition hover:text-foreground">see a thought clearly →</Link>
+          {!isEvening && (
+            <Link to="/wind-down" className="transition hover:text-foreground">night reset →</Link>
+          )}
+        </div>
       </div>
 
-      {/* 8 · Your week's constellation */}
+      {/* 9 · Your week's constellation — the shape plus one honest pattern line */}
       {arcHasAny && (
         <div className="sky-panel mt-8 p-5">
-          <p className="qs-section-label">your week's constellation</p>
-          <p className="mt-2 font-serif text-[17px] font-light leading-snug">
-            Seven days, becoming a shape.
-          </p>
+          <p className="qs-section-label">your constellation</p>
+          <ConstellationLine moods={(m ?? []) as MoodRow[]} />
           <WeekArc days={arc!} className="-ml-1 mt-3 w-full max-w-xs" label="Your week's constellation" />
           <Link
             to="/insights"
@@ -208,11 +236,8 @@ function Home() {
         </div>
       )}
 
-      {/* 9 · The anchor — for when the wave rises */}
-      <div className="mt-8">
-        <p className="qs-section-label">when the wave rises</p>
-        <AnchorGrid isEvening={isEvening} />
-      </div>
+      {/* 10 · One recommendation, with its reason */}
+      <RecommendedForYou moods={(m ?? []) as MoodRow[]} />
 
       <OnThisDay />
 
@@ -235,39 +260,6 @@ function Home() {
         </Link>
       </TactileCard>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Link to="/insights" className="block">
-          <TactileCard tint="sky" className="h-full transition hover:-translate-y-0.5">
-            <p className="qs-section-label">today's check-in</p>
-            <p className={`mt-2 font-serif text-2xl ${privacy ? "blur-sm select-none" : ""}`}>
-              {todayMood ? `${todayMood.mood_score}/10` : "Not yet"}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {todayMood ? "Add another, if something shifted." : "One minute. No right answer."}
-            </p>
-          </TactileCard>
-        </Link>
-        <Link to="/journal" className="block">
-          <TactileCard tint="mint" className="h-full transition hover:-translate-y-0.5">
-            <p className="qs-section-label">the vault · last entry</p>
-            <p className={`mt-2 font-serif text-lg leading-snug line-clamp-2 ${privacy ? "blur-sm select-none" : ""}`}>
-              {j?.[0]?.title || j?.[0]?.body?.slice(0,80) || "Your page is waiting."}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">{j?.length ?? 0} entries · write whenever</p>
-          </TactileCard>
-        </Link>
-      </div>
-
-      <div className="mt-10 flex items-center gap-3">
-        <p className="font-serif text-lg font-light">Or something smaller</p>
-        <div className="h-px flex-1 bg-border/60" />
-      </div>
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <SmallTile to="/journal" icon={Heart} label="I miss someone" tint="var(--rose)" />
-        <SmallTile to="/heal" icon={HeartHandshake} label="A gentle path" tint="var(--sky)" />
-        <SmallTile to="/sos" icon={Moon} label="Calm me down" tint="var(--sky)" />
-      </div>
-
       {/* 11 · Closing */}
       <p className="mt-12 text-center font-serif text-[15px] italic text-muted-foreground">
         the pause is the practice.
@@ -276,37 +268,134 @@ function Home() {
   );
 }
 
-function AnchorGrid({ isEvening }: { isEvening: boolean }) {
-  const tiles = [
-    { to: "/urge-shield" as const, icon: Shield, title: "Pause before action", line: "for the text you might regret" },
-    { to: "/wind-down" as const,   icon: Moon,   title: "Night reset",         line: isEvening ? "the day is done — set it down" : "for the night your mind won't quiet" },
-    { to: "/sos" as const,         icon: Wind,   title: "Calm my body",        line: "sixty seconds of slower" },
-    { to: "/reflect" as const,     icon: Eye,    title: "See it clearly",      line: "for the thought that keeps circling" },
-  ];
+type MoodRow = {
+  created_at: string;
+  mood_score: number | null;
+  emotion_tags?: string[] | null;
+  trigger_tags?: string[] | null;
+};
+
+/** Count tag occurrences across the last 7 days of check-ins. */
+function weekTagCounts(moods: MoodRow[]) {
+  const weekAgo = Date.now() - 7 * 86400000;
+  const emo = new Map<string, number>();
+  const trig = new Map<string, number>();
+  let both = 0;
+  for (const row of moods) {
+    if (new Date(row.created_at).getTime() < weekAgo) continue;
+    row.emotion_tags?.forEach((t) => emo.set(t, (emo.get(t) ?? 0) + 1));
+    row.trigger_tags?.forEach((t) => trig.set(t, (trig.get(t) ?? 0) + 1));
+    if (row.emotion_tags?.length && row.trigger_tags?.length) both += 1;
+  }
+  const top = (map: Map<string, number>) =>
+    [...map.entries()].sort((a, b) => b[1] - a[1])[0] as [string, number] | undefined;
+  return { topEmotion: top(emo), topTrigger: top(trig), both };
+}
+
+/** One honest pattern sentence from real check-in tags; falls back gently. */
+function ConstellationLine({ moods }: { moods: MoodRow[] }) {
+  const { topEmotion, topTrigger, both } = weekTagCounts(moods);
+  let line: string;
+  if (topEmotion && topTrigger && both >= 2) {
+    line = `${topEmotion[0]} and ${topTrigger[0]} appeared together ${both} times this week.`;
+  } else if (topEmotion && topEmotion[1] >= 2) {
+    line = `${topEmotion[0]} was named ${topEmotion[1]} times this week.`;
+  } else {
+    line = "Seven days, becoming a shape.";
+  }
+  return <p className="mt-2 font-serif text-[17px] font-light leading-snug">{line}</p>;
+}
+
+/** One recommendation with a real reason, driven by the week's top trigger. */
+function RecommendedForYou({ moods }: { moods: MoodRow[] }) {
+  const { topTrigger } = weekTagCounts(moods);
+  const pick = (() => {
+    switch (topTrigger?.[0]) {
+      case "Sleep":
+        return { to: "/wind-down" as const, title: "Night reset", meta: "3 min · guided wind-down",
+          why: `because Sleep kept appearing in your check-ins this week` };
+      case "Work":
+        return { to: "/urge-shield" as const, title: "A pause before reacting", meta: "2 min · steadying",
+          why: `because Work has been a loud signal this week` };
+      case "Relationship":
+      case "Memories":
+        return { to: "/journal" as const, title: "The unsent letter", meta: "write it, keep it",
+          why: `because ${topTrigger![0]} kept surfacing this week` };
+      default:
+        return { to: "/heal" as const, title: "A two-minute grounding", meta: "2 min · gentle path",
+          why: topTrigger ? `because ${topTrigger[0]} kept appearing this week` : "a gentle way to begin" };
+    }
+  })();
   return (
-    <div className="mt-3 grid grid-cols-2 gap-3">
-      {tiles.map((t) => (
-        <Link key={t.to} to={t.to} className="glass block rounded-3xl p-4 transition hover:-translate-y-0.5">
-          <t.icon className="h-4 w-4 text-foreground/80" strokeWidth={1.7} />
-          <p className="mt-2.5 font-serif text-[15.5px] leading-snug">{t.title}</p>
-          <p className="mt-1 text-[12px] leading-snug text-muted-foreground">{t.line}</p>
-        </Link>
-      ))}
+    <div className="mt-8">
+      <p className="qs-section-label">recommended for you</p>
+      <Link to={pick.to} className="glass mt-3 block rounded-3xl p-5 transition hover:-translate-y-0.5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="font-serif text-[17px] font-light leading-snug">{pick.title}</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">{pick.meta}</p>
+            <p className="mt-2 text-[12.5px] italic leading-relaxed text-muted-foreground/90">{pick.why}</p>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </div>
+      </Link>
     </div>
   );
 }
 
-function SmallTile({ to, icon: Icon, label, tint }: { to: "/journal"|"/heal"|"/sos"; icon: typeof Heart; label: string; tint: string }) {
+/** The most recent real conversation, resumable — or a first meeting. */
+function ContinueWithInnerMate() {
+  const listFn = useServerFn(listConversations);
+  const { data: convs } = useQuery({ queryKey: ["convs"], queryFn: () => listFn() });
+  const last = convs?.[0] as { id: string; title: string | null; updated_at?: string | null } | undefined;
+
   return (
-    <Link to={to} className="tactile flex items-center gap-3 p-4 text-sm transition hover:-translate-y-0.5">
-      <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-        style={{ background: `color-mix(in oklab, ${tint} 45%, transparent)` }}
-      >
-        <Icon className="h-4 w-4 text-foreground" />
-      </span>
-      {label}
-    </Link>
+    <div className="glass mt-8 rounded-3xl p-5 rise-in">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="qs-section-label">{last ? "continue with innermate" : "the companion"}</p>
+          {last ? (
+            <>
+              <p className="mt-2 font-serif text-[19px] font-light leading-snug line-clamp-2">
+                {last.title || "Your last conversation"}
+              </p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                shown because it's your most recent thread — pick it up or begin clean.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 font-serif text-[19px] font-light leading-snug">
+                Someone to think alongside — never to judge.
+              </p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                Whatever arrived with you today, you don't have to sort it alone.
+              </p>
+            </>
+          )}
+        </div>
+        <CompanionCloud size={64} state={last ? "listening" : "calm"} className="mt-1 shrink-0" />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2.5">
+        {last ? (
+          <>
+            <Link to="/companion" search={{ open: last.id }} className="qs-pill-cta" style={{ padding: "0.6rem 1.1rem", fontSize: "13px" }}>
+              Continue
+            </Link>
+            <Link
+              to="/companion"
+              className="glass inline-flex items-center rounded-full px-4 py-2.5 text-[13px] text-muted-foreground transition hover:text-foreground"
+            >
+              Start fresh
+            </Link>
+          </>
+        ) : (
+          <Link to="/companion" className="qs-pill-cta" style={{ padding: "0.6rem 1.1rem", fontSize: "13px" }}>
+            <MessageCircle className="h-4 w-4" strokeWidth={1.7} /> Meet InnerMate
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -190,6 +190,9 @@ function Insights() {
       <p className="mt-3 max-w-md text-[14.5px] leading-relaxed text-muted-foreground">
         Under a minute. Nothing here is a wrong answer — and every save adds a star to the sky below.
       </p>
+      <Link to="/checkin" className="mt-2 inline-block text-[13px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline">
+        prefer the guided journey? →
+      </Link>
       <div className="mt-8">
         <CheckinRitual />
       </div>

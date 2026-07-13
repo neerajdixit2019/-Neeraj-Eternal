@@ -67,38 +67,70 @@
 
 :root {
   --radius: 1rem;
-  /* Misty Forest at Dawn — deep evergreen with warm dawn light */
-  --forest-deep: oklch(0.18 0.018 155);          /* #0f1a14 */
-  --forest-mid:  oklch(0.27 0.024 155);          /* #1f3329 */
-  --moss:        oklch(0.66 0.045 145);          /* #6b8e72 */
-  --dawn:        oklch(0.86 0.060 85);           /* #d9c89a warm dawn */
-  --mist:        oklch(0.95 0.010 110 / 0.06);
+  /* Inner Universe — midnight navy with warm violet presence and dawn-gold warmth.
+     The old forest variable NAMES are kept (they thread the whole codebase);
+     their VALUES now speak night sky. */
+  --forest-deep: oklch(0.165 0.030 272);         /* deep midnight navy */
+  --forest-mid:  oklch(0.235 0.038 276);         /* indigo surface */
+  --moss:        oklch(0.560 0.085 290);         /* muted violet (structural accent) */
+  --dawn:        oklch(0.860 0.060 85);          /* warm dawn gold (secondary accent) */
+  --violet:      oklch(0.640 0.120 292);         /* warm violet (primary accent) */
+  --mist:        oklch(0.95 0.010 280 / 0.06);
   --background: var(--forest-deep);
-  --foreground: oklch(0.94 0.018 95);            /* warm parchment ink */
+  --foreground: oklch(0.95 0.011 285);           /* soft starlight ink */
   --card: var(--forest-mid);
-  --card-foreground: oklch(0.94 0.018 95);
+  --card-foreground: oklch(0.95 0.011 285);
   --popover: var(--forest-mid);
-  --popover-foreground: oklch(0.94 0.018 95);
-  --primary: var(--dawn);                        /* dawn light = brand accent */
-  --primary-foreground: oklch(0.20 0.020 155);
-  --secondary: oklch(0.32 0.022 155);
-  --secondary-foreground: oklch(0.94 0.018 95);
-  --muted: oklch(0.30 0.020 155);
-  --muted-foreground: oklch(0.74 0.025 110);     /* readable misty grey-green */
+  --popover-foreground: oklch(0.95 0.011 285);
+  --primary: var(--violet);                      /* violet = primary action */
+  --primary-foreground: oklch(0.975 0.008 290);
+  --secondary: oklch(0.29 0.036 278);
+  --secondary-foreground: oklch(0.95 0.011 285);
+  --muted: oklch(0.27 0.034 278);
+  --muted-foreground: oklch(0.760 0.026 285);    /* readable indigo mist */
   --accent: var(--moss);
-  --accent-foreground: oklch(0.18 0.018 155);
+  --accent-foreground: oklch(0.96 0.010 290);
   --destructive: oklch(0.62 0.16 28);
   --destructive-foreground: oklch(0.96 0.012 95);
   --border: oklch(1 0 0 / 0.10);
   --input: oklch(1 0 0 / 0.12);
-  --ring: oklch(0.78 0.055 95);
-  /* Tinted accents remapped to forest hues */
-  --lavender: oklch(0.62 0.040 175);             /* deep teal-mist */
-  --sand:     oklch(0.86 0.060 85);              /* warm dawn parchment */
-  --sky:      oklch(0.70 0.038 220);             /* pre-dawn sky */
-  --rose:     oklch(0.70 0.075 35);              /* ember through fog */
-  --amber:    oklch(0.82 0.080 78);              /* sun shaft */
-  --mint:     oklch(0.72 0.060 150);             /* moss highlight */
+  --ring: oklch(0.70 0.10 292);
+  /* Emotion accents — tuned to the reference emotional palette */
+  --lavender: oklch(0.720 0.058 295);            /* soft lavender */
+  --sand:     oklch(0.860 0.045 85);             /* parchment */
+  --sky:      oklch(0.710 0.065 245);            /* clarity blue */
+  --rose:     oklch(0.720 0.095 15);             /* pink-coral (relationship) */
+  --amber:    oklch(0.810 0.090 75);             /* warm amber (confidence) */
+  --mint:     oklch(0.730 0.070 175);            /* calm green-teal */
+
+  /* ── Semantic token layer (redesign vocabulary; aliases over the palette) ── */
+  --background-primary: var(--forest-deep);
+  --background-secondary: oklch(0.19 0.033 274);
+  --background-deep: oklch(0.135 0.026 270);
+  --surface-primary: var(--forest-mid);
+  --surface-secondary: oklch(0.205 0.035 276);
+  --surface-elevated: oklch(0.27 0.042 278);
+  --surface-selected: color-mix(in oklab, var(--violet) 16%, var(--forest-mid));
+  --surface-danger: color-mix(in oklab, var(--destructive) 14%, var(--forest-mid));
+  --border-subtle: oklch(1 0 0 / 0.08);
+  --border-active: color-mix(in oklab, var(--violet) 45%, transparent);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-muted: oklch(0.62 0.024 285);
+  --accent-primary: var(--violet);
+  --accent-secondary: var(--lavender);
+  --emotion-calm: var(--mint);
+  --emotion-clarity: var(--sky);
+  --emotion-relationship: var(--rose);
+  --emotion-confidence: var(--amber);
+  --emotion-sadness: var(--lavender);
+  --emotion-anger: oklch(0.66 0.13 30);
+  --emotion-anxiety: oklch(0.68 0.09 310);
+  --emotion-gratitude: var(--dawn);
+  --state-success: oklch(0.72 0.10 155);
+  --state-warning: var(--amber);
+  --state-danger: var(--destructive);
+  --state-privacy: oklch(0.62 0.09 280);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -618,15 +650,15 @@
     cursor: pointer;
     transition: background 220ms ease, border-color 220ms ease, color 220ms ease;
   }
-  .qs-chip:hover { border-color: color-mix(in oklab, var(--dawn) 35%, transparent); color: var(--foreground); }
+  .qs-chip:hover { border-color: color-mix(in oklab, var(--violet) 40%, transparent); color: var(--foreground); }
   .qs-chip--active {
-    background: color-mix(in oklab, var(--dawn) 14%, transparent);
-    border-color: color-mix(in oklab, var(--dawn) 45%, transparent);
-    color: var(--dawn);
+    background: color-mix(in oklab, var(--violet) 16%, transparent);
+    border-color: color-mix(in oklab, var(--violet) 50%, transparent);
+    color: oklch(0.84 0.07 292);
     font-weight: 600;
   }
 
-  /* Primary pill CTA — dawn-gold gradient, the one warm action per screen */
+  /* Primary pill CTA — warm violet gradient, the one primary action per screen */
   .qs-pill-cta {
     display: inline-flex;
     align-items: center;
@@ -637,13 +669,13 @@
     font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 600;
-    color: oklch(0.26 0.02 155);
-    background: linear-gradient(140deg, var(--dawn), color-mix(in oklab, var(--dawn) 78%, oklch(0.6 0.05 100)));
-    box-shadow: 0 16px 34px -16px color-mix(in oklab, var(--dawn) 60%, transparent);
+    color: oklch(0.975 0.008 290);
+    background: linear-gradient(140deg, var(--violet), color-mix(in oklab, var(--violet) 72%, oklch(0.52 0.14 305)));
+    box-shadow: 0 16px 34px -16px color-mix(in oklab, var(--violet) 65%, transparent);
     cursor: pointer;
     transition: transform 220ms cubic-bezier(.22,.61,.36,1), filter 220ms ease, box-shadow 240ms ease;
   }
-  .qs-pill-cta:hover { filter: brightness(1.07); transform: translateY(-1px); }
+  .qs-pill-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
   .qs-pill-cta:active { transform: scale(0.98); }
   .qs-pill-cta:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
@@ -653,7 +685,7 @@
     overflow: hidden;
     border-radius: 26px;
     border: 1px solid oklch(1 0 0 / 0.09);
-    background: linear-gradient(180deg, oklch(0.16 0.03 250) 0%, oklch(0.15 0.025 245) 55%, oklch(0.17 0.02 160) 100%);
+    background: linear-gradient(180deg, oklch(0.15 0.032 268) 0%, oklch(0.145 0.030 262) 55%, oklch(0.165 0.030 285) 100%);
     box-shadow: 0 30px 70px -40px oklch(0 0 0 / 0.9), 0 1px 0 oklch(1 0 0 / 0.05) inset;
   }
 

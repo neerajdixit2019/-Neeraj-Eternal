@@ -12,17 +12,18 @@ export const Route = createFileRoute("/_app")({ component: AppLayout });
 
 // Desktop sidebar — the whole universe, each place with its quiet name
 const nav = [
-  { to: "/home", label: "Home", icon: Home, desc: "Today's inner sky" },
+  { to: "/home", label: "Today", icon: Home, desc: "How you're arriving" },
   { to: "/companion", label: "InnerMate", icon: MessageCircle, desc: "The companion" },
   { to: "/journal", label: "Journal", icon: BookHeart, desc: "Your private vault" },
   { to: "/insights", label: "Insights", icon: Sparkles, desc: "Check-in & your constellation" },
-  { to: "/heal", label: "Heal", icon: HeartHandshake, desc: "Gentle guided paths" },
+  { to: "/heal", label: "Tools", icon: HeartHandshake, desc: "Practices & gentle paths" },
   { to: "/memories", label: "Memories", icon: Star, desc: "Your night sky" },
 ] as const;
 
-// Mobile bottom — five essentials; settings and grounding live on Home
+// Mobile bottom — five essentials. Journal and Insights stay (they're core,
+// real destinations); Tools lives inside Today's quick support + desktop nav.
 const mobileNav = [
-  { to: "/home", label: "Home", icon: Home },
+  { to: "/home", label: "Today", icon: Home },
   { to: "/journal", label: "Journal", icon: BookHeart },
   { to: "/companion", label: "InnerMate", icon: MessageCircle },
   { to: "/insights", label: "Insights", icon: Sparkles },

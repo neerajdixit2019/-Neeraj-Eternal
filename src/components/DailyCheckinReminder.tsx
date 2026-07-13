@@ -152,8 +152,8 @@ export function DailyCheckinReminder() {
                   Start the 2-minute check-in <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               )}
-              <Link to="/insights" className="soft-arrow text-sm">
-                Open full check-in <ArrowRight className="h-4 w-4" />
+              <Link to="/checkin" className="soft-arrow text-sm">
+                Open the guided check-in <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           ) : (
