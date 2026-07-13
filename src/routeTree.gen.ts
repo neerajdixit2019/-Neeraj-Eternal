@@ -30,6 +30,7 @@ import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppHealRouteImport } from './routes/_app.heal'
 import { Route as AppCompanionRouteImport } from './routes/_app.companion'
 import { Route as AppCheckinRouteImport } from './routes/_app.checkin'
+import { Route as AppPatternTagRouteImport } from './routes/_app.pattern.$tag'
 import { Route as AppLetterIdRouteImport } from './routes/_app.letter.$id'
 import { Route as AppHealSlugRouteImport } from './routes/_app.heal.$slug'
 
@@ -137,6 +138,11 @@ const AppCheckinRoute = AppCheckinRouteImport.update({
   path: '/checkin',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPatternTagRoute = AppPatternTagRouteImport.update({
+  id: '/pattern/$tag',
+  path: '/pattern/$tag',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLetterIdRoute = AppLetterIdRouteImport.update({
   id: '/letter/$id',
   path: '/letter/$id',
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/api/companion': typeof ApiCompanionRoute
   '/heal/$slug': typeof AppHealSlugRoute
   '/letter/$id': typeof AppLetterIdRoute
+  '/pattern/$tag': typeof AppPatternTagRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/api/companion': typeof ApiCompanionRoute
   '/heal/$slug': typeof AppHealSlugRoute
   '/letter/$id': typeof AppLetterIdRoute
+  '/pattern/$tag': typeof AppPatternTagRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/api/companion': typeof ApiCompanionRoute
   '/_app/heal/$slug': typeof AppHealSlugRoute
   '/_app/letter/$id': typeof AppLetterIdRoute
+  '/_app/pattern/$tag': typeof AppPatternTagRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/api/companion'
     | '/heal/$slug'
     | '/letter/$id'
+    | '/pattern/$tag'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/api/companion'
     | '/heal/$slug'
     | '/letter/$id'
+    | '/pattern/$tag'
   id:
     | '__root__'
     | '/'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/api/companion'
     | '/_app/heal/$slug'
     | '/_app/letter/$id'
+    | '/_app/pattern/$tag'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -457,6 +469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCheckinRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pattern/$tag': {
+      id: '/_app/pattern/$tag'
+      path: '/pattern/$tag'
+      fullPath: '/pattern/$tag'
+      preLoaderRoute: typeof AppPatternTagRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/letter/$id': {
       id: '/_app/letter/$id'
       path: '/letter/$id'
@@ -501,6 +520,7 @@ interface AppRouteChildren {
   AppWindDownRoute: typeof AppWindDownRoute
   AppYouRoute: typeof AppYouRoute
   AppLetterIdRoute: typeof AppLetterIdRoute
+  AppPatternTagRoute: typeof AppPatternTagRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -519,6 +539,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppWindDownRoute: AppWindDownRoute,
   AppYouRoute: AppYouRoute,
   AppLetterIdRoute: AppLetterIdRoute,
+  AppPatternTagRoute: AppPatternTagRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

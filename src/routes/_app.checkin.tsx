@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { logMood } from "@/lib/data.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { CompanionCloud } from "@/components/CompanionCloud";
+import { HelpfulnessPrompt } from "@/components/HelpfulnessPrompt";
 import { toast } from "sonner";
 import {
   ArrowLeft, ArrowRight, MessageCircle, Shield, Wind, PenLine, Sparkles,
@@ -200,6 +201,7 @@ function CheckinJourney() {
             view my journey
           </Link>
         </div>
+        <HelpfulnessPrompt category="checkin" className="mt-8 w-full max-w-xs justify-center" />
       </div>
     );
   }

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Mic, MicOff, RotateCcw, Languages, History, Settings2, Search, X, ArrowLeft, ArrowUp, Sparkles } from "lucide-react";
 import companionMark from "@/assets/companion-mark.png";
 import { CompanionCloud } from "@/components/CompanionCloud";
+import { HelpfulnessPrompt } from "@/components/HelpfulnessPrompt";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -217,6 +218,9 @@ function Companion() {
   const [draft, setDraft] = useState("");
   const [optimistic, setOptimistic] = useState<Msg[]>([]);
   const [lastMode, setLastMode] = useState<Mode>("listen");
+  // Once per thread: whether the subtle "was this helpful?" has been answered
+  // or dismissed. Resets when the active conversation changes.
+  const [gaveFeedback, setGaveFeedback] = useState(false);
   const [sending, setSending] = useState(false);
   const [selectedTone, setSelectedTone] = useState<ToneStyle>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -359,7 +363,7 @@ function Companion() {
     enabled: !!activeId,
   });
 
-  useEffect(() => { focusTextarea(); }, [activeId]);
+  useEffect(() => { focusTextarea(); setGaveFeedback(false); }, [activeId]);
   useEffect(() => {
     setOptimistic([]);
     // Safety mode must survive thread refetches: restore it from the
@@ -815,6 +819,19 @@ function Companion() {
                                 </button>
                               ))}
                             </motion.div>
+                          )}
+                          {/* Subtle, opt-in helpfulness signal — never on crisis
+                              replies, only once a real exchange has happened. */}
+                          {isLatestCompletedAssistant
+                            && (m.mode ?? lastMode) !== "safety"
+                            && messages.length >= 4
+                            && !gaveFeedback && (
+                            <HelpfulnessPrompt
+                              category="companion"
+                              responseMode={m.mode ?? lastMode}
+                              onDone={() => setGaveFeedback(true)}
+                              className="mt-3 border-t border-border/30 pt-2.5"
+                            />
                           )}
                         </MessageContent>
                       ) : (
