@@ -292,6 +292,14 @@ const DEEP_SIGNALS = [
   "the soul", "my dharma", "detachment",
   "meaningful life", "meaning of life", "living a meaningful", "meaningful or just",
   "purpose in life", "what makes life", "point of my life", "point of it all",
+  // Reconnecting with the real self (identity, not distress).
+  "who am i", "who i really am", "who i am anymore", "lost myself",
+  "lost who i", "dont feel like myself", "dont know who i am",
+  "not sure who i am", "the real me", "my real self", "my true self",
+  "feel like a fraud", "wearing a mask", "pretending to be someone",
+  "find myself again", "dont recognize myself", "living for everyone else",
+  "reconnect with myself", "connect to myself", "my authentic self",
+  "back to myself", "who i want to be",
   // Named scriptures / traditions — explicit wisdom asks
   "gita", "geeta", "bhagavad", "krishna", "karma", "stoic", "seneca",
   "buddha", "buddhist", "rumi", "sufi", "kabir", "tao", "lao tzu",

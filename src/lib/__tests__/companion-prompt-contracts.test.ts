@@ -388,3 +388,14 @@ test("Referral: know-your-lane always stands down for the deterministic safety p
   // Must not invent numbers or diagnose in the referral behavior.
   assert.ok(P.includes("never diagnose, never write a number"));
 });
+
+test("Self: reconnecting-with-yourself capability exists and never diagnoses identity", () => {
+  assert.ok(P.includes("RECONNECTING WITH YOURSELF"));
+  assert.ok(P.includes("separate the self from the performance"));
+  assert.ok(P.includes("Find the signal through values, not mood"));
+  assert.ok(P.includes("one small act of alignment"));
+  // It is a return, not a repair, and never a diagnosis.
+  assert.ok(P.includes("Treat it as a return, not a repair"));
+  assert.ok(/never as .you.?ve lost your identity/.test(P));
+  assert.ok(P.includes("Never diagnose an identity condition"));
+});

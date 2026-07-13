@@ -489,3 +489,17 @@ test("Cold-start: 'how do you actually know' → precision", () => {
   const c = classifyInnerMateMessage("How do you actually know if you're avoiding a decision?");
   assert.equal(c.responseMode, "precision", `got ${c.responseMode}`);
 });
+
+test("Self: identity / 'who am I' questions route to deeper water (wisdom)", () => {
+  for (const msg of [
+    "I feel like I've lost myself. Who am I anymore?",
+    "I don't feel like myself lately.",
+    "How do I get back to my real self?",
+    "I've been living for everyone else and I don't recognize myself.",
+  ]) {
+    const c = classifyInnerMateMessage(msg);
+    assert.equal(c.responseMode, "deep_thinking", `"${msg}" got ${c.responseMode}`);
+    assert.equal(toWireMode(c), "wisdom");
+    assert.equal(c.riskLevel, 0, `"${msg}" over-escalated`);
+  }
+});
