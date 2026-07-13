@@ -10,7 +10,17 @@ import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import {
   Heart, PenLine, Mail, Clock, ArrowRight, MessageCircle, HeartHandshake,
   Wind, X, AlertTriangle, Settings, Shield, Sparkles, Lightbulb,
+  CloudRain, Cloud, CloudSun, Sun,
 } from "lucide-react";
+
+// Mood word → icon, matching the reference boards' labeled icon tiles.
+const MOOD_ICONS: Record<string, typeof Cloud> = {
+  Heavy: CloudRain,
+  Cloudy: Cloud,
+  Settled: CloudSun,
+  Open: Sun,
+  Bright: Sparkles,
+};
 import { listConversations } from "@/lib/companion.functions";
 import { CompanionCloud } from "@/components/CompanionCloud";
 import { toast } from "sonner";
@@ -731,23 +741,29 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
       style={{ boxShadow: "0 20px 54px -34px oklch(0 0 0 / 0.7)" }}
     >
       <p className="qs-section-label">how are you arriving today?</p>
-      <div className="mt-4 flex items-center justify-between gap-1.5">
-        {MOOD_ORBS.map((o) => (
-          <button
-            key={o.score}
-            type="button"
-            onClick={() => pick(o.score)}
-            aria-label={o.word}
-            aria-pressed={selected === o.score}
-            className="flex flex-1 items-center justify-center bg-transparent py-1 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-full"
-          >
-            <span className={`qs-orb ${selected === o.score ? "qs-orb--selected" : ""}`} />
-          </button>
-        ))}
-      </div>
-      <div className="mt-2 flex justify-between px-1 text-[11px] text-muted-foreground">
-        <span>heavy</span>
-        <span>light</span>
+      <div className="mt-4 grid grid-cols-5 gap-2">
+        {MOOD_ORBS.map((o) => {
+          const on = selected === o.score;
+          const Icon = MOOD_ICONS[o.word] ?? Cloud;
+          return (
+            <button
+              key={o.score}
+              type="button"
+              onClick={() => pick(o.score)}
+              aria-label={o.word}
+              aria-pressed={on}
+              className="flex flex-col items-center gap-1.5 rounded-2xl border px-1 py-2.5 outline-none transition focus-visible:ring-2 focus-visible:ring-primary/50"
+              style={on
+                ? { background: "var(--surface-selected)", borderColor: "var(--border-active)" }
+                : { background: "color-mix(in oklab, var(--card) 40%, transparent)", borderColor: "var(--border-subtle)" }}
+            >
+              <Icon className="h-4 w-4" strokeWidth={1.7} style={{ color: on ? "var(--accent-primary)" : "var(--text-secondary)" }} />
+              <span className="text-[10.5px] leading-none" style={{ color: on ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: on ? 600 : 400 }}>
+                {o.word}
+              </span>
+            </button>
+          );
+        })}
       </div>
       {chosen && (
         <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4 fade-in">

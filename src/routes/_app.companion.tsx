@@ -7,8 +7,9 @@ import { getProfile, setCompanionTone } from "@/lib/data.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Mic, MicOff, RotateCcw, Languages, History, Settings2, Search, X, ArrowLeft, ArrowUp } from "lucide-react";
+import { Plus, Trash2, Mic, MicOff, RotateCcw, Languages, History, Settings2, Search, X, ArrowLeft, ArrowUp, Sparkles } from "lucide-react";
 import companionMark from "@/assets/companion-mark.png";
+import { CompanionCloud } from "@/components/CompanionCloud";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -728,24 +729,9 @@ function Companion() {
               transition={{ duration: 0.4 }}
               className="flex flex-col items-center text-center pt-8 pb-4 sm:pt-12"
             >
-              {/* Glowing companion mark */}
-              <div className="relative mb-7 flex h-24 w-24 items-center justify-center">
-                <span
-                  aria-hidden
-                  className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_45%,color-mix(in_oklab,var(--dawn)_38%,transparent),transparent_72%)] blur-lg motion-safe:animate-[qs-breathe_7s_ease-in-out_infinite]"
-                />
-                <span
-                  aria-hidden
-                  className="absolute inset-2.5 rounded-full bg-[color-mix(in_oklab,var(--dawn)_14%,var(--card))] ring-1 ring-white/[0.18]"
-                />
-                <img
-                  src={companionMark}
-                  alt=""
-                  width={66}
-                  height={66}
-                  className="relative h-[66px] w-[66px] rounded-full"
-                  loading="lazy"
-                />
+              {/* The companion, present and breathing */}
+              <div className="relative mb-6 flex items-center justify-center">
+                <CompanionCloud size={116} state="calm" />
               </div>
               <p className="qs-section-label">{greeting.eyebrow}</p>
               <h2 className="mt-3 max-w-sm font-serif text-[1.6rem] font-light leading-snug tracking-tight text-foreground sm:text-[1.85rem]">
@@ -758,6 +744,7 @@ function Companion() {
               <div className="mt-7 flex max-w-md flex-wrap justify-center gap-2">
                 {EMPTY_STATE_CHIPS.map((label) => (
                   <button key={label} type="button" onClick={() => onSuggestion(label)} className="qs-chip">
+                    <Sparkles className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.7} aria-hidden />
                     {label}
                   </button>
                 ))}

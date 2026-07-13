@@ -6,7 +6,11 @@ import { logMood } from "@/lib/data.functions";
 import { Textarea } from "@/components/ui/textarea";
 import { CompanionCloud } from "@/components/CompanionCloud";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, MessageCircle, Shield, Wind, PenLine, Sparkles } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, MessageCircle, Shield, Wind, PenLine, Sparkles,
+  CloudRain, Zap, CloudFog, Flame, HeartCrack, CircleSlash, HelpCircle,
+  Leaf, Sunrise, Heart, Clock, Lock,
+} from "lucide-react";
 
 /**
  * The guided check-in journey — the reference images' centerpiece, rebuilt
@@ -31,17 +35,17 @@ export const Route = createFileRoute("/_app/checkin")({
 
 /* Emotion vocabulary — identical to the constellation's tag map so every
    check-in keeps feeding the same patterns. Score = how heavy it lands. */
-const STATES: { label: string; score: number; heavy: boolean }[] = [
-  { label: "Overwhelmed", score: 2, heavy: true },
-  { label: "Anxious", score: 3, heavy: true },
-  { label: "Heavy", score: 3, heavy: true },
-  { label: "Angry", score: 3, heavy: true },
-  { label: "Lonely", score: 3, heavy: true },
-  { label: "Numb", score: 4, heavy: true },
-  { label: "Confused", score: 5, heavy: true },
-  { label: "Calm", score: 8, heavy: false },
-  { label: "Hopeful", score: 8, heavy: false },
-  { label: "Grateful", score: 9, heavy: false },
+const STATES: { label: string; score: number; heavy: boolean; icon: typeof Heart }[] = [
+  { label: "Overwhelmed", score: 2, heavy: true, icon: CloudRain },
+  { label: "Anxious", score: 3, heavy: true, icon: Zap },
+  { label: "Heavy", score: 3, heavy: true, icon: CloudFog },
+  { label: "Angry", score: 3, heavy: true, icon: Flame },
+  { label: "Lonely", score: 3, heavy: true, icon: HeartCrack },
+  { label: "Numb", score: 4, heavy: true, icon: CircleSlash },
+  { label: "Confused", score: 5, heavy: true, icon: HelpCircle },
+  { label: "Calm", score: 8, heavy: false, icon: Leaf },
+  { label: "Hopeful", score: 8, heavy: false, icon: Sunrise },
+  { label: "Grateful", score: 9, heavy: false, icon: Heart },
 ];
 
 const TRIGGERS = ["Work", "Relationship", "Family", "Health", "Money", "Memories", "Sleep", "Future"];
@@ -68,14 +72,14 @@ const NEEDS: { key: string; label: string; line: string; icon: typeof Wind }[] =
   { key: "space", label: "Just save this", line: "putting it down is enough", icon: PenLine },
 ];
 
-type StepId = "mood" | "deeper" | "mind" | "need" | "summary" | "done";
+type StepId = "landing" | "mood" | "deeper" | "mind" | "need" | "summary" | "done";
 
 function CheckinJourney() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const log = useServerFn(logMood);
 
-  const [step, setStep] = useState<StepId>("mood");
+  const [step, setStep] = useState<StepId>("landing");
   const [emotions, setEmotions] = useState<string[]>([]);
   const [triggers, setTriggers] = useState<string[]>([]);
   const [hearts, setHearts] = useState<string[]>([]);
@@ -200,6 +204,44 @@ function CheckinJourney() {
     );
   }
 
+  /* ── Landing — "Let's pause. You matter." ── */
+  if (step === "landing") {
+    return (
+      <div className="relative mx-auto flex min-h-[85vh] max-w-md flex-col px-6 py-10">
+        <span aria-hidden className="qs-firefly pointer-events-none" style={{ top: "12%", left: "78%" }} />
+        <span aria-hidden className="qs-firefly pointer-events-none" style={{ top: "30%", left: "12%", animationDelay: "-5s" }} />
+        <div className="flex items-center justify-between">
+          <p className="qs-section-label">check-in</p>
+          <Link to="/home" className="text-[12px] text-muted-foreground transition hover:text-foreground">not now</Link>
+        </div>
+        <div className="relative mt-10 flex flex-col items-center text-center">
+          {/* soft rising-moon glow behind the companion */}
+          <span
+            aria-hidden
+            className="absolute top-2 h-40 w-40 rounded-full blur-2xl"
+            style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--dawn) 30%, transparent), transparent 70%)" }}
+          />
+          <CompanionCloud size={120} state="calm" />
+        </div>
+        <div className="mt-auto pt-10">
+          <h1 className="font-serif text-[2rem] font-light leading-[1.15] tracking-tight">
+            Let's pause.<br />You matter.
+          </h1>
+          <p className="mt-3 max-w-[34ch] text-[14.5px] leading-relaxed text-muted-foreground">
+            A few mindful steps to help you understand what's happening inside you.
+          </p>
+          <button type="button" onClick={() => setStep("mood")} className="qs-pill-cta mt-7 w-full">
+            Start check-in
+          </button>
+          <div className="mt-4 flex items-center justify-center gap-4 text-[11.5px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5"><Clock className="h-3 w-3" /> takes ~3 minutes</span>
+            <span className="inline-flex items-center gap-1.5"><Lock className="h-3 w-3" /> private to you</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-md px-5 py-8 sm:py-12">
       {/* Header: back + adaptive progress */}
@@ -209,9 +251,9 @@ function CheckinJourney() {
             <ArrowLeft className="h-4 w-4" strokeWidth={1.7} />
           </button>
         ) : (
-          <Link to="/home" aria-label="Back to Today" className="glass flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
+          <button type="button" onClick={() => setStep("landing")} aria-label="Back" className="glass flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
             <ArrowLeft className="h-4 w-4" strokeWidth={1.7} />
-          </Link>
+          </button>
         )}
         <div className="flex flex-1 gap-1.5" role="progressbar" aria-valuenow={stepIndex + 1} aria-valuemax={path.length} aria-label="Check-in progress">
           {path.map((p, i) => (
@@ -235,17 +277,19 @@ function CheckinJourney() {
           <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {STATES.map((s) => {
               const on = emotions.includes(s.label);
+              const Icon = s.icon;
               return (
                 <button
                   key={s.label}
                   type="button"
                   aria-pressed={on}
                   onClick={() => toggle(emotions, setEmotions, s.label)}
-                  className="rounded-2xl border px-3 py-3.5 text-[13.5px] transition"
+                  className="flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-[13px] transition"
                   style={on
                     ? { background: "var(--surface-selected)", borderColor: "var(--border-active)", color: "var(--text-primary)", fontWeight: 600 }
                     : { background: "color-mix(in oklab, var(--card) 55%, transparent)", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
                 >
+                  <Icon className="h-5 w-5" strokeWidth={1.6} style={{ color: on ? "var(--accent-primary)" : "var(--text-secondary)" }} />
                   {s.label}
                 </button>
               );

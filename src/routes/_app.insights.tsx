@@ -478,23 +478,39 @@ function TagWeights({ items, empty }: { items: { label: string; count: number }[
   if (!items.length) {
     return <p className="mt-4 text-sm italic text-muted-foreground">{empty}</p>;
   }
-  const max = items[0].count;
+  // Honest levels from raw 30-day frequency — no invented scores.
+  const levelOf = (n: number) => (n >= 4 ? "High" : n >= 2 ? "Medium" : "Low");
   return (
-    <ul className="mt-4 space-y-2.5">
-      {items.map((it) => (
-        <li key={it.label}>
-          <div className="flex items-baseline justify-between text-sm">
-            <span className="text-foreground/85">{it.label}</span>
-            <span className="text-[11px] text-muted-foreground">{it.count}</span>
-          </div>
-          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-foreground/5">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${(it.count / max) * 100}%`, background: tagTint(it.label), opacity: 0.55 }}
-            />
-          </div>
-        </li>
-      ))}
+    <ul className="mt-4 space-y-2">
+      {items.map((it) => {
+        const level = levelOf(it.count);
+        const tint = tagTint(it.label);
+        return (
+          <li
+            key={it.label}
+            className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5"
+            style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: tint, boxShadow: `0 0 8px ${tint}` }} />
+              <div className="min-w-0">
+                <p className="truncate text-[13.5px] text-foreground/90">{it.label}</p>
+                <p className="text-[11px] text-muted-foreground">appeared {it.count} {it.count === 1 ? "time" : "times"}</p>
+              </div>
+            </div>
+            <span
+              className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-medium"
+              style={{
+                color: `color-mix(in oklab, ${tint} 70%, var(--foreground))`,
+                background: `color-mix(in oklab, ${tint} 14%, transparent)`,
+                border: `1px solid color-mix(in oklab, ${tint} 30%, transparent)`,
+              }}
+            >
+              {level}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
