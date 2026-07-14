@@ -8,13 +8,18 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { listMoods, listJournal, listHiddenPatterns, unhidePattern } from "@/lib/data.functions";
+import { listInsightEvents } from "@/lib/insights.functions";
+import {
+  sourceMixFor, describeMix, sourceCount, isInferredOnly, toMoodEntries, changeSignals,
+  type InsightEvent,
+} from "@/lib/insight-events";
 import { TactileCard } from "@/components/TactileCard";
 import { CheckinRitual } from "@/components/CheckinRitual";
 import { CompanionCloud } from "@/components/CompanionCloud";
 import {
   filterByPeriod, buildConstellation, statusFor, timeOfDayFor, peakTod,
   momentsFor, timelinePoints, timelineSummary, innermateContext, tagStats,
-  cooccurrence, coBetween, PERIOD_LABEL, TOD_LABELS,
+  cooccurrence, coBetween, PERIOD_LABEL, PERIOD_DAYS, TOD_LABELS,
   type Period, type MoodEntry, type Constellation, type MapNode,
 } from "@/lib/pattern-map";
 
@@ -71,11 +76,14 @@ function Insights() {
   const j = useServerFn(listJournal);
   const hiddenFn = useServerFn(listHiddenPatterns);
   const navigate = useNavigate();
+  const eventsFn = useServerFn(listInsightEvents);
   const { data: moodsRaw, isLoading } = useQuery({ queryKey: ["moods"], queryFn: () => m() });
   const { data: journal } = useQuery({ queryKey: ["journal"], queryFn: () => j() });
   const { data: hiddenRaw } = useQuery({ queryKey: ["hiddenPatterns"], queryFn: () => hiddenFn() });
+  const { data: eventsRaw } = useQuery({ queryKey: ["insightEvents"], queryFn: () => eventsFn() });
   const moods = (moodsRaw ?? []) as Mood[];
   const hidden = (hiddenRaw ?? []) as string[];
+  const events = (eventsRaw ?? []) as InsightEvent[];
 
   const [view, setView] = useState<"constellation" | "timeline">("constellation");
   const [period, setPeriod] = useState<Period>("month");
@@ -84,12 +92,25 @@ function Insights() {
   const [timelineTag, setTimelineTag] = useState<string | null>(null);
 
   const periodMoods = useMemo(() => filterByPeriod(moods, period) as Mood[], [moods, period]);
-  const constellation = useMemo(
-    () => buildConstellation(periodMoods, { hidden }),
-    [periodMoods, hidden],
+  // The unified engine: every consented source becomes events; the events
+  // (not just check-ins) feed the constellation. Falls back to check-ins
+  // alone until the event feed arrives, so the page never blanks.
+  const periodEvents = useMemo(() => {
+    const days = PERIOD_DAYS[period];
+    if (days == null) return events;
+    const cutoff = Date.now() - days * 86400000;
+    return events.filter((e) => new Date(e.created_at).getTime() >= cutoff);
+  }, [events, period]);
+  const engineEntries = useMemo(
+    () => (periodEvents.length > 0 ? toMoodEntries(periodEvents) : (periodMoods as Mood[])),
+    [periodEvents, periodMoods],
   );
-  const co = useMemo(() => cooccurrence(periodMoods), [periodMoods]);
-  const stats = useMemo(() => tagStats(periodMoods), [periodMoods]);
+  const constellation = useMemo(
+    () => buildConstellation(engineEntries, { hidden }),
+    [engineEntries, hidden],
+  );
+  const co = useMemo(() => cooccurrence(engineEntries), [engineEntries]);
+  const stats = useMemo(() => tagStats(engineEntries), [engineEntries]);
   const hiddenSet = useMemo(() => new Set(hidden.map((h) => h.toLowerCase())), [hidden]);
   const visibleStats = useMemo(() => stats.filter((s) => !hiddenSet.has(s.label.toLowerCase())), [stats, hiddenSet]);
   const topSignals = useMemo(() => visibleStats.filter((s) => s.kind === "trigger").slice(0, 4), [visibleStats]);
@@ -225,7 +246,8 @@ function Insights() {
       ) : view === "constellation" ? (
         <ConstellationView
           constellation={constellation}
-          periodMoods={periodMoods}
+          periodMoods={engineEntries as Mood[]}
+          events={periodEvents}
           period={period}
           co={co}
           selected={selected}
@@ -237,9 +259,12 @@ function Insights() {
         <TimelineView periodMoods={periodMoods} visibleTags={visibleStats.map((s) => s.label)} filterTag={timelineTag} setFilterTag={setTimelineTag} />
       )}
 
+      {/* What is changing — evidence-gated progress, never invented */}
+      <WhatIsChanging events={events} />
+
       {/* Supporting panels — real evidence phrasing */}
       {constellation.confidence.level !== "insufficient" && (
-        <SupportingPanels periodMoods={periodMoods} visible={visibleStats} journal={(journal ?? []) as JournalRow[]} />
+        <SupportingPanels periodMoods={engineEntries as Mood[]} visible={visibleStats} journal={(journal ?? []) as JournalRow[]} />
       )}
 
       {/* Set-aside patterns — restorable */}
@@ -254,10 +279,11 @@ function Insights() {
 /* ── Constellation view ── */
 
 function ConstellationView({
-  constellation, periodMoods, period, co, selected, setSelected, onExplore, onTalk,
+  constellation, periodMoods, events, period, co, selected, setSelected, onExplore, onTalk,
 }: {
   constellation: Constellation;
   periodMoods: Mood[];
+  events: InsightEvent[];
   period: Period;
   co: Map<string, number>;
   selected: string | null;
@@ -284,7 +310,8 @@ function ConstellationView({
               <div key={mm.created_at} className="rounded-2xl border px-4 py-3" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
                 <p className="text-[12px] text-muted-foreground">{new Date(mm.created_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</p>
                 <p className="mt-0.5 text-[13.5px] text-foreground/90">
-                  feels {WEIGHT_WORD(mm.mood_score)}{(mm.emotion_tags?.length ?? 0) > 0 ? ` · ${mm.emotion_tags!.join(", ")}` : ""}
+                  {mm.mood_score != null ? `feels ${WEIGHT_WORD(mm.mood_score)}` : "a noted moment"}
+                  {(mm.emotion_tags?.length ?? 0) > 0 ? ` · ${mm.emotion_tags!.join(", ")}` : ""}
                 </p>
               </div>
             ))}
@@ -376,23 +403,27 @@ function ConstellationView({
 
       {/* Selected node panel */}
       {selectedNode && (
-        <NodePanel node={selectedNode} periodMoods={periodMoods} co={co} centerLabel={center.label} onTalk={onTalk} onClose={() => setSelected(null)} />
+        <NodePanel node={selectedNode} periodMoods={periodMoods} events={events} co={co} centerLabel={center.label} onTalk={onTalk} onClose={() => setSelected(null)} />
       )}
 
       {/* What this pattern may reveal */}
-      <RevealCard constellation={constellation} periodMoods={periodMoods} period={period} onExplore={onExplore} onSelectCenter={() => setSelected(center.label)} />
+      <RevealCard constellation={constellation} periodMoods={periodMoods} events={events} period={period} onExplore={onExplore} onSelectCenter={() => setSelected(center.label)} />
     </>
   );
 }
 
 function NodePanel({
-  node, periodMoods, co, centerLabel, onTalk, onClose,
+  node, periodMoods, events, co, centerLabel, onTalk, onClose,
 }: {
-  node: MapNode; periodMoods: Mood[]; co: Map<string, number>; centerLabel: string;
+  node: MapNode; periodMoods: Mood[]; events: InsightEvent[]; co: Map<string, number>; centerLabel: string;
   onTalk: (t: string) => void; onClose: () => void;
 }) {
+  const [whyOpen, setWhyOpen] = useState(false);
   const moments = momentsFor(periodMoods, node.label, 3);
   const peak = peakTod(timeOfDayFor(periodMoods, node.label));
+  const mix = sourceMixFor(events, node.label);
+  const mixLine = describeMix(mix);
+  const inferredOnly = isInferredOnly(events, node.label);
   const related = tagStats(periodMoods)
     .filter((s) => s.label !== node.label)
     .map((s) => ({ label: s.label, n: coBetween(co, node.label, s.label) }))
@@ -406,10 +437,16 @@ function NodePanel({
           <p className="qs-section-label">{node.kind === "emotion" ? "a feeling" : "a signal"}</p>
           <h3 className="mt-1 font-serif text-[20px] font-light leading-snug">{node.label}</h3>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
-            appeared {node.count} {node.count === 1 ? "time" : "times"} · {statusFor(node.count).toLowerCase()}
+            {node.count} supporting {node.count === 1 ? "moment" : "moments"}
+            {mixLine ? ` · ${mixLine}` : ""} · {statusFor(node.count).toLowerCase()}
             {peak ? ` · most often ${peak.label.toLowerCase()}` : ""}
             {node.label !== centerLabel && node.linkToCenter > 0 ? ` · with ${centerLabel.toLowerCase()} ×${node.linkToCenter}` : ""}
           </p>
+          {inferredOnly && (
+            <p className="mt-1 text-[11.5px] italic text-muted-foreground">
+              noticed in your own words in chat — you haven't named it in a check-in yet.
+            </p>
+          )}
         </div>
         <button type="button" onClick={onClose} aria-label="Close details" className="glass flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
           <X className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -436,9 +473,32 @@ function NodePanel({
         </div>
       )}
 
+      {/* Why am I seeing this? — full provenance, in plain language */}
+      <button type="button" onClick={() => setWhyOpen(!whyOpen)} aria-expanded={whyOpen}
+        className="mt-3 text-[12px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline">
+        why am I seeing this?
+      </button>
+      {whyOpen && (
+        <div className="mt-2 rounded-2xl border px-4 py-3 text-[12.5px] leading-relaxed text-secondary-foreground fade-in"
+          style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 35%, transparent)" }}>
+          <p>
+            This appears because it came up in {mixLine || `${node.count} of your moments`} during this period
+            {peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}.
+            {" "}{inferredOnly
+              ? "It was noticed by matching words in things you wrote — an inference, not something you selected."
+              : "It comes from tags you selected yourself, which is the strongest kind of evidence."}
+          </p>
+          <p className="mt-1.5">
+            Only your own words are read — never InnerMate's replies, and never anything from a safety moment.
+            You can switch any source off in <Link to="/settings" className="underline underline-offset-2">the Sanctuary</Link>,
+            or set this pattern aside on its <Link to="/pattern/$tag" params={{ tag: node.label }} className="underline underline-offset-2">detail page</Link>.
+          </p>
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2.5">
         <button type="button"
-          onClick={() => onTalk(`${node.label} has appeared ${node.count} ${node.count === 1 ? "time" : "times"} in my recent check-ins${peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}. Can we explore it together?`)}
+          onClick={() => onTalk(`${node.label} has come up in ${node.count} of my recent moments${mixLine ? ` (${mixLine})` : ""}${peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}. Does that feel accurate to explore together?`)}
           className="qs-pill-cta" style={{ padding: "0.55rem 1.05rem", fontSize: "13px" }}>
           <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> Explore with InnerMate
         </button>
@@ -453,29 +513,38 @@ function NodePanel({
 }
 
 function RevealCard({
-  constellation, periodMoods, period, onExplore, onSelectCenter,
+  constellation, periodMoods, events, period, onExplore, onSelectCenter,
 }: {
-  constellation: Constellation; periodMoods: Mood[]; period: Period;
+  constellation: Constellation; periodMoods: Mood[]; events: InsightEvent[]; period: Period;
   onExplore: () => void; onSelectCenter: () => void;
 }) {
   const { center, ring, checkinCount, confidence } = constellation;
   if (!center) return null;
   const companions = ring.filter((n) => n.linkToCenter > 0).slice(0, 2);
   const peak = peakTod(timeOfDayFor(periodMoods, center.label));
+  const mix = sourceMixFor(events, center.label);
+  const mixLine = describeMix(mix);
+  const crossSource = sourceCount(mix) >= 2;
   return (
     <TactileCard tint="lavender" className="mt-4">
       <div className="flex items-baseline justify-between gap-3">
         <p className="qs-section-label">what this pattern may reveal</p>
-        <p className="text-[11px] text-muted-foreground">{confidence.label} · based on {checkinCount} check-ins</p>
+        <p className="text-[11px] text-muted-foreground">{confidence.label} · {checkinCount} moments</p>
       </div>
       <p className="mt-3 text-[14.5px] leading-relaxed text-foreground/90">
-        <strong className="font-medium">{center.label}</strong> appeared in {center.count} of your {checkinCount} check-ins
+        <strong className="font-medium">{center.label}</strong> appeared in {center.count} of your {checkinCount} moments
         {peak ? <>, most often in the <strong className="font-medium">{peak.label.toLowerCase()}</strong></> : null}
         {companions.length > 0 && (
           <>, and tended to occur when {companions.map((c) => c.label.toLowerCase()).join(" or ")} {companions.length === 1 ? "was" : "were"} present</>
         )}.
         {" "}That's an observation, not a verdict — but it may be worth exploring gently.
       </p>
+      {mixLine && (
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          seen across {mixLine}
+          {crossSource ? " — appearing in more than one place makes this more dependable" : ""}.
+        </p>
+      )}
       <div className="mt-4 flex flex-wrap gap-2.5">
         <button type="button" onClick={onExplore} className="qs-pill-cta" style={{ padding: "0.55rem 1.05rem", fontSize: "13px" }}>
           <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> Explore this with InnerMate
@@ -591,6 +660,26 @@ function TimelineView({
   );
 }
 
+/* ── What is changing — only when evidence supports it ── */
+
+function WhatIsChanging({ events }: { events: InsightEvent[] }) {
+  const signals = useMemo(() => changeSignals(events), [events]);
+  if (signals.length === 0) return null;
+  return (
+    <TactileCard tint="mint" className="mt-5">
+      <p className="qs-section-label">what is changing</p>
+      <ul className="mt-3 space-y-3">
+        {signals.map((s) => (
+          <li key={s.text}>
+            <p className="text-[14px] leading-relaxed text-foreground/90">{s.text}</p>
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">evidence: {s.evidence}</p>
+          </li>
+        ))}
+      </ul>
+    </TactileCard>
+  );
+}
+
 /* ── Supporting panels ── */
 
 function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood[]; visible: ReturnType<typeof tagStats>; journal: JournalRow[] }) {
@@ -600,7 +689,8 @@ function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood
   const co = useMemo(() => cooccurrence(periodMoods), [periodMoods]);
   const topEmotion = emotions[0]?.label;
 
-  const heavy = periodMoods.filter((mm) => mm.mood_score <= 4);
+  // Only weighted moments (check-ins) can be "heavy" — null weights never count.
+  const heavy = periodMoods.filter((mm) => mm.mood_score != null && mm.mood_score <= 4);
   const heavyPeak = peakTod(timeOfDayFor(heavy));
   const allTod = timeOfDayFor(periodMoods);
   const todMax = Math.max(1, ...TOD_LABELS.map((l) => allTod[l]));
@@ -620,7 +710,7 @@ function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood
             {emotions.map((e) => (
               <li key={e.label}>
                 <Link to="/pattern/$tag" params={{ tag: e.label }} className="block text-[13.5px] leading-relaxed text-foreground/90 transition hover:text-foreground">
-                  <strong className="font-medium">{e.label}</strong> appeared in {e.count} of {total} check-ins →
+                  <strong className="font-medium">{e.label}</strong> appeared in {e.count} of {total} moments →
                 </Link>
               </li>
             ))}

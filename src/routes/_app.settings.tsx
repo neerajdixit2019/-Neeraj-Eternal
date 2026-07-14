@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { exportMyData, deleteMyData, getProfile, setCompanionTone, setBackgroundAnimation, getStory, saveStoryField, setStoryReadable } from "@/lib/data.functions";
 import { setWeeklyLetterPrefs, getPrivateArchive } from "@/lib/letters.functions";
+import { listInsightSourceSettings, setInsightSourceEnabled } from "@/lib/insights.functions";
 import { buildPrivateArchivePdf } from "@/lib/export-pdf";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,10 @@ function Settings() {
         <InnerMapSection />
       </SectionGroup>
 
+      <SectionGroup label="personal insights — what your sky may learn from">
+        <InsightSourcesSection />
+      </SectionGroup>
+
       <SectionGroup label="your vault, your rules">
         <VaultSection />
       </SectionGroup>
@@ -71,6 +76,65 @@ function Settings() {
         </p>
       </footer>
     </div>
+  );
+}
+
+const INSIGHT_SOURCES = [
+  { key: "daily_checkin", title: "Check-ins", line: "The feelings and signals you select by hand — the clearest evidence." },
+  { key: "journal", title: "Journal pages", line: "Only the emotion tags you chose on a page. The writing itself is never scanned." },
+  { key: "memory", title: "Memories", line: "Only the feeling you attached to a kept memory." },
+  { key: "innermate_chat", title: "InnerMate chats", line: "Your own words only, matched for feeling-words. Never InnerMate's replies, never safety moments. Marked as inferred, never as fact." },
+] as const;
+
+function InsightSourcesSection() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listInsightSourceSettings);
+  const setFn = useServerFn(setInsightSourceEnabled);
+  const { data: settings } = useQuery({ queryKey: ["insightSources"], queryFn: () => listFn() });
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const flip = async (source: (typeof INSIGHT_SOURCES)[number]["key"], enabled: boolean) => {
+    setBusy(source);
+    try {
+      await setFn({ data: { source, enabled } });
+      await qc.invalidateQueries({ queryKey: ["insightSources"] });
+      await qc.invalidateQueries({ queryKey: ["insightEvents"] });
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setBusy(null); }
+  };
+
+  return (
+    <TactileCard tint="lavender">
+      <h2 className="font-serif text-xl">What may your sky learn from?</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        Your Insights constellation is built only from sources you allow here. Turning one off removes
+        its evidence immediately — nothing derived is ever stored, so there's nothing left behind to delete.
+      </p>
+      <div className="mt-5 space-y-3">
+        {INSIGHT_SOURCES.map((s) => {
+          const on = settings?.[s.key] ?? true;
+          return (
+            <div key={s.key} className="flex items-start justify-between gap-4 rounded-xl border border-border/50 bg-muted/20 p-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{s.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.line}</p>
+              </div>
+              <button
+                role="switch" aria-checked={on} aria-label={`Use ${s.title} for personal insights`}
+                disabled={busy === s.key || !settings}
+                onClick={() => flip(s.key, !on)}
+                className={`relative mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition disabled:opacity-60 ${on ? "border-primary/40 bg-primary/70" : "border-border/60 bg-muted"}`}
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition ${on ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-4 text-[12px] italic leading-relaxed text-muted-foreground">
+        every pattern on Insights shows "why am I seeing this?" — and any pattern can be set aside there.
+      </p>
+    </TactileCard>
   );
 }
 
