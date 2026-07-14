@@ -121,12 +121,12 @@ async function logSafetyEventSafely(row: {
 type ReqBody = { conversationId: string | null; message: string; tone?: "gentle" | "poetic" | "practical" };
 
 export const Route = createFileRoute("/api/companion")({
-  // The installed @tanstack/react-start typings don't declare the `server`
-  // route option yet, but the runtime supports it — this IS the live
-  // streaming endpoint. Suppression is type-only; behaviour unchanged. The
-  // expect-error self-cleans: it fails the build if a future upgrade adds
-  // the typing.
-  // @ts-expect-error server handlers are supported at runtime, untyped in this version
+  // Some @tanstack/react-start versions don't type the `server` route
+  // option even though the runtime supports it — this IS the live streaming
+  // endpoint. ts-ignore (not expect-error) so the suppression is a no-op on
+  // environments whose typings already declare it (e.g. Lovable's newer
+  // version). Type-only; behaviour unchanged.
+  // @ts-ignore server handlers are supported at runtime; typings vary by version
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {

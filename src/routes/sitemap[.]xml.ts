@@ -10,10 +10,10 @@ interface SitemapEntry {
 }
 
 export const Route = createFileRoute("/sitemap.xml")({
-  // Same as /api/companion: the `server` route option is supported at
-  // runtime but untyped in this @tanstack/react-start version. Type-only
-  // suppression; self-cleans on upgrade.
-  // @ts-expect-error server handlers are supported at runtime, untyped in this version
+  // Same as /api/companion: `server` is supported at runtime but typings
+  // vary by @tanstack/react-start version — ts-ignore is a no-op where the
+  // option is already typed. Type-only suppression.
+  // @ts-ignore server handlers are supported at runtime; typings vary by version
   server: {
     handlers: {
       GET: async () => {
