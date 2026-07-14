@@ -1,13 +1,22 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo } from "react";
-import { ArrowRight, Feather, Hand, MoonStar, Sparkles, type LucideIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  ArrowRight, Feather, Hand, MoonStar, Sparkles, MessageCircle, X,
+  Briefcase, Heart, Users, HeartPulse, Coins, BookOpen, Moon, Compass,
+  type LucideIcon,
+} from "lucide-react";
 import { listMoods, listJournal, listHiddenPatterns, unhidePattern } from "@/lib/data.functions";
-import { useQueryClient } from "@tanstack/react-query";
 import { TactileCard } from "@/components/TactileCard";
-import { WeekArc, moodsToWeekArc } from "@/components/WeekArc";
 import { CheckinRitual } from "@/components/CheckinRitual";
+import { CompanionCloud } from "@/components/CompanionCloud";
+import {
+  filterByPeriod, buildConstellation, statusFor, timeOfDayFor, peakTod,
+  momentsFor, timelinePoints, timelineSummary, innermateContext, tagStats,
+  cooccurrence, coBetween, PERIOD_LABEL, TOD_LABELS,
+  type Period, type MoodEntry, type Constellation, type MapNode,
+} from "@/lib/pattern-map";
 
 export const Route = createFileRoute("/_app/insights")({
   component: Insights,
@@ -24,119 +33,692 @@ export const Route = createFileRoute("/_app/insights")({
   }),
 });
 
-type Mood = {
-  created_at: string;
-  mood_score: number;
-  emotion_tags?: string[] | null;
-  trigger_tags?: string[] | null;
-};
+type Mood = MoodEntry & { mood_score: number };
+type JournalRow = { title?: string | null; created_at?: string | null };
 
-type JournalRow = { title?: string | null };
-
-/* ── Deterministic sky helpers — identical on server and client ── */
-
-const SKY_SEED = 947213;
-
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function hashStr(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
+/* ── Tints: emotions keep their constellation colours; triggers sit in the warm family ── */
 
 const ACCENTS = ["var(--rose)", "var(--sky)", "var(--mint)", "var(--lavender)", "var(--amber)", "var(--sand)"];
-
 const TAG_TINTS: Record<string, string> = {
-  Heavy: "var(--lavender)",
-  Anxious: "var(--rose)",
-  Lonely: "var(--sky)",
-  Numb: "var(--sand)",
-  Confused: "var(--lavender)",
-  Calm: "var(--mint)",
-  Hopeful: "var(--dawn)",
-  Grateful: "var(--amber)",
-  Angry: "var(--rose)",
+  Heavy: "var(--lavender)", Anxious: "var(--rose)", Lonely: "var(--sky)",
+  Numb: "var(--sand)", Confused: "var(--lavender)", Calm: "var(--mint)",
+  Hopeful: "var(--dawn)", Grateful: "var(--amber)", Angry: "var(--rose)",
   Overwhelmed: "var(--sky)",
+  Work: "var(--amber)", Relationship: "var(--rose)", Family: "var(--amber)",
+  Health: "var(--mint)", Money: "var(--sand)", Memories: "var(--lavender)",
+  Sleep: "var(--sky)", Future: "var(--lavender)",
 };
-
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
 function tagTint(label: string): string {
   return TAG_TINTS[label] ?? ACCENTS[hashStr(label) % ACCENTS.length];
 }
+const TRIGGER_ICONS: Record<string, LucideIcon> = {
+  Work: Briefcase, Relationship: Heart, Family: Users, Health: HeartPulse,
+  Money: Coins, Memories: BookOpen, Sleep: Moon, Future: Compass,
+};
 
-type Star = { label: string; count: number; x: number; y: number; weight: number; color: string };
+const WEIGHT_WORD = (score: number) =>
+  score <= 3 ? "heavy" : score <= 5 ? "cloudy" : score <= 7 ? "settled" : score <= 9 ? "open" : "bright";
 
-function constellationStars(tags: { label: string; count: number }[]): Star[] {
-  const max = tags[0]?.count ?? 1;
-  const stars: Star[] = tags.map((t) => ({
-    label: t.label,
-    count: t.count,
-    x: 10 + ((hashStr(t.label) % 1000) / 999) * 80,
-    y: 12 + ((hashStr(`${t.label}·y`) % 1000) / 999) * 60,
-    weight: t.count / max,
-    color: tagTint(t.label),
-  }));
-  // Gentle deterministic de-overlap so labels never sit on each other.
-  for (let i = 1; i < stars.length; i++) {
-    for (let k = 0; k < i; k++) {
-      if (Math.abs(stars[i].x - stars[k].x) < 16 && Math.abs(stars[i].y - stars[k].y) < 12) {
-        stars[i].y = stars[i].y > 42 ? stars[i].y - 16 : stars[i].y + 16;
-        stars[i].y = Math.min(72, Math.max(12, stars[i].y));
-      }
+/* ── Screen ── */
+
+function Insights() {
+  const m = useServerFn(listMoods);
+  const j = useServerFn(listJournal);
+  const hiddenFn = useServerFn(listHiddenPatterns);
+  const navigate = useNavigate();
+  const { data: moodsRaw, isLoading } = useQuery({ queryKey: ["moods"], queryFn: () => m() });
+  const { data: journal } = useQuery({ queryKey: ["journal"], queryFn: () => j() });
+  const { data: hiddenRaw } = useQuery({ queryKey: ["hiddenPatterns"], queryFn: () => hiddenFn() });
+  const moods = (moodsRaw ?? []) as Mood[];
+  const hidden = (hiddenRaw ?? []) as string[];
+
+  const [view, setView] = useState<"constellation" | "timeline">("constellation");
+  const [period, setPeriod] = useState<Period>("month");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [checkinOpen, setCheckinOpen] = useState(false);
+  const [timelineTag, setTimelineTag] = useState<string | null>(null);
+
+  const periodMoods = useMemo(() => filterByPeriod(moods, period) as Mood[], [moods, period]);
+  const constellation = useMemo(
+    () => buildConstellation(periodMoods, { hidden }),
+    [periodMoods, hidden],
+  );
+  const co = useMemo(() => cooccurrence(periodMoods), [periodMoods]);
+  const stats = useMemo(() => tagStats(periodMoods), [periodMoods]);
+  const hiddenSet = useMemo(() => new Set(hidden.map((h) => h.toLowerCase())), [hidden]);
+  const visibleStats = useMemo(() => stats.filter((s) => !hiddenSet.has(s.label.toLowerCase())), [stats, hiddenSet]);
+  const topSignals = useMemo(() => visibleStats.filter((s) => s.kind === "trigger").slice(0, 4), [visibleStats]);
+
+  // Today's saved check-in (compact card once done)
+  const todayKey = new Date().toDateString();
+  const todayMood = moods.find((x) => new Date(x.created_at).toDateString() === todayKey);
+
+  const talkToInnerMate = (text: string) => {
+    try { sessionStorage.setItem("innermate.reflect", text); } catch { /* noop */ }
+    navigate({ to: "/companion" });
+  };
+
+  const exploreConstellation = () =>
+    talkToInnerMate(innermateContext(constellation, periodMoods, PERIOD_LABEL[period]));
+
+  return (
+    <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
+      {/* Header: title + tabs + period */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="qs-section-label">your observatory</p>
+          <h1 className="mt-2 font-serif text-[26px] font-light leading-tight tracking-tight sm:text-[2rem]">
+            Patterns, becoming visible.
+          </h1>
+        </div>
+        <select
+          value={period}
+          onChange={(e) => { setPeriod(e.target.value as Period); setSelected(null); }}
+          aria-label="Time period"
+          className="h-10 rounded-full border px-4 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 60%, transparent)", color: "var(--text-primary)" }}
+        >
+          {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
+            <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Tabs */}
+      <div role="tablist" aria-label="Insight views" className="mt-5 flex gap-1 rounded-full border p-1"
+        style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)", width: "fit-content" }}>
+        {(["constellation", "timeline"] as const).map((v) => (
+          <button
+            key={v}
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => setView(v)}
+            className="rounded-full px-4 py-2 text-[13.5px] capitalize transition"
+            style={view === v
+              ? { background: "var(--surface-selected)", color: "var(--text-primary)", fontWeight: 600 }
+              : { color: "var(--text-secondary)" }}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+
+      {/* Compact check-in — expands to the full ritual */}
+      <div className="mt-6">
+        {todayMood && !checkinOpen ? (
+          <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-3xl px-5 py-4">
+            <div className="min-w-0">
+              <p className="font-serif text-[16px] leading-snug">
+                Today feels <em className="italic">{WEIGHT_WORD(todayMood.mood_score)}</em>
+              </p>
+              <p className="mt-1 text-[12.5px] text-muted-foreground">
+                {[...(todayMood.emotion_tags ?? []), ...(todayMood.trigger_tags ?? [])].slice(0, 4).join(" · ") || "no tags"}
+                {" · saved at "}
+                {new Date(todayMood.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setCheckinOpen(true)}
+                className="rounded-full border px-3.5 py-2 text-[12.5px] transition hover:-translate-y-0.5"
+                style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}>
+                Add another
+              </button>
+              <button type="button"
+                onClick={() => talkToInnerMate(`I just checked in — today feels ${WEIGHT_WORD(todayMood.mood_score)}. ${(todayMood.emotion_tags ?? []).join(", ")}${todayMood.trigger_tags?.length ? ` — around ${todayMood.trigger_tags.join(", ")}` : ""}.${todayMood.note ? ` ${todayMood.note}` : ""}`)}
+                className="rounded-full px-3.5 py-2 text-[12.5px] transition"
+                style={{ background: "color-mix(in oklab, var(--accent-primary) 20%, transparent)", color: "var(--text-primary)" }}>
+                Talk to InnerMate
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="glass rounded-3xl p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="qs-section-label">a moment to check in</p>
+              {todayMood && (
+                <button type="button" onClick={() => setCheckinOpen(false)} className="text-[12px] text-muted-foreground transition hover:text-foreground">
+                  collapse
+                </button>
+              )}
+            </div>
+            <div className="mt-3"><CheckinRitual /></div>
+            <Link to="/checkin" className="mt-2 inline-block text-[13px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline">
+              prefer the guided journey? →
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Top signals strip */}
+      {topSignals.length > 0 && (
+        <div className="mt-5">
+          <p className="qs-section-label">top signals · {PERIOD_LABEL[period].toLowerCase()}</p>
+          <div className="mt-2.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {topSignals.map((s) => {
+              const Icon = TRIGGER_ICONS[s.label] ?? Sparkles;
+              const tint = tagTint(s.label);
+              return (
+                <Link key={s.label} to="/pattern/$tag" params={{ tag: s.label }}
+                  className="rounded-2xl border p-3.5 transition hover:-translate-y-0.5"
+                  style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}>
+                  <Icon className="h-4 w-4" strokeWidth={1.7} style={{ color: tint }} aria-hidden />
+                  <p className="mt-2 text-[13px] leading-snug text-foreground/90">{s.label}</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    ×{s.count} · {statusFor(s.count).toLowerCase()}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="sky-panel mt-6 flex h-[280px] items-center justify-center">
+          <p className="font-serif text-[14px] italic text-foreground/60">reading your sky…</p>
+        </div>
+      ) : view === "constellation" ? (
+        <ConstellationView
+          constellation={constellation}
+          periodMoods={periodMoods}
+          period={period}
+          co={co}
+          selected={selected}
+          setSelected={setSelected}
+          onExplore={exploreConstellation}
+          onTalk={talkToInnerMate}
+        />
+      ) : (
+        <TimelineView periodMoods={periodMoods} visibleTags={visibleStats.map((s) => s.label)} filterTag={timelineTag} setFilterTag={setTimelineTag} />
+      )}
+
+      {/* Supporting panels — real evidence phrasing */}
+      {constellation.confidence.level !== "insufficient" && (
+        <SupportingPanels periodMoods={periodMoods} visible={visibleStats} journal={(journal ?? []) as JournalRow[]} />
+      )}
+
+      {/* Set-aside patterns — restorable */}
+      {hidden.length > 0 && <SetAside tags={hidden} />}
+
+      {/* Closing: one gentle step + one question + the letter */}
+      <ClosingRow periodMoods={periodMoods} topEmotion={visibleStats.find((s) => s.kind === "emotion")?.label} />
+    </div>
+  );
+}
+
+/* ── Constellation view ── */
+
+function ConstellationView({
+  constellation, periodMoods, period, co, selected, setSelected, onExplore, onTalk,
+}: {
+  constellation: Constellation;
+  periodMoods: Mood[];
+  period: Period;
+  co: Map<string, number>;
+  selected: string | null;
+  setSelected: (v: string | null) => void;
+  onExplore: () => void;
+  onTalk: (text: string) => void;
+}) {
+  const { center, ring, edges, checkinCount, confidence } = constellation;
+
+  /* Low-data: no fake maps. */
+  if (!center) {
+    return (
+      <div className="sky-panel mt-6 flex min-h-[260px] flex-col items-center justify-center px-8 py-10 text-center">
+        <CompanionCloud size={64} state="calm" />
+        <p className="mt-4 max-w-sm font-serif text-[16px] italic leading-relaxed text-foreground/75">
+          Your constellation is beginning to form.
+          {confidence.level === "insufficient" && confidence.needed > 0
+            ? ` ${confidence.needed === 1 ? "One more check-in" : `${confidence.needed} more check-ins`} may reveal the first connections.`
+            : " Check in when something is worth naming."}
+        </p>
+        {periodMoods.length > 0 && (
+          <div className="mt-5 w-full max-w-sm space-y-2 text-left">
+            {periodMoods.slice(0, 3).map((mm) => (
+              <div key={mm.created_at} className="rounded-2xl border px-4 py-3" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
+                <p className="text-[12px] text-muted-foreground">{new Date(mm.created_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</p>
+                <p className="mt-0.5 text-[13.5px] text-foreground/90">
+                  feels {WEIGHT_WORD(mm.mood_score)}{(mm.emotion_tags?.length ?? 0) > 0 ? ` · ${mm.emotion_tags!.join(", ")}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="qs-pill-cta mt-6">
+          Add today's moment
+        </button>
+      </div>
+    );
+  }
+
+  const nodes = [center, ...ring];
+  const connectedTo = (label: string) =>
+    new Set(edges.filter((e) => e.a === label || e.b === label).flatMap((e) => [e.a, e.b]));
+  const activeSet = selected ? connectedTo(selected) : null;
+  const maxEdge = Math.max(1, ...edges.map((e) => e.strength));
+  const selectedNode = selected ? nodes.find((n) => n.label === selected) ?? null : null;
+
+  return (
+    <>
+      {/* The map */}
+      <div className="sky-panel relative mt-6 h-[340px] sm:h-[400px]" role="group" aria-label={`Your pattern constellation — strongest: ${center.label}, ${center.count} appearances`}>
+        {/* faint background stars (fixed, decorative) */}
+        {Array.from({ length: 26 }, (_, i) => (
+          <span key={i} aria-hidden className="absolute rounded-full"
+            style={{ left: `${(i * 41) % 100}%`, top: `${(i * 59) % 92}%`, width: 1.5, height: 1.5, background: "oklch(0.95 0.01 90)", opacity: 0.14 + (i % 3) * 0.08 }} />
+        ))}
+
+        {/* edges — thickness is real co-occurrence strength */}
+        <svg aria-hidden className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {edges.map((e) => {
+            const A = nodes.find((n) => n.label === e.a)!;
+            const B = nodes.find((n) => n.label === e.b)!;
+            const dimmed = activeSet ? !(activeSet.has(e.a) && activeSet.has(e.b)) : false;
+            return (
+              <line key={`${e.a}|${e.b}`} x1={A.x} y1={A.y} x2={B.x} y2={B.y}
+                stroke="oklch(1 0 0 / 0.30)"
+                strokeWidth={0.35 + (e.strength / maxEdge) * 1.05}
+                strokeDasharray={e.strength >= 2 ? undefined : "2 3"}
+                opacity={dimmed ? 0.12 : 0.75}
+                vectorEffect="non-scaling-stroke" />
+            );
+          })}
+        </svg>
+
+        {/* nodes — size=frequency, glow=recency; keyboard-focusable buttons */}
+        {nodes.map((n) => {
+          const isCenter = n.label === center.label;
+          const tint = tagTint(n.label);
+          const dimmed = activeSet ? !activeSet.has(n.label) && n.label !== selected : false;
+          const dot = isCenter ? 18 + n.weight * 8 : 9 + n.weight * 9;
+          return (
+            <button
+              key={n.label}
+              type="button"
+              onClick={() => setSelected(selected === n.label ? null : n.label)}
+              aria-pressed={selected === n.label}
+              aria-label={`${n.label}: appeared ${n.count} ${n.count === 1 ? "time" : "times"}, ${statusFor(n.count).toLowerCase()}`}
+              className="absolute flex min-h-[44px] min-w-[44px] -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none transition-opacity duration-300 focus-visible:ring-2 focus-visible:ring-primary/60 rounded-2xl"
+              style={{ left: `${n.x}%`, top: `${n.y}%`, opacity: dimmed ? 0.25 : 1 }}
+            >
+              <span aria-hidden className="rounded-full motion-safe:animate-[qs-twinkle_6s_ease-in-out_infinite]"
+                style={{
+                  width: dot, height: dot, background: tint,
+                  opacity: 0.5 + n.glow * 0.5,
+                  boxShadow: `0 0 ${6 + Math.round(n.glow * 16)}px ${1 + Math.round(n.glow * 4)}px color-mix(in oklab, ${tint} 55%, transparent)`,
+                }} />
+              <span className="mt-1.5 whitespace-nowrap text-center font-serif text-[11px] italic leading-tight"
+                style={{ color: `color-mix(in oklab, ${tint} 40%, var(--foreground))` }}>
+                {n.label.toLowerCase()}
+              </span>
+              <span className="text-[9.5px] text-muted-foreground">×{n.count}{isCenter ? ` · ${statusFor(n.count).toLowerCase()}` : ""}</span>
+            </button>
+          );
+        })}
+
+        {selected && (
+          <button type="button" onClick={() => setSelected(null)}
+            className="absolute right-3 top-3 rounded-full border px-3 py-1.5 text-[11.5px] backdrop-blur transition hover:text-foreground"
+            style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--background) 70%, transparent)", color: "var(--text-secondary)" }}>
+            reset
+          </button>
+        )}
+        <p className="absolute inset-x-0 bottom-2.5 text-center font-serif text-[10.5px] italic text-foreground/40">
+          tap a star to see its connections · size is frequency, light is recency
+        </p>
+      </div>
+
+      {/* Selected node panel */}
+      {selectedNode && (
+        <NodePanel node={selectedNode} periodMoods={periodMoods} co={co} centerLabel={center.label} onTalk={onTalk} onClose={() => setSelected(null)} />
+      )}
+
+      {/* What this pattern may reveal */}
+      <RevealCard constellation={constellation} periodMoods={periodMoods} period={period} onExplore={onExplore} onSelectCenter={() => setSelected(center.label)} />
+    </>
+  );
+}
+
+function NodePanel({
+  node, periodMoods, co, centerLabel, onTalk, onClose,
+}: {
+  node: MapNode; periodMoods: Mood[]; co: Map<string, number>; centerLabel: string;
+  onTalk: (t: string) => void; onClose: () => void;
+}) {
+  const moments = momentsFor(periodMoods, node.label, 3);
+  const peak = peakTod(timeOfDayFor(periodMoods, node.label));
+  const related = tagStats(periodMoods)
+    .filter((s) => s.label !== node.label)
+    .map((s) => ({ label: s.label, n: coBetween(co, node.label, s.label) }))
+    .filter((r) => r.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 3);
+  return (
+    <div className="glass mt-3 rounded-3xl p-5 fade-in" role="region" aria-label={`Details for ${node.label}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="qs-section-label">{node.kind === "emotion" ? "a feeling" : "a signal"}</p>
+          <h3 className="mt-1 font-serif text-[20px] font-light leading-snug">{node.label}</h3>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            appeared {node.count} {node.count === 1 ? "time" : "times"} · {statusFor(node.count).toLowerCase()}
+            {peak ? ` · most often ${peak.label.toLowerCase()}` : ""}
+            {node.label !== centerLabel && node.linkToCenter > 0 ? ` · with ${centerLabel.toLowerCase()} ×${node.linkToCenter}` : ""}
+          </p>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close details" className="glass flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
+          <X className="h-3.5 w-3.5" strokeWidth={1.8} />
+        </button>
+      </div>
+
+      {related.length > 0 && (
+        <p className="mt-3 text-[13px] leading-relaxed text-secondary-foreground">
+          tended to appear alongside {related.map((r) => `${r.label.toLowerCase()} (×${r.n})`).join(", ")}.
+        </p>
+      )}
+
+      {moments.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <p className="qs-section-label">supporting moments</p>
+          {moments.map((mm) => (
+            <div key={mm.created_at} className="rounded-2xl border px-4 py-2.5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
+              <p className="text-[11.5px] text-muted-foreground">
+                {new Date(mm.created_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · feels {WEIGHT_WORD(mm.mood_score ?? 5)}
+              </p>
+              {mm.note && <p className="mt-1 font-serif text-[13px] italic leading-relaxed text-foreground/85 line-clamp-2">“{mm.note}”</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-2.5">
+        <button type="button"
+          onClick={() => onTalk(`${node.label} has appeared ${node.count} ${node.count === 1 ? "time" : "times"} in my recent check-ins${peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}. Can we explore it together?`)}
+          className="qs-pill-cta" style={{ padding: "0.55rem 1.05rem", fontSize: "13px" }}>
+          <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> Explore with InnerMate
+        </button>
+        <Link to="/pattern/$tag" params={{ tag: node.label }}
+          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition hover:-translate-y-0.5"
+          style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}>
+          full detail <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function RevealCard({
+  constellation, periodMoods, period, onExplore, onSelectCenter,
+}: {
+  constellation: Constellation; periodMoods: Mood[]; period: Period;
+  onExplore: () => void; onSelectCenter: () => void;
+}) {
+  const { center, ring, checkinCount, confidence } = constellation;
+  if (!center) return null;
+  const companions = ring.filter((n) => n.linkToCenter > 0).slice(0, 2);
+  const peak = peakTod(timeOfDayFor(periodMoods, center.label));
+  return (
+    <TactileCard tint="lavender" className="mt-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="qs-section-label">what this pattern may reveal</p>
+        <p className="text-[11px] text-muted-foreground">{confidence.label} · based on {checkinCount} check-ins</p>
+      </div>
+      <p className="mt-3 text-[14.5px] leading-relaxed text-foreground/90">
+        <strong className="font-medium">{center.label}</strong> appeared in {center.count} of your {checkinCount} check-ins
+        {peak ? <>, most often in the <strong className="font-medium">{peak.label.toLowerCase()}</strong></> : null}
+        {companions.length > 0 && (
+          <>, and tended to occur when {companions.map((c) => c.label.toLowerCase()).join(" or ")} {companions.length === 1 ? "was" : "were"} present</>
+        )}.
+        {" "}That's an observation, not a verdict — but it may be worth exploring gently.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2.5">
+        <button type="button" onClick={onExplore} className="qs-pill-cta" style={{ padding: "0.55rem 1.05rem", fontSize: "13px" }}>
+          <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> Explore this with InnerMate
+        </button>
+        <button type="button" onClick={onSelectCenter}
+          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition hover:-translate-y-0.5"
+          style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}>
+          view supporting moments
+        </button>
+      </div>
+    </TactileCard>
+  );
+}
+
+/* ── Timeline view ── */
+
+function TimelineView({
+  periodMoods, visibleTags, filterTag, setFilterTag,
+}: {
+  periodMoods: Mood[]; visibleTags: string[]; filterTag: string | null; setFilterTag: (t: string | null) => void;
+}) {
+  const [openIso, setOpenIso] = useState<string | null>(null);
+  const points = useMemo(() => timelinePoints(periodMoods, filterTag ?? undefined), [periodMoods, filterTag]);
+  const summary = useMemo(() => timelineSummary(points, periodMoods), [points, periodMoods]);
+  const open = openIso ? points.find((p) => p.iso === openIso) ?? null : null;
+
+  const W = 640, H = 150, pad = 14;
+  const t0 = points.length ? new Date(points[0].iso).getTime() : 0;
+  const t1 = points.length ? new Date(points[points.length - 1].iso).getTime() : 1;
+  const span = Math.max(1, t1 - t0);
+  const xFor = (iso: string) => pad + ((new Date(iso).getTime() - t0) / span) * (W - pad * 2);
+  const yFor = (v: number) => H - pad - ((Math.max(1, Math.min(10, v)) - 1) / 9) * (H - pad * 2);
+  // Only connect points that are ≤ 2 days apart — gaps stay visibly empty.
+  const segments: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const gap = new Date(points[i].iso).getTime() - new Date(points[i - 1].iso).getTime();
+    if (gap <= 2 * 86400000) {
+      segments.push({ x1: xFor(points[i - 1].iso), y1: yFor(points[i - 1].score), x2: xFor(points[i].iso), y2: yFor(points[i].score) });
     }
   }
-  return stars.slice().sort((a, b) => a.x - b.x);
+
+  return (
+    <div className="mt-6">
+      <p className="text-[14px] leading-relaxed text-secondary-foreground">{summary}</p>
+
+      {/* tag filter */}
+      {visibleTags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {visibleTags.slice(0, 8).map((t) => (
+            <button key={t} type="button" onClick={() => setFilterTag(filterTag === t ? null : t)}
+              aria-pressed={filterTag === t}
+              className={`qs-chip ${filterTag === t ? "qs-chip--active" : ""}`}>
+              {t}
+            </button>
+          ))}
+          {filterTag && (
+            <button type="button" onClick={() => setFilterTag(null)} className="text-[12px] text-muted-foreground underline-offset-4 hover:underline">
+              clear
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="sky-panel mt-4 p-4">
+        {points.length === 0 ? (
+          <p className="py-10 text-center font-serif text-[14px] italic text-foreground/60">
+            no check-ins {filterTag ? `with ${filterTag.toLowerCase()} ` : ""}in this period.
+          </p>
+        ) : (
+          <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`Timeline of ${points.length} check-ins. ${summary}`}>
+            {segments.map((s, i) => (
+              <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke="currentColor" strokeOpacity="0.35" strokeWidth="1.4" strokeLinecap="round" />
+            ))}
+            {points.map((p) => {
+              const domEmotion = p.emotions[0];
+              const tint = domEmotion ? tagTint(domEmotion) : "var(--mint)";
+              return (
+                <g key={p.iso}>
+                  <circle cx={xFor(p.iso)} cy={yFor(p.score)} r={10} fill="transparent"
+                    style={{ cursor: "pointer" }} onClick={() => setOpenIso(openIso === p.iso ? null : p.iso)} />
+                  <circle cx={xFor(p.iso)} cy={yFor(p.score)} r={openIso === p.iso ? 5 : 3.4}
+                    fill={tint} opacity={0.9} pointerEvents="none" />
+                </g>
+              );
+            })}
+          </svg>
+        )}
+        <div className="mt-1 flex items-center justify-between text-[10.5px] text-muted-foreground">
+          <span>{points.length ? new Date(points[0].iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
+          <span>gaps are simply days you didn't check in — they don't count against you</span>
+          <span>{points.length ? new Date(points[points.length - 1].iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
+        </div>
+      </div>
+
+      {open && (
+        <div className="glass mt-3 rounded-3xl p-5 fade-in" role="region" aria-label="Check-in details">
+          <div className="flex items-start justify-between">
+            <p className="text-[12px] text-muted-foreground">
+              {new Date(open.iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            </p>
+            <button type="button" onClick={() => setOpenIso(null)} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <p className="mt-1.5 font-serif text-[16px]">feels {WEIGHT_WORD(open.score)}</p>
+          {(open.emotions.length > 0 || open.triggers.length > 0) && (
+            <p className="mt-1 text-[13px] text-secondary-foreground">{[...open.emotions, ...open.triggers].join(" · ")}</p>
+          )}
+          {open.note && <p className="mt-2 font-serif text-[13.5px] italic leading-relaxed text-foreground/85">“{open.note}”</p>}
+        </div>
+      )}
+    </div>
+  );
 }
 
-/* ── Gentle heuristics — computed from data already on the page ── */
+/* ── Supporting panels ── */
 
-// to: null means the check-in at the top of this page — rendered as a scroll, not a link
-type NextStep = { title: string; body: string; cta: string; to: "/wind-down" | "/urge-shield" | null; icon: LucideIcon };
+function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood[]; visible: ReturnType<typeof tagStats>; journal: JournalRow[] }) {
+  const total = periodMoods.length;
+  const emotions = visible.filter((s) => s.kind === "emotion").slice(0, 3);
+  const triggers = visible.filter((s) => s.kind === "trigger").slice(0, 3);
+  const co = useMemo(() => cooccurrence(periodMoods), [periodMoods]);
+  const topEmotion = emotions[0]?.label;
 
-function pickNextStep(stats: {
-  topTriggers: { label: string; count: number }[];
-  timeOfDay: { label: string; count: number }[];
-}): NextStep {
-  const topTrigger = stats.topTriggers[0]?.label;
-  const heaviest = stats.timeOfDay.reduce((a, b) => (b.count > a.count ? b : a), stats.timeOfDay[0]);
-  const eveningsHeaviest = !!heaviest && heaviest.count > 0 && (heaviest.label === "Evening" || heaviest.label === "Night");
-  if (topTrigger === "Sleep" || eveningsHeaviest) {
-    return {
-      title: "A night reset",
-      body: "The late hours keep appearing in your sky. Three slow breaths and one line set down before bed can soften their edges.",
-      cta: "Begin a night reset",
-      to: "/wind-down",
-      icon: MoonStar,
-    };
-  }
-  if (topTrigger === "Work") {
-    return {
-      title: "A pause before action",
-      body: "Work has been a bright signal lately. When the next wave rises, try meeting it with a small pause instead of a reply.",
-      cta: "Practice the pause",
-      to: "/urge-shield",
-      icon: Hand,
-    };
-  }
-  return {
-    title: "A two-minute check-in",
-    body: "The simplest way to add a star to this sky — pause, name the feeling, let it be seen. It's waiting at the top of this page.",
-    cta: "Check in gently",
-    to: null,
-    icon: Feather,
+  const heavy = periodMoods.filter((mm) => mm.mood_score <= 4);
+  const heavyPeak = peakTod(timeOfDayFor(heavy));
+  const allTod = timeOfDayFor(periodMoods);
+  const todMax = Math.max(1, ...TOD_LABELS.map((l) => allTod[l]));
+
+  const weekAgo = Date.now() - 7 * 86400000;
+  const pagesThisPeriod = journal.filter((jr) => jr.created_at && new Date(jr.created_at).getTime() >= weekAgo).length;
+  const windDowns = journal.filter((jr) => jr.title === "Wind-down").length;
+
+  return (
+    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <TactileCard tint="mint">
+        <p className="qs-section-label">what kept returning</p>
+        {emotions.length === 0 ? (
+          <p className="mt-3 text-sm italic text-muted-foreground">no feelings named yet — the sky can wait.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {emotions.map((e) => (
+              <li key={e.label}>
+                <Link to="/pattern/$tag" params={{ tag: e.label }} className="block text-[13.5px] leading-relaxed text-foreground/90 transition hover:text-foreground">
+                  <strong className="font-medium">{e.label}</strong> appeared in {e.count} of {total} check-ins →
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </TactileCard>
+
+      <TactileCard tint="rose">
+        <p className="qs-section-label">what tended to stir it</p>
+        {triggers.length === 0 ? (
+          <p className="mt-3 text-sm italic text-muted-foreground">no signals yet. they surface when they're ready.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {triggers.map((t) => {
+              const withTop = topEmotion ? coBetween(co, t.label, topEmotion) : 0;
+              return (
+                <li key={t.label} className="text-[13.5px] leading-relaxed text-foreground/90">
+                  <strong className="font-medium">{t.label}</strong> ×{t.count}
+                  {withTop > 0 && topEmotion ? ` — in ${withTop} ${topEmotion.toLowerCase()} check-ins` : ""}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </TactileCard>
+
+      <TactileCard>
+        <p className="qs-section-label">when it tended to happen</p>
+        <div className="mt-4 grid grid-cols-4 gap-3">
+          {TOD_LABELS.map((l) => (
+            <div key={l} className="flex flex-col items-center gap-1.5">
+              <div className="flex h-14 items-end">
+                <div className="w-6 rounded-t-md" style={{
+                  height: `${Math.max(5, Math.round((allTod[l] / todMax) * 52))}px`,
+                  background: heavyPeak?.label === l ? "var(--accent-primary)" : "var(--foreground)",
+                  opacity: heavyPeak?.label === l ? 0.85 : 0.22,
+                }} aria-hidden />
+              </div>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{l}</p>
+              <p className="text-[10.5px] text-foreground/60">{allTod[l]}</p>
+            </div>
+          ))}
+        </div>
+        {heavyPeak && (
+          <p className="mt-3 border-t border-border/40 pt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+            most of the heavier check-ins happened around {heavyPeak.label.toLowerCase()}.
+          </p>
+        )}
+      </TactileCard>
+
+      <TactileCard tint="amber">
+        <p className="qs-section-label">practices you returned to</p>
+        <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-foreground/90">
+          {pagesThisPeriod > 0 && <li>{pagesThisPeriod} journal {pagesThisPeriod === 1 ? "page" : "pages"} this week</li>}
+          {windDowns > 0 && <li>{windDowns} night{windDowns === 1 ? "" : "s"} set down with the wind-down</li>}
+          {pagesThisPeriod === 0 && windDowns === 0 && (
+            <li className="italic text-muted-foreground">nothing yet — the tools are there when you want them.</li>
+          )}
+        </ul>
+        <p className="mt-3 border-t border-border/40 pt-3 text-[11.5px] italic leading-relaxed text-muted-foreground">
+          we only list what you actually did — never a claim that it "worked".
+        </p>
+      </TactileCard>
+    </div>
+  );
+}
+
+/* ── Set-aside (restorable hidden patterns) ── */
+
+function SetAside({ tags }: { tags: string[] }) {
+  const qc = useQueryClient();
+  const unhideFn = useServerFn(unhidePattern);
+  const restore = async (tag: string) => {
+    try {
+      await unhideFn({ data: { tag } });
+      qc.invalidateQueries({ queryKey: ["hiddenPatterns"] });
+    } catch { /* stays set aside */ }
   };
+  return (
+    <TactileCard className="mt-4">
+      <p className="qs-section-label">set aside</p>
+      <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
+        Patterns you told me didn't fit. They're hidden from your sky — bring any back whenever you like.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {tags.map((t) => (
+          <button key={t} type="button" onClick={() => restore(t)}
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition hover:-translate-y-0.5"
+            style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)", color: "var(--text-secondary)" }}>
+            {t} <span className="text-[11px] text-muted-foreground">restore</span>
+          </button>
+        ))}
+      </div>
+    </TactileCard>
+  );
 }
+
+/* ── Closing row ── */
 
 const DEEPER_QUESTIONS: Record<string, string> = {
   Anxious: "What would you do this week if you trusted yourself a little more?",
@@ -151,151 +733,19 @@ const DEEPER_QUESTIONS: Record<string, string> = {
   Grateful: "Who doesn't know yet how much they steadied you?",
 };
 
-function pickQuestion(theme?: string): string {
-  return (theme && DEEPER_QUESTIONS[theme]) || "What would this week feel like if you were on your own side?";
-}
-
-/* ── Screen ── */
-
-function Insights() {
-  const m = useServerFn(listMoods);
-  const j = useServerFn(listJournal);
-  const { data: moodsRaw } = useQuery({ queryKey: ["moods"], queryFn: () => m() });
-  const { data: journal } = useQuery({ queryKey: ["journal"], queryFn: () => j() });
-  const moods = (moodsRaw ?? []) as Mood[];
-
-  const hiddenFn = useServerFn(listHiddenPatterns);
-  const { data: hiddenRaw } = useQuery({ queryKey: ["hiddenPatterns"], queryFn: () => hiddenFn() });
-  const hidden = (hiddenRaw ?? []) as string[];
-  const hiddenSet = useMemo(() => new Set(hidden.map((t) => t.toLowerCase())), [hidden]);
-
-  const rawStats = useMemo(() => computeStats(moods), [moods]);
-  // Patterns the user has set aside are filtered from every view here.
-  const stats = useMemo(() => ({
-    ...rawStats,
-    topEmotions: rawStats.topEmotions.filter((e) => !hiddenSet.has(e.label.toLowerCase())),
-    topTriggers: rawStats.topTriggers.filter((t) => !hiddenSet.has(t.label.toLowerCase())),
-  }), [rawStats, hiddenSet]);
-  const weekStart = mondayISO(new Date());
-  const arc = moodsToWeekArc(moods.map(x => ({ created_at: x.created_at, mood_score: x.mood_score })), weekStart);
-  const arcAvg = arc.filter((v): v is number => v != null);
-  const arcMean = arcAvg.length ? (arcAvg.reduce((a, b) => a + b, 0) / arcAvg.length).toFixed(1) : "—";
-
-  const windDownCount = useMemo(
-    () => ((journal ?? []) as JournalRow[]).filter((e) => e.title === "Wind-down").length,
-    [journal],
-  );
-  const pageCount = Math.max(0, (journal?.length ?? 0) - windDownCount);
-
-  const stars = useMemo(() => constellationStars(stats.topEmotions), [stats.topEmotions]);
-  const nextStep = pickNextStep(stats);
-  const StepIcon = nextStep.icon;
-  const question = pickQuestion(stats.topEmotions[0]?.label);
+function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmotion?: string }) {
+  const heavyPeak = peakTod(timeOfDayFor(periodMoods.filter((mm) => mm.mood_score <= 4)));
+  const evenings = heavyPeak?.label === "Evening" || heavyPeak?.label === "Night";
+  const step = evenings
+    ? { title: "A night reset", body: "The late hours keep appearing in your sky. Three slow breaths before bed can soften their edges.", to: "/wind-down" as const, icon: MoonStar, cta: "Begin a night reset" }
+    : periodMoods.some((mm) => (mm.trigger_tags ?? []).includes("Work"))
+      ? { title: "A pause before action", body: "Work has been a bright signal lately. Try meeting the next wave with a small pause instead of a reply.", to: "/urge-shield" as const, icon: Hand, cta: "Practice the pause" }
+      : { title: "A two-minute check-in", body: "The simplest way to add a star to this sky — pause, name the feeling, let it be seen.", to: null, icon: Feather, cta: "Check in gently" };
+  const StepIcon = step.icon;
+  const question = (topEmotion && DEEPER_QUESTIONS[topEmotion]) || "What would this week feel like if you were on your own side?";
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-      {/* The check-in ritual — merged in from the old /checkin page */}
-      <p className="qs-section-label">a moment to check in</p>
-      <h1 className="mt-3 font-serif text-[28px] font-light leading-tight tracking-tight sm:text-[2.3rem]">
-        How does today feel?
-      </h1>
-      <p className="mt-3 max-w-md text-[14.5px] leading-relaxed text-muted-foreground">
-        Under a minute. Nothing here is a wrong answer — and every save adds a star to the sky below.
-      </p>
-      <Link to="/checkin" className="mt-2 inline-block text-[13px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline">
-        prefer the guided journey? →
-      </Link>
-      <div className="mt-8">
-        <CheckinRitual />
-      </div>
-
-      {/* Patterns, built from the check-ins above */}
-      <div className="mt-14 border-t border-border/40 pt-10">
-        <p className="qs-section-label">your pattern constellation</p>
-        <h2 className="mt-3 font-serif text-[24px] font-light leading-tight tracking-tight sm:text-[1.9rem]">
-          Patterns, becoming visible.
-        </h2>
-        <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-          Not a report card. A sky slowly taking shape.
-        </p>
-      </div>
-
-      {/* The constellation */}
-      <ConstellationSky stars={stars} />
-
-      {/* themes + signals */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <TactileCard tint="mint">
-          <p className="qs-section-label">themes</p>
-          <p className="mt-2 font-serif text-lg leading-snug">What kept rising</p>
-          <TagWeights items={stats.topEmotions} empty="no feelings named yet — the sky can wait." />
-        </TactileCard>
-        <TactileCard tint="rose">
-          <p className="qs-section-label">signals</p>
-          <p className="mt-2 font-serif text-lg leading-snug">What tended to stir it</p>
-          <TagWeights items={stats.topTriggers} empty="no signals yet. they surface when they're ready." />
-          {stats.topTriggers[0] && (
-            <p className="mt-4 border-t border-border/40 pt-3 text-[13px] leading-relaxed text-muted-foreground">
-              <strong className="font-medium text-foreground/85">{stats.topTriggers[0].label}</strong> kept flickering at
-              the edge of your sky. Nothing is wrong — it's just asking to be noticed.
-            </p>
-          )}
-        </TactileCard>
-      </div>
-
-      {/* the week's shape */}
-      <TactileCard className="mt-4">
-        <div className="flex items-baseline justify-between">
-          <p className="qs-section-label">the week's shape</p>
-          <p className="font-serif text-sm text-muted-foreground">resting near <span className="text-foreground">{arcMean}</span></p>
-        </div>
-        <div className="mt-4 text-foreground/80">
-          <WeekArc days={arc} />
-        </div>
-        <p className="mt-2 text-[12px] italic text-muted-foreground">a wavy week is a real week.</p>
-
-        <div className="mt-6 flex items-baseline justify-between border-t border-border/40 pt-5">
-          <p className="qs-section-label">the last thirty nights</p>
-          <p className="font-serif text-sm text-muted-foreground">{stats.thirtyCount} moments noticed</p>
-        </div>
-        <div className="mt-4">
-          <MoodTrend days={stats.thirty} />
-        </div>
-        <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>heavier</span>
-          <span>lighter</span>
-        </div>
-      </TactileCard>
-
-      {/* rhythms */}
-      <TactileCard className="mt-4">
-        <p className="qs-section-label">rhythms</p>
-        <p className="mt-2 font-serif text-lg leading-snug">When the heavy hours come</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">the times of day you most often pause here</p>
-        <div className="mt-5 grid grid-cols-4 gap-3">
-          {stats.timeOfDay.map((t) => (
-            <TimeOfDayBar key={t.label} label={t.label} count={t.count} max={stats.timeOfDayMax} />
-          ))}
-        </div>
-      </TactileCard>
-
-      {/* anchors */}
-      <TactileCard tint="amber" className="mt-4">
-        <p className="qs-section-label">anchors</p>
-        <p className="mt-2 font-serif text-lg leading-snug">What steadied you</p>
-        <div className="mt-5 grid grid-cols-3 gap-3">
-          <Anchor value={pageCount} label="pages in your vault" />
-          <Anchor value={windDownCount} label="nights set down gently" />
-          <Anchor value={stats.bestDay ?? "—"} label="your kindest day" />
-        </div>
-        <p className="mt-5 border-t border-border/40 pt-4 font-serif text-[14px] italic leading-relaxed text-foreground/75">
-          {stats.streak > 0
-            ? `${stats.streak} ${stats.streak === 1 ? "day" : "days in a row"} you showed up for yourself. not a score — just something quietly true.`
-            : "whenever you return, the sky will be here."}
-        </p>
-      </TactileCard>
-
-      {/* one gentle next step + one deeper question */}
+    <>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <TactileCard tint="sky">
           <p className="qs-section-label">one gentle next step</p>
@@ -304,24 +754,18 @@ function Insights() {
               <StepIcon className="h-4 w-4" strokeWidth={1.7} />
             </span>
             <div className="min-w-0">
-              <p className="font-serif text-lg leading-snug">{nextStep.title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{nextStep.body}</p>
+              <p className="font-serif text-lg leading-snug">{step.title}</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
             </div>
           </div>
-          {nextStep.to ? (
-            <Link
-              to={nextStep.to}
-              className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground"
-            >
-              {nextStep.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
+          {step.to ? (
+            <Link to={step.to} className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground">
+              {step.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
             </Link>
           ) : (
-            <button
-              type="button"
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground"
-            >
-              {nextStep.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
+            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground">
+              {step.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
             </button>
           )}
         </TactileCard>
@@ -332,396 +776,18 @@ function Insights() {
         </TactileCard>
       </div>
 
-      {/* Patterns the user set aside — restorable, never silently lost */}
-      {hidden.length > 0 && <SetAside tags={hidden} />}
-
-      {/* CTA — the moon cycle */}
       <div className="mt-10 flex flex-col items-center">
         <Link to="/home" className="qs-pill-cta">
           <Sparkles className="h-4 w-4" strokeWidth={1.7} />
           Open your letter from the moon cycle
         </Link>
-        <p className="mt-3 text-center text-[12px] text-muted-foreground">
-          your letter from the week waits on Home.
-        </p>
+        <p className="mt-3 text-center text-[12px] text-muted-foreground">your letter from the week waits on Home.</p>
       </div>
 
-      <p className="mt-12 text-center font-serif text-[13px] italic text-muted-foreground">
+      <p className="mt-10 text-center font-serif text-[13px] italic text-muted-foreground">
         a quiet week and a loud week both count.
       </p>
-    </div>
+    </>
   );
 }
 
-/* ── The constellation panel ── */
-
-function ConstellationSky({ stars }: { stars: Star[] }) {
-  // Fixed seed — the background sky renders identically on server and client.
-  const bgStars = useMemo(() => {
-    const rand = mulberry32(SKY_SEED);
-    return Array.from({ length: 40 }, () => ({
-      x: 2 + rand() * 96,
-      y: 4 + rand() * 88,
-      r: 1 + rand() * 1.6,
-      o: 0.12 + rand() * 0.38,
-      d: rand() * 6,
-    }));
-  }, []);
-
-  return (
-    <div
-      className="sky-panel mt-8 h-[300px]"
-      role="img"
-      aria-label={
-        stars.length
-          ? `Your constellation — the feelings you named most: ${stars.map((s) => s.label).join(", ")}`
-          : "An empty night sky, waiting for your first check-ins"
-      }
-    >
-      {/* aurora band */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-[-12%] top-[6%] h-28 rounded-[100%] opacity-50 blur-2xl motion-safe:animate-[qs-aurora_18s_ease-in-out_infinite_alternate]"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--mint) 24%, transparent) 32%, color-mix(in oklab, var(--sky) 20%, transparent) 58%, color-mix(in oklab, var(--lavender) 16%, transparent) 78%, transparent 100%)",
-        }}
-      />
-
-      {/* dim background stars */}
-      {bgStars.map((s, i) => (
-        <span
-          key={i}
-          aria-hidden
-          className={
-            "absolute rounded-full" +
-            (i % 4 === 0 ? " motion-safe:animate-[qs-twinkle_5.5s_ease-in-out_infinite]" : "")
-          }
-          style={{
-            left: `${s.x}%`,
-            top: `${s.y}%`,
-            width: s.r,
-            height: s.r,
-            background: "oklch(0.95 0.01 90)",
-            opacity: s.o,
-            animationDelay: `${s.d.toFixed(2)}s`,
-          }}
-        />
-      ))}
-
-      {/* faint threads between the named stars */}
-      {stars.length > 1 && (
-        <svg aria-hidden className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {stars.slice(1).map((s, i) => (
-            <line
-              key={s.label}
-              x1={stars[i].x}
-              y1={stars[i].y}
-              x2={s.x}
-              y2={s.y}
-              stroke="oklch(1 0 0 / 0.25)"
-              strokeWidth="1"
-              strokeDasharray="4 6"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </svg>
-      )}
-
-      {/* the named stars */}
-      {stars.map((s, i) => (
-        <div
-          key={s.label}
-          className="absolute -translate-x-1/2 -translate-y-1/2"
-          style={{ left: `${s.x}%`, top: `${s.y}%` }}
-        >
-          <span
-            className="mx-auto block rounded-full motion-safe:animate-[qs-twinkle_4.5s_ease-in-out_infinite]"
-            style={{
-              width: 6 + Math.round(s.weight * 8),
-              height: 6 + Math.round(s.weight * 8),
-              background: s.color,
-              opacity: 0.55 + s.weight * 0.45,
-              boxShadow: `0 0 ${8 + Math.round(s.weight * 14)}px ${2 + Math.round(s.weight * 4)}px color-mix(in oklab, ${s.color} 55%, transparent)`,
-              animationDelay: `${(i * 0.9).toFixed(1)}s`,
-            }}
-          />
-          <span
-            className="mt-1.5 block whitespace-nowrap text-center font-serif text-[10.5px] italic"
-            style={{ color: `color-mix(in oklab, ${s.color} 45%, var(--foreground))` }}
-          >
-            {s.label.toLowerCase()}
-          </span>
-        </div>
-      ))}
-
-      {/* two fireflies, resting under reduced motion */}
-      <span aria-hidden className="qs-firefly hidden motion-safe:inline-block" style={{ left: "18%", top: "64%" }} />
-      <span
-        aria-hidden
-        className="qs-firefly hidden motion-safe:inline-block"
-        style={{ left: "82%", top: "30%", animationDelay: "4s" }}
-      />
-
-      {stars.length === 0 ? (
-        <div className="absolute inset-0 flex items-center justify-center px-10">
-          <p className="text-center font-serif text-[15px] italic leading-relaxed text-foreground/60">
-            check in for a few days and your sky will begin to take shape
-          </p>
-        </div>
-      ) : (
-        <p className="absolute inset-x-0 bottom-4 text-center font-serif text-[11px] italic text-foreground/45">
-          each star is a feeling you named
-        </p>
-      )}
-    </div>
-  );
-}
-
-/* ── Small pieces ── */
-
-function SetAside({ tags }: { tags: string[] }) {
-  const qc = useQueryClient();
-  const unhideFn = useServerFn(unhidePattern);
-  const restore = async (tag: string) => {
-    try {
-      await unhideFn({ data: { tag } });
-      qc.invalidateQueries({ queryKey: ["hiddenPatterns"] });
-    } catch { /* silent — the tag simply stays set aside */ }
-  };
-  return (
-    <TactileCard className="mt-4">
-      <p className="qs-section-label">set aside</p>
-      <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
-        Patterns you told me didn't fit. They're hidden from your sky — bring any back whenever you like.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {tags.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => restore(t)}
-            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition hover:-translate-y-0.5"
-            style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)", color: "var(--text-secondary)" }}
-          >
-            {t} <span className="text-[11px] text-muted-foreground">restore</span>
-          </button>
-        ))}
-      </div>
-    </TactileCard>
-  );
-}
-
-function Anchor({ value, label }: { value: string | number; label: string }) {
-  return (
-    <div className="rounded-2xl bg-background/40 px-3 py-4 text-center">
-      <p className="font-serif text-2xl leading-none">{String(value)}</p>
-      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function TagWeights({ items, empty }: { items: { label: string; count: number }[]; empty: string }) {
-  if (!items.length) {
-    return <p className="mt-4 text-sm italic text-muted-foreground">{empty}</p>;
-  }
-  // Honest levels from raw 30-day frequency — no invented scores.
-  const levelOf = (n: number) => (n >= 4 ? "High" : n >= 2 ? "Medium" : "Low");
-  return (
-    <ul className="mt-4 space-y-2">
-      {items.map((it) => {
-        const level = levelOf(it.count);
-        const tint = tagTint(it.label);
-        return (
-          <li key={it.label}>
-            <Link
-              to="/pattern/$tag"
-              params={{ tag: it.label }}
-              className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition hover:-translate-y-0.5"
-              style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}
-            >
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: tint, boxShadow: `0 0 8px ${tint}` }} />
-                <div className="min-w-0">
-                  <p className="truncate text-[13.5px] text-foreground/90">{it.label}</p>
-                  <p className="text-[11px] text-muted-foreground">appeared {it.count} {it.count === 1 ? "time" : "times"}</p>
-                </div>
-              </div>
-              <span
-                className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-medium"
-                style={{
-                  color: `color-mix(in oklab, ${tint} 70%, var(--foreground))`,
-                  background: `color-mix(in oklab, ${tint} 14%, transparent)`,
-                  border: `1px solid color-mix(in oklab, ${tint} 30%, transparent)`,
-                }}
-              >
-                {level}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function TimeOfDayBar({ label, count, max }: { label: string; count: number; max: number }) {
-  const h = max ? Math.max(6, Math.round((count / max) * 64)) : 6;
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="flex h-16 items-end">
-        <div
-          className="w-6 rounded-t-md bg-foreground/25"
-          style={{ height: `${h}px`, transition: "height 400ms ease" }}
-          aria-hidden
-        />
-      </div>
-      <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
-      <p className="text-[11px] text-foreground/60">{count}</p>
-    </div>
-  );
-}
-
-function MoodTrend({ days }: { days: (number | null)[] }) {
-  const w = 640;
-  const h = 120;
-  const pad = 8;
-  const n = days.length;
-  const step = (w - pad * 2) / Math.max(1, n - 1);
-  const yFor = (v: number) => h - pad - ((Math.max(1, Math.min(10, v)) - 1) / 9) * (h - pad * 2);
-
-  // Build smoothed path over non-null values, interpolating gaps.
-  const filled = fillGaps(days);
-  const points = filled.map((v, i) => ({ x: pad + step * i, y: yFor(v ?? 5.5) }));
-  const path = points.reduce((acc, p, i) => {
-    if (i === 0) return `M ${p.x} ${p.y}`;
-    const prev = points[i - 1];
-    const cx = (prev.x + p.x) / 2;
-    return `${acc} Q ${cx} ${prev.y}, ${cx} ${(prev.y + p.y) / 2} T ${p.x} ${p.y}`;
-  }, "");
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" preserveAspectRatio="none" role="img" aria-label="Mood over the last 30 days">
-      <defs>
-        <linearGradient id="moodFill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="var(--mint)" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="var(--mint)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${path} L ${pad + step * (n - 1)} ${h - pad} L ${pad} ${h - pad} Z`} fill="url(#moodFill)" />
-      <path d={path} fill="none" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1.5" strokeLinecap="round" />
-      {days.map((v, i) =>
-        v == null ? null : (
-          <circle key={i} cx={pad + step * i} cy={yFor(v)} r={2.2} fill="currentColor" opacity="0.55" />
-        ),
-      )}
-    </svg>
-  );
-}
-
-function fillGaps(days: (number | null)[]): (number | null)[] {
-  const out = [...days];
-  // linear interpolation between known points; leave leading/trailing nulls as neutral
-  let lastKnown = -1;
-  for (let i = 0; i < out.length; i++) {
-    if (out[i] != null) {
-      if (lastKnown >= 0 && i - lastKnown > 1) {
-        const a = out[lastKnown]!;
-        const b = out[i]!;
-        const gap = i - lastKnown;
-        for (let k = 1; k < gap; k++) out[lastKnown + k] = a + ((b - a) * k) / gap;
-      }
-      lastKnown = i;
-    }
-  }
-  return out;
-}
-
-function mondayISO(d: Date): string {
-  const x = new Date(d);
-  const day = (x.getDay() + 6) % 7; // 0 = Mon
-  x.setDate(x.getDate() - day);
-  x.setHours(0, 0, 0, 0);
-  return x.toISOString().slice(0, 10);
-}
-
-function computeStats(moods: Mood[]) {
-  const now = new Date();
-  const dayKey = (d: Date) => d.toISOString().slice(0, 10);
-
-  // 30-day buckets (oldest -> newest)
-  const thirty: (number | null)[] = Array.from({ length: 30 }, () => null);
-  const dayBuckets: number[][] = Array.from({ length: 30 }, () => []);
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - 29);
-
-  // Weekday averages (0=Sun..6=Sat)
-  const weekdayBuckets: number[][] = Array.from({ length: 7 }, () => []);
-  const tod = { Morning: 0, Midday: 0, Evening: 0, Night: 0 };
-  const emo = new Map<string, number>();
-  const trig = new Map<string, number>();
-  let thirtyCount = 0;
-
-  for (const m of moods) {
-    const d = new Date(m.created_at);
-    const diff = Math.floor((d.getTime() - start.getTime()) / 86400000);
-    if (diff >= 0 && diff < 30) {
-      dayBuckets[diff].push(m.mood_score);
-      thirtyCount += 1;
-    }
-    weekdayBuckets[d.getDay()].push(m.mood_score);
-    const h = d.getHours();
-    if (h < 6) tod.Night += 1;
-    else if (h < 12) tod.Morning += 1;
-    else if (h < 18) tod.Midday += 1;
-    else tod.Evening += 1;
-    m.emotion_tags?.forEach((t) => emo.set(t, (emo.get(t) ?? 0) + 1));
-    m.trigger_tags?.forEach((t) => trig.set(t, (trig.get(t) ?? 0) + 1));
-  }
-  for (let i = 0; i < 30; i++) {
-    const b = dayBuckets[i];
-    thirty[i] = b.length ? b.reduce((a, n) => a + n, 0) / b.length : null;
-  }
-
-  // Streak: consecutive days ending today with a check-in
-  const daySet = new Set(moods.map((m) => dayKey(new Date(m.created_at))));
-  let streak = 0;
-  const cursor = new Date(now);
-  cursor.setHours(0, 0, 0, 0);
-  while (daySet.has(dayKey(cursor))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  // Kindest weekday
-  const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  let bestDay: string | null = null;
-  let bestAvg = -Infinity;
-  weekdayBuckets.forEach((b, i) => {
-    if (b.length >= 2) {
-      const a = b.reduce((s, n) => s + n, 0) / b.length;
-      if (a > bestAvg) { bestAvg = a; bestDay = names[i]; }
-    }
-  });
-
-  const top = (map: Map<string, number>) =>
-    [...map.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([label, count]) => ({ label, count }));
-
-  const timeOfDay = (Object.entries(tod) as [keyof typeof tod, number][]).map(([label, count]) => ({ label, count }));
-  const timeOfDayMax = Math.max(1, ...timeOfDay.map((t) => t.count));
-
-  return {
-    thirty,
-    thirtyCount,
-    streak,
-    bestDay,
-    topEmotions: top(emo),
-    topTriggers: top(trig),
-    timeOfDay,
-    timeOfDayMax,
-  };
-}
