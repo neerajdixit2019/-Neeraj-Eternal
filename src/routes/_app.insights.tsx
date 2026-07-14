@@ -1,18 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight, Feather, Hand, MoonStar, Sparkles, MessageCircle, X,
-  Briefcase, Heart, Users, HeartPulse, Coins, BookOpen, Moon, Compass,
   type LucideIcon,
 } from "lucide-react";
 import { listMoods, listJournal, listHiddenPatterns, unhidePattern } from "@/lib/data.functions";
 import { listInsightEvents } from "@/lib/insights.functions";
 import {
   sourceMixFor, describeMix, sourceCount, isInferredOnly, toMoodEntries, changeSignals,
+  skyReading, SOURCE_LABEL,
   type InsightEvent,
 } from "@/lib/insight-events";
+import { getProfile } from "@/lib/data.functions";
 import { TactileCard } from "@/components/TactileCard";
 import { CheckinRitual } from "@/components/CheckinRitual";
 import { CompanionCloud } from "@/components/CompanionCloud";
@@ -61,11 +62,6 @@ function hashStr(s: string): number {
 function tagTint(label: string): string {
   return TAG_TINTS[label] ?? ACCENTS[hashStr(label) % ACCENTS.length];
 }
-const TRIGGER_ICONS: Record<string, LucideIcon> = {
-  Work: Briefcase, Relationship: Heart, Family: Users, Health: HeartPulse,
-  Money: Coins, Memories: BookOpen, Sleep: Moon, Future: Compass,
-};
-
 const WEIGHT_WORD = (score: number) =>
   score <= 3 ? "heavy" : score <= 5 ? "cloudy" : score <= 7 ? "settled" : score <= 9 ? "open" : "bright";
 
@@ -129,13 +125,35 @@ function Insights() {
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
-      {/* Header: title + tabs + period */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="qs-section-label">your observatory</p>
-          <h1 className="mt-2 font-serif text-[26px] font-light leading-tight tracking-tight sm:text-[2rem]">
-            Patterns, becoming visible.
-          </h1>
+      {/* Eyebrow row — the observatory's date line */}
+      <div className="flex items-baseline justify-between gap-4">
+        <p className="qs-section-label">insights</p>
+        <p className="text-[12.5px] text-muted-foreground">
+          {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+        </p>
+      </div>
+
+      {/* Tonight's sky — the narrative reading (design 1a) */}
+      <SkyHero events={events} />
+
+      {/* Tabs + period */}
+      <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
+        <div role="tablist" aria-label="Insight views" className="flex gap-1 rounded-full border p-1"
+          style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)", width: "fit-content" }}>
+          {(["constellation", "timeline"] as const).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              onClick={() => setView(v)}
+              className="rounded-full px-4 py-2 text-[13.5px] capitalize transition"
+              style={view === v
+                ? { background: "var(--surface-selected)", color: "var(--text-primary)", fontWeight: 600 }
+                : { color: "var(--text-secondary)" }}
+            >
+              {v}
+            </button>
+          ))}
         </div>
         <select
           value={period}
@@ -148,25 +166,6 @@ function Insights() {
             <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
           ))}
         </select>
-      </div>
-
-      {/* Tabs */}
-      <div role="tablist" aria-label="Insight views" className="mt-5 flex gap-1 rounded-full border p-1"
-        style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)", width: "fit-content" }}>
-        {(["constellation", "timeline"] as const).map((v) => (
-          <button
-            key={v}
-            role="tab"
-            aria-selected={view === v}
-            onClick={() => setView(v)}
-            className="rounded-full px-4 py-2 text-[13.5px] capitalize transition"
-            style={view === v
-              ? { background: "var(--surface-selected)", color: "var(--text-primary)", fontWeight: 600 }
-              : { color: "var(--text-secondary)" }}
-          >
-            {v}
-          </button>
-        ))}
       </div>
 
       {/* Compact check-in — expands to the full ritual */}
@@ -215,23 +214,27 @@ function Insights() {
         )}
       </div>
 
-      {/* Top signals strip */}
+      {/* What may be shaping it — the design's influence list, on real signals */}
       {topSignals.length > 0 && (
-        <div className="mt-5">
-          <p className="qs-section-label">top signals · {PERIOD_LABEL[period].toLowerCase()}</p>
-          <div className="mt-2.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {topSignals.map((s) => {
-              const Icon = TRIGGER_ICONS[s.label] ?? Sparkles;
-              const tint = tagTint(s.label);
+        <div className="mt-6">
+          <p className="qs-section-label">what may be shaping it · {PERIOD_LABEL[period].toLowerCase()}</p>
+          <div className="mt-3.5 flex flex-col gap-4">
+            {topSignals.slice(0, 3).map((s, i) => {
+              const mix = describeMix(sourceMixFor(periodEvents, s.label));
               return (
-                <Link key={s.label} to="/pattern/$tag" params={{ tag: s.label }}
-                  className="rounded-2xl border p-3.5 transition hover:-translate-y-0.5"
-                  style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}>
-                  <Icon className="h-4 w-4" strokeWidth={1.7} style={{ color: tint }} aria-hidden />
-                  <p className="mt-2 text-[13px] leading-snug text-foreground/90">{s.label}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    ×{s.count} · {statusFor(s.count).toLowerCase()}
-                  </p>
+                <Link key={s.label} to="/pattern/$tag" params={{ tag: s.label }} className="group flex gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full motion-safe:animate-[qs-twinkle_4s_ease-in-out_infinite]"
+                    style={{ background: "var(--dawn)", boxShadow: "0 0 8px color-mix(in oklab, var(--dawn) 60%, transparent)", animationDelay: `${i * 0.9}s` }}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[14.5px] font-semibold text-foreground transition group-hover:text-foreground">{s.label}</span>
+                    <span className="mt-0.5 block text-[13px] leading-relaxed text-secondary-foreground">
+                      appeared {s.count} {s.count === 1 ? "time" : "times"} · {statusFor(s.count).toLowerCase()}
+                    </span>
+                    {mix && <span className="mt-0.5 block text-[11px] text-muted-foreground">seen in {mix}</span>}
+                  </span>
                 </Link>
               );
             })}
@@ -272,6 +275,87 @@ function Insights() {
 
       {/* Closing: one gentle step + one question + the letter */}
       <ClosingRow periodMoods={periodMoods} topEmotion={visibleStats.find((s) => s.kind === "emotion")?.label} />
+    </div>
+  );
+}
+
+/* ── Tonight's sky — narrative hero (design 1a "Quiet cosmic sanctuary") ── */
+
+function daysAgoLabel(iso: string) {
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (d <= 0) return "today";
+  if (d === 1) return "yesterday";
+  return `${d} days ago`;
+}
+
+function SkyHero({ events }: { events: InsightEvent[] }) {
+  const profileFn = useServerFn(getProfile);
+  const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: () => profileFn() });
+  const [showWhy, setShowWhy] = useState(false);
+  const [hour, setHour] = useState<number | null>(null);
+  useEffect(() => { setHour(new Date().getHours()); }, []);
+  const sky = useMemo(() => skyReading(events), [events]);
+  const name = (profile as { display_name?: string | null } | null | undefined)?.display_name?.split(" ")[0];
+  const greeting = hour == null ? "Hello" : hour < 5 ? "Still up" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  return (
+    <div className="relative mt-5">
+      {/* faint fixed stars behind the reading */}
+      <span aria-hidden className="absolute right-[6%] top-1 h-[3px] w-[3px] rounded-full bg-foreground/50 motion-safe:animate-[qs-twinkle_5s_ease-in-out_infinite]" />
+      <span aria-hidden className="absolute right-[22%] top-10 h-[2px] w-[2px] rounded-full bg-foreground/30 motion-safe:animate-[qs-twinkle_6s_ease-in-out_infinite]" style={{ animationDelay: "2s" }} />
+      <span aria-hidden className="absolute right-[13%] top-24 h-[2px] w-[2px] rounded-full" style={{ background: "color-mix(in oklab, var(--dawn) 70%, transparent)" }} />
+
+      {/* the breathing orb — dawn-in-violet, the sky's presence */}
+      <div
+        aria-hidden
+        className="h-[84px] w-[84px] rounded-full motion-safe:animate-[qs-breathe_6.5s_ease-in-out_infinite]"
+        style={{
+          background:
+            "radial-gradient(circle at 38% 32%, color-mix(in oklab, var(--dawn) 85%, transparent), color-mix(in oklab, var(--violet) 55%, transparent) 46%, color-mix(in oklab, var(--violet) 12%, transparent) 72%, transparent 78%)",
+          filter: "blur(0.4px)",
+        }}
+      />
+      <p className="mt-4 text-[13px] text-muted-foreground">{greeting}{name ? `, ${name}` : ""}</p>
+      <h1 className="mt-1.5 font-serif text-[29px] font-light leading-[1.16] tracking-tight sm:text-[34px]" style={{ textWrap: "balance" }}>
+        {sky.headline}
+      </h1>
+      <p className="mt-2.5 max-w-lg text-[14px] leading-relaxed text-secondary-foreground">{sky.reading}</p>
+
+      {sky.sources.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowWhy(!showWhy)}
+          aria-expanded={showWhy}
+          className="mt-3 text-[12.5px] transition hover:brightness-125"
+          style={{ color: "var(--accent-secondary)" }}
+        >
+          why this sky? ›
+        </button>
+      )}
+      {showWhy && (
+        <div
+          className="fade-in mt-3 rounded-2xl border p-4"
+          style={{ borderColor: "color-mix(in oklab, var(--violet) 18%, transparent)", background: "color-mix(in oklab, var(--violet) 8%, transparent)" }}
+        >
+          <p className="qs-section-label">read from what you shared</p>
+          <ul className="mt-2.5 space-y-2 text-[12.5px] leading-relaxed text-secondary-foreground">
+            {sky.sources.map((s) => (
+              <li key={s.id} className="flex gap-2">
+                <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-foreground/50" />
+                <span>
+                  {SOURCE_LABEL[s.source] === "check-ins" ? "a check-in" : SOURCE_LABEL[s.source] === "chats" ? "a conversation" : SOURCE_LABEL[s.source] === "journal" ? "a journal page" : "a memory"}
+                  {" "}{daysAgoLabel(s.created_at)}
+                  {[...s.emotions, ...s.triggers].length > 0 ? ` — ${[...s.emotions, ...s.triggers].slice(0, 3).join(", ").toLowerCase()}` : ""}
+                  {s.excerpt ? <> · <em>“{s.excerpt}”</em></> : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11.5px] text-muted-foreground">
+            nothing else is read — <Link to="/settings" className="underline underline-offset-2">manage what your sky may learn from</Link>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -831,40 +915,38 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
     : periodMoods.some((mm) => (mm.trigger_tags ?? []).includes("Work"))
       ? { title: "A pause before action", body: "Work has been a bright signal lately. Try meeting the next wave with a small pause instead of a reply.", to: "/urge-shield" as const, icon: Hand, cta: "Practice the pause" }
       : { title: "A two-minute check-in", body: "The simplest way to add a star to this sky — pause, name the feeling, let it be seen.", to: null, icon: Feather, cta: "Check in gently" };
-  const StepIcon = step.icon;
   const question = (topEmotion && DEEPER_QUESTIONS[topEmotion]) || "What would this week feel like if you were on your own side?";
 
   return (
     <>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <TactileCard tint="sky">
-          <p className="qs-section-label">one gentle next step</p>
-          <div className="mt-3 flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-background/60">
-              <StepIcon className="h-4 w-4" strokeWidth={1.7} />
-            </span>
-            <div className="min-w-0">
-              <p className="font-serif text-lg leading-snug">{step.title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
-            </div>
-          </div>
-          {step.to ? (
-            <Link to={step.to} className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground">
-              {step.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
-            </Link>
-          ) : (
-            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="mt-4 inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-foreground">
-              {step.cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.7} />
-            </button>
-          )}
-        </TactileCard>
-        <TactileCard tint="lavender">
-          <p className="qs-section-label">one deeper question</p>
-          <p className="mt-4 font-serif text-lg italic leading-relaxed text-foreground/90">{question}</p>
-          <p className="mt-3 text-[12px] text-muted-foreground">no need to answer today. let it orbit for a while.</p>
-        </TactileCard>
+      {/* One small thing — the design's warm gradient invitation */}
+      <div
+        className="mt-6 rounded-[18px] border p-5"
+        style={{
+          background: "linear-gradient(160deg, color-mix(in oklab, var(--violet) 14%, transparent), color-mix(in oklab, var(--dawn) 8%, transparent))",
+          borderColor: "color-mix(in oklab, var(--violet) 28%, transparent)",
+        }}
+      >
+        <p className="qs-section-label" style={{ color: "var(--accent-secondary)" }}>one small thing</p>
+        <p className="mt-2 font-serif text-[19px] font-normal leading-[1.3]">{step.title}?</p>
+        <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-secondary-foreground">{step.body}</p>
+        {step.to ? (
+          <Link to={step.to} className="qs-pill-cta mt-4" style={{ padding: "0.6rem 1.15rem", fontSize: "13.5px" }}>
+            {step.cta}
+          </Link>
+        ) : (
+          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="qs-pill-cta mt-4" style={{ padding: "0.6rem 1.15rem", fontSize: "13.5px" }}>
+            {step.cta}
+          </button>
+        )}
       </div>
+
+      <TactileCard tint="lavender" className="mt-4">
+        <p className="qs-section-label">one deeper question</p>
+        <p className="mt-4 font-serif text-lg italic leading-relaxed text-foreground/90">{question}</p>
+        <p className="mt-3 text-[12px] text-muted-foreground">no need to answer today. let it orbit for a while.</p>
+      </TactileCard>
 
       <div className="mt-10 flex flex-col items-center">
         <Link to="/home" className="qs-pill-cta">
@@ -874,7 +956,14 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
         <p className="mt-3 text-center text-[12px] text-muted-foreground">your letter from the week waits on Home.</p>
       </div>
 
-      <p className="mt-10 text-center font-serif text-[13px] italic text-muted-foreground">
+      {/* Transparency footer — the design's closing promise, with real doors */}
+      <p className="mt-10 text-center text-[11.5px] leading-relaxed text-muted-foreground">
+        Everything here is read only from what you've shared — nothing else.{" "}
+        <Link to="/privacy" className="underline underline-offset-2 transition hover:text-foreground">how this works</Link>
+        {" · "}
+        <Link to="/settings" className="underline underline-offset-2 transition hover:text-foreground">manage what may be read</Link>
+      </p>
+      <p className="mt-4 text-center font-serif text-[13px] italic text-muted-foreground">
         a quiet week and a loud week both count.
       </p>
     </>

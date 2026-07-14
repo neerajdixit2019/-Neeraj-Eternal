@@ -260,6 +260,77 @@ export function toMoodEntries(events: InsightEvent[]): {
   }));
 }
 
+/* ── Tonight's sky — the narrative reading (design direction 1a) ──
+   A poetic-but-honest weather headline derived ONLY from real weights, plus
+   the exact events that informed it (for "why this sky?"). Deterministic. */
+
+export type SkyReading = {
+  headline: string;
+  reading: string;
+  /** the events the reading was derived from — shown verbatim in "why this sky?" */
+  sources: InsightEvent[];
+};
+
+export function skyReading(events: InsightEvent[], now = Date.now()): SkyReading {
+  const todayKey = new Date(now).toDateString();
+  const scored = events.filter((e) => e.weight != null);
+  const today = scored.find((e) => new Date(e.created_at).toDateString() === todayKey) ?? null;
+  const week = scored.filter((e) => now - new Date(e.created_at).getTime() <= 7 * 86400000);
+  const weekMean = week.length ? week.reduce((a, e) => a + (e.weight as number), 0) / week.length : null;
+
+  // "why this sky?" — the most recent event per source, newest first.
+  const seen = new Set<InsightSource>();
+  const sources: InsightEvent[] = [];
+  for (const e of events) {
+    if (seen.has(e.source)) continue;
+    seen.add(e.source);
+    sources.push(e);
+    if (sources.length >= 4) break;
+  }
+
+  if (events.length === 0) {
+    return { headline: "A sky waiting to be read.", reading: "Check in once and tonight's sky will have something true to say.", sources: [] };
+  }
+  if (!today) {
+    return {
+      headline: "Tonight's sky, still unread.",
+      reading: weekMean != null
+        ? `Your week has been resting near ${weekMean.toFixed(1)}. A check-in tonight would tell the sky where you are now.`
+        : "A check-in tonight would tell the sky where you are now.",
+      sources,
+    };
+  }
+
+  const w = today.weight as number;
+  const delta = weekMean != null && week.length >= 3 ? w - weekMean : null;
+  const trend: "lighter" | "heavier" | "steady" =
+    delta == null ? "steady" : delta >= 1 ? "lighter" : delta <= -1 ? "heavier" : "steady";
+
+  const headline =
+    w <= 4
+      ? trend === "lighter" ? "Soft clouds, slowly thinning."
+        : trend === "heavier" ? "Clouds gathering low."
+        : "Low clouds, sitting still."
+      : w <= 7
+        ? trend === "lighter" ? "Patches of light, widening."
+          : trend === "heavier" ? "A few clouds drifting in."
+          : "A settled, even sky."
+        : trend === "heavier" ? "Bright, with a passing cloud."
+          : "A clear stretch of sky.";
+
+  const named = [...today.emotions, ...today.triggers].slice(0, 3);
+  const parts: string[] = [];
+  parts.push(
+    `Today you named ${named.length ? named.join(", ").toLowerCase() : `a ${w <= 4 ? "heavy" : w <= 7 ? "settled" : "light"} moment`}.`,
+  );
+  if (delta != null && trend !== "steady") {
+    parts.push(trend === "lighter" ? "That's lighter than your week has been." : "That sits heavier than your week has been.");
+  } else if (weekMean != null && week.length >= 3) {
+    parts.push("About where your week has been resting.");
+  }
+  return { headline, reading: parts.join(" "), sources };
+}
+
 /* ── "What is changing" — honest positive-progress signals ── */
 
 export type ChangeSignal = { text: string; evidence: string };

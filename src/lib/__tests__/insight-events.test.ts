@@ -13,6 +13,7 @@ import {
   isInferredOnly,
   toMoodEntries,
   changeSignals,
+  skyReading,
   type ChatMessageRow,
 } from "../insight-events.ts";
 
@@ -143,6 +144,48 @@ describe("merge, dedup, evidence mix", () => {
     const rows = toMoodEntries(merged);
     assert.equal(rows.length, merged.length);
     assert.ok(rows.some((r) => r.emotion_tags.includes("Anxious") && r.trigger_tags.includes("Work")));
+  });
+});
+
+describe("tonight's sky — narrative reading from real weights only", () => {
+  const NOW2 = T0 + 6 * 86400000; // fixed "now" six days after T0
+
+  const scored = (daysAgo: number, w: number, emotions: string[] = [], triggers: string[] = []) => ({
+    id: `m${daysAgo}-${w}`, source: "daily_checkin" as const, sourceId: "x",
+    created_at: new Date(NOW2 - daysAgo * 86400000).toISOString(),
+    emotions, triggers, weight: w, excerpt: null, method: "selected" as const,
+  });
+
+  it("no events → an honest empty sky, never a fake one", () => {
+    const r = skyReading([], NOW2);
+    assert.equal(r.headline, "A sky waiting to be read.");
+    assert.equal(r.sources.length, 0);
+  });
+
+  it("no check-in today → 'still unread', with the week's real mean", () => {
+    const r = skyReading([scored(2, 4), scored(3, 6)], NOW2);
+    assert.equal(r.headline, "Tonight's sky, still unread.");
+    assert.match(r.reading, /resting near 5\.0/);
+  });
+
+  it("heavy today but lighter than the week → thinning clouds", () => {
+    const r = skyReading([scored(0, 4, ["Anxious"], ["Work"]), scored(1, 2), scored(2, 2), scored(3, 2)], NOW2);
+    assert.equal(r.headline, "Soft clouds, slowly thinning.");
+    assert.match(r.reading, /anxious, work/);
+    assert.match(r.reading, /lighter than your week/);
+  });
+
+  it("light steady day → a clear stretch of sky", () => {
+    const r = skyReading([scored(0, 9), scored(1, 8), scored(2, 9)], NOW2);
+    assert.equal(r.headline, "A clear stretch of sky.");
+  });
+
+  it("sources list one most-recent event per source, max 4", () => {
+    const chat = { id: "c1", source: "innermate_chat" as const, sourceId: "cv", created_at: new Date(NOW2 - 3600e3).toISOString(), emotions: ["Anxious"], triggers: [], weight: null, excerpt: "worried about the deadline", method: "inferred" as const };
+    const r = skyReading([scored(0, 5), scored(1, 5), chat], NOW2);
+    const bySource = r.sources.map((s) => s.source);
+    assert.deepEqual([...new Set(bySource)].length, bySource.length, "one per source");
+    assert.ok(bySource.includes("innermate_chat"));
   });
 });
 
