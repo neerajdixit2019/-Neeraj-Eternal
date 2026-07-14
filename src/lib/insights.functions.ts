@@ -60,6 +60,61 @@ export const setInsightSourceEnabled = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/* ── Kept intentions — "one small thing" the user chose to hold tonight ──
+   Persisted as user_feedback rows (category 'intention', text in comment,
+   rating null until answered). No schema change; RLS-scoped; covered by
+   export & delete. The page — not InnerMate — follows up the next day. */
+
+export const keepIntention = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ text: z.string().min(1).max(200) }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase.from("user_feedback").insert({
+      user_id: userId,
+      category: "intention",
+      comment: data.text,
+      rating: null,
+      helpful: false,
+      reasons: [],
+      save_mode: "private",
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getIntentionState = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("user_feedback")
+      .select("id,comment,rating,created_at")
+      .eq("user_id", userId).eq("category", "intention")
+      .order("created_at", { ascending: false }).limit(5);
+    const rows = (data ?? []) as { id: string; comment: string | null; rating: string | null; created_at: string }[];
+    const todayKey = new Date().toDateString();
+    const today = rows.find((r) => new Date(r.created_at).toDateString() === todayKey) ?? null;
+    // The most recent earlier intention still waiting for an answer.
+    const open = rows.find((r) => new Date(r.created_at).toDateString() !== todayKey && r.rating == null) ?? null;
+    return { today, open };
+  });
+
+export const recordIntentionOutcome = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({
+    id: z.string().uuid(),
+    outcome: z.enum(["yes", "a_little", "not_really"]),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("user_feedback")
+      .update({ rating: data.outcome, helpful: data.outcome === "yes" })
+      .eq("id", data.id).eq("category", "intention");
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const listInsightEvents = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<InsightEvent[]> => {

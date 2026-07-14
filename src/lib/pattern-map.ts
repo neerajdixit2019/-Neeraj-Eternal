@@ -323,6 +323,69 @@ export function timelineSummary(points: TimelinePoint[], moods: MoodEntry[]): st
   return `${direction}${todPart}.`;
 }
 
+/* ── Weekday rhythm — "Sunday evenings tend to feel heavier" ──
+   Only speaks when the evidence clears real gates: at least 12 scored
+   check-ins overall, at least 4 distinct days on the weekday in question,
+   and the dip present on at least 60% of them. Statement carries its own
+   numbers; never a verdict. */
+
+export type WeekdayRhythm = {
+  weekday: string;
+  /** days on that weekday whose mean sat below the user's overall mean */
+  hits: number;
+  /** distinct days on that weekday with any check-in */
+  total: number;
+  direction: "heavier" | "lighter";
+  statement: string;
+  evidence: string;
+};
+
+const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+export function weekdayRhythm(moods: MoodEntry[]): WeekdayRhythm | null {
+  const scored = moods.filter((m) => m.mood_score != null);
+  if (scored.length < 12) return null;
+
+  const overall = scored.reduce((a, m) => a + (m.mood_score as number), 0) / scored.length;
+
+  // Mean per calendar day, grouped by weekday.
+  const dayMeans = new Map<string, { weekday: number; sum: number; n: number }>();
+  for (const m of scored) {
+    const d = new Date(m.created_at);
+    const key = d.toDateString();
+    const cur = dayMeans.get(key) ?? { weekday: d.getDay(), sum: 0, n: 0 };
+    cur.sum += m.mood_score as number;
+    cur.n += 1;
+    dayMeans.set(key, cur);
+  }
+
+  let best: WeekdayRhythm | null = null;
+  for (let wd = 0; wd < 7; wd++) {
+    const days = [...dayMeans.values()].filter((v) => v.weekday === wd);
+    if (days.length < 4) continue;
+    const below = days.filter((v) => v.sum / v.n < overall - 0.5).length;
+    const above = days.filter((v) => v.sum / v.n > overall + 0.5).length;
+    const consider = (hits: number, direction: "heavier" | "lighter") => {
+      if (hits / days.length < 0.6) return;
+      const cand: WeekdayRhythm = {
+        weekday: WEEKDAY_NAMES[wd],
+        hits,
+        total: days.length,
+        direction,
+        statement:
+          direction === "heavier"
+            ? `${WEEKDAY_NAMES[wd]}s have tended to sit heavier — in ${hits} of your last ${days.length}, your check-ins dipped below your usual.`
+            : `${WEEKDAY_NAMES[wd]}s have tended to sit lighter — in ${hits} of your last ${days.length}, your check-ins rose above your usual.`,
+        evidence: `based on ${scored.length} check-ins across ${dayMeans.size} days`,
+      };
+      if (!best || cand.hits / cand.total > best.hits / best.total) best = cand;
+    };
+    consider(below, "heavier");
+    consider(above, "lighter");
+  }
+  return best;
+}
+
 /* ── Structured InnerMate handoff ── */
 
 export function innermateContext(c: Constellation, moods: MoodEntry[], periodLabel: string): string {

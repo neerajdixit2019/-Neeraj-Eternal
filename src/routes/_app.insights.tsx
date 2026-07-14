@@ -6,21 +6,22 @@ import {
   ArrowRight, Feather, Hand, MoonStar, Sparkles, MessageCircle, X,
   type LucideIcon,
 } from "lucide-react";
-import { listMoods, listJournal, listHiddenPatterns, unhidePattern } from "@/lib/data.functions";
-import { listInsightEvents } from "@/lib/insights.functions";
+import { listMoods, listJournal, listHiddenPatterns, unhidePattern, hidePattern } from "@/lib/data.functions";
+import { listInsightEvents, keepIntention, getIntentionState, recordIntentionOutcome } from "@/lib/insights.functions";
 import {
   sourceMixFor, describeMix, sourceCount, isInferredOnly, toMoodEntries, changeSignals,
   skyReading, SOURCE_LABEL,
   type InsightEvent,
 } from "@/lib/insight-events";
 import { getProfile } from "@/lib/data.functions";
+import { toast } from "sonner";
 import { TactileCard } from "@/components/TactileCard";
 import { CheckinRitual } from "@/components/CheckinRitual";
 import { CompanionCloud } from "@/components/CompanionCloud";
 import {
   filterByPeriod, buildConstellation, statusFor, timeOfDayFor, peakTod,
   momentsFor, timelinePoints, timelineSummary, innermateContext, tagStats,
-  cooccurrence, coBetween, PERIOD_LABEL, PERIOD_DAYS, TOD_LABELS,
+  cooccurrence, coBetween, weekdayRhythm, PERIOD_LABEL, PERIOD_DAYS, TOD_LABELS,
   type Period, type MoodEntry, type Constellation, type MapNode,
 } from "@/lib/pattern-map";
 
@@ -261,6 +262,9 @@ function Insights() {
       ) : (
         <TimelineView periodMoods={periodMoods} visibleTags={visibleStats.map((s) => s.label)} filterTag={timelineTag} setFilterTag={setTimelineTag} />
       )}
+
+      {/* A rhythm we noticed — weekday pattern with its own numbers */}
+      <RhythmCard moods={moods} hidden={hidden} />
 
       {/* What is changing — evidence-gated progress, never invented */}
       <WhatIsChanging events={events} />
@@ -744,6 +748,45 @@ function TimelineView({
   );
 }
 
+/* ── A rhythm we noticed — weekday pattern, gated and set-aside-able ── */
+
+function RhythmCard({ moods, hidden }: { moods: Mood[]; hidden: string[] }) {
+  const qc = useQueryClient();
+  const hideFn = useServerFn(hidePattern);
+  const rhythm = useMemo(() => weekdayRhythm(moods), [moods]);
+  const [hiding, setHiding] = useState(false);
+  if (!rhythm) return null;
+  const tag = `${rhythm.weekday} rhythm`;
+  if (hidden.some((h) => h.toLowerCase() === tag.toLowerCase())) return null;
+
+  const setAside = async () => {
+    if (hiding) return;
+    setHiding(true);
+    try {
+      await hideFn({ data: { tag, reasons: [] } });
+      qc.invalidateQueries({ queryKey: ["hiddenPatterns"] });
+    } catch { setHiding(false); }
+  };
+
+  return (
+    <div className="glass mt-5 rounded-3xl p-5">
+      <p className="qs-section-label">a rhythm we noticed</p>
+      <p className="mt-2 text-[14.5px] leading-relaxed text-foreground/90">{rhythm.statement}</p>
+      <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+        {rhythm.evidence} · an observation, not a rule — some {rhythm.weekday}s will be different.
+      </p>
+      <button
+        type="button"
+        onClick={setAside}
+        disabled={hiding}
+        className="mt-3 text-[12px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline disabled:opacity-60"
+      >
+        this doesn't fit — set it aside
+      </button>
+    </div>
+  );
+}
+
 /* ── What is changing — only when evidence supports it ── */
 
 function WhatIsChanging({ events }: { events: InsightEvent[] }) {
@@ -908,6 +951,14 @@ const DEEPER_QUESTIONS: Record<string, string> = {
 };
 
 function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmotion?: string }) {
+  const qc = useQueryClient();
+  const keepFn = useServerFn(keepIntention);
+  const stateFn = useServerFn(getIntentionState);
+  const outcomeFn = useServerFn(recordIntentionOutcome);
+  const { data: intent } = useQuery({ queryKey: ["intention"], queryFn: () => stateFn() });
+  const [keeping, setKeeping] = useState(false);
+  const [answered, setAnswered] = useState(false);
+
   const heavyPeak = peakTod(timeOfDayFor(periodMoods.filter((mm) => mm.mood_score <= 4)));
   const evenings = heavyPeak?.label === "Evening" || heavyPeak?.label === "Night";
   const step = evenings
@@ -917,8 +968,48 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
       : { title: "A two-minute check-in", body: "The simplest way to add a star to this sky — pause, name the feeling, let it be seen.", to: null, icon: Feather, cta: "Check in gently" };
   const question = (topEmotion && DEEPER_QUESTIONS[topEmotion]) || "What would this week feel like if you were on your own side?";
 
+  const keep = async () => {
+    if (keeping) return;
+    setKeeping(true);
+    try {
+      await keepFn({ data: { text: step.title } });
+      await qc.invalidateQueries({ queryKey: ["intention"] });
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setKeeping(false); }
+  };
+
+  const answer = async (outcome: "yes" | "a_little" | "not_really") => {
+    if (!intent?.open) return;
+    try {
+      await outcomeFn({ data: { id: intent.open.id, outcome } });
+      setAnswered(true);
+      qc.invalidateQueries({ queryKey: ["intention"] });
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
   return (
     <>
+      {/* Yesterday's kept intention — the page follows up, gently */}
+      {intent?.open && !answered && (
+        <div className="glass mt-6 rounded-3xl p-5 fade-in">
+          <p className="qs-section-label">the intention you kept</p>
+          <p className="mt-2 font-serif text-[16.5px] italic leading-relaxed text-foreground/90">
+            “{intent.open.comment}”
+          </p>
+          <p className="mt-1.5 text-[12.5px] text-muted-foreground">how did it go?</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {([["yes", "it happened"], ["a_little", "partly"], ["not_really", "it didn't — that's okay"]] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => answer(k)} className="qs-chip">{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {answered && (
+        <p className="mt-6 text-[13px] italic text-muted-foreground fade-in">
+          either way — you noticed. that counts.
+        </p>
+      )}
+
       {/* One small thing — the design's warm gradient invitation */}
       <div
         className="mt-6 rounded-[18px] border p-5"
@@ -930,16 +1021,33 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
         <p className="qs-section-label" style={{ color: "var(--accent-secondary)" }}>one small thing</p>
         <p className="mt-2 font-serif text-[19px] font-normal leading-[1.3]">{step.title}?</p>
         <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-secondary-foreground">{step.body}</p>
-        {step.to ? (
-          <Link to={step.to} className="qs-pill-cta mt-4" style={{ padding: "0.6rem 1.15rem", fontSize: "13.5px" }}>
-            {step.cta}
-          </Link>
-        ) : (
-          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="qs-pill-cta mt-4" style={{ padding: "0.6rem 1.15rem", fontSize: "13.5px" }}>
-            {step.cta}
-          </button>
-        )}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {step.to ? (
+            <Link to={step.to} className="qs-pill-cta" style={{ padding: "0.6rem 1.15rem", fontSize: "13.5px" }}>
+              {step.cta}
+            </Link>
+          ) : (
+            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="qs-pill-cta" style={{ padding: "0.6rem 1.15rem", fontSize: "13.5px" }}>
+              {step.cta}
+            </button>
+          )}
+          {intent?.today ? (
+            <span className="text-[13px]" style={{ color: "var(--dawn)" }}>
+              ✦ kept as tonight's intention — it'll wait for you here tomorrow.
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={keep}
+              disabled={keeping || !intent}
+              className="rounded-full border px-4 py-2.5 text-[13px] transition hover:-translate-y-0.5 disabled:opacity-60"
+              style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
+            >
+              {keeping ? "keeping…" : "keep as tonight's intention"}
+            </button>
+          )}
+        </div>
       </div>
 
       <TactileCard tint="lavender" className="mt-4">

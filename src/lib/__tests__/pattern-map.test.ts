@@ -14,6 +14,7 @@ import {
   timelinePoints,
   timelineSummary,
   innermateContext,
+  weekdayRhythm,
   type MoodEntry,
 } from "../pattern-map.ts";
 
@@ -195,6 +196,46 @@ describe("timeline", () => {
   it("stays modest under 4 points", () => {
     const few = moods.slice(0, 2);
     assert.match(timelineSummary(timelinePoints(few), few), /a few more/);
+  });
+});
+
+describe("weekday rhythm — gated honesty", () => {
+  // Build N weeks where Sundays sit low (2) and other days sit mid (6).
+  function weeks(n: number): MoodEntry[] {
+    const out: MoodEntry[] = [];
+    // anchor on a known Sunday: 2026-07-05 is a Sunday
+    const anchor = new Date("2026-07-05T12:00:00Z").getTime();
+    for (let w = 0; w < n; w++) {
+      for (let d = 0; d < 7; d++) {
+        const t = new Date(anchor - (w * 7 + d) * 86400000);
+        const isSunday = t.getDay() === 0;
+        out.push({ created_at: t.toISOString(), mood_score: isSunday ? 2 : 6, emotion_tags: [], trigger_tags: [] });
+      }
+    }
+    return out;
+  }
+
+  it("stays silent below 12 scored check-ins", () => {
+    assert.equal(weekdayRhythm(weeks(1)), null); // 7 check-ins
+  });
+
+  it("detects a heavier Sunday with its own numbers", () => {
+    const r = weekdayRhythm(weeks(4)); // 28 check-ins, 4 Sundays all low
+    assert.ok(r);
+    assert.equal(r.weekday, "Sunday");
+    assert.equal(r.direction, "heavier");
+    assert.equal(r.hits, 4);
+    assert.equal(r.total, 4);
+    assert.match(r.statement, /in 4 of your last 4/);
+    assert.match(r.evidence, /based on 28 check-ins/);
+  });
+
+  it("flat data produces no rhythm — no false positives", () => {
+    const flat: MoodEntry[] = Array.from({ length: 30 }, (_, i) => ({
+      created_at: new Date(Date.UTC(2026, 5, 1 + i, 12)).toISOString(),
+      mood_score: 6, emotion_tags: [], trigger_tags: [],
+    }));
+    assert.equal(weekdayRhythm(flat), null);
   });
 });
 
