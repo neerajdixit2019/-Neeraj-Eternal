@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
 import { ArrowRight, Feather, Hand, MoonStar, Sparkles, type LucideIcon } from "lucide-react";
-import { listMoods, listJournal } from "@/lib/data.functions";
+import { listMoods, listJournal, listHiddenPatterns, unhidePattern } from "@/lib/data.functions";
+import { useQueryClient } from "@tanstack/react-query";
 import { TactileCard } from "@/components/TactileCard";
 import { WeekArc, moodsToWeekArc } from "@/components/WeekArc";
 import { CheckinRitual } from "@/components/CheckinRitual";
@@ -163,7 +164,18 @@ function Insights() {
   const { data: journal } = useQuery({ queryKey: ["journal"], queryFn: () => j() });
   const moods = (moodsRaw ?? []) as Mood[];
 
-  const stats = useMemo(() => computeStats(moods), [moods]);
+  const hiddenFn = useServerFn(listHiddenPatterns);
+  const { data: hiddenRaw } = useQuery({ queryKey: ["hiddenPatterns"], queryFn: () => hiddenFn() });
+  const hidden = (hiddenRaw ?? []) as string[];
+  const hiddenSet = useMemo(() => new Set(hidden.map((t) => t.toLowerCase())), [hidden]);
+
+  const rawStats = useMemo(() => computeStats(moods), [moods]);
+  // Patterns the user has set aside are filtered from every view here.
+  const stats = useMemo(() => ({
+    ...rawStats,
+    topEmotions: rawStats.topEmotions.filter((e) => !hiddenSet.has(e.label.toLowerCase())),
+    topTriggers: rawStats.topTriggers.filter((t) => !hiddenSet.has(t.label.toLowerCase())),
+  }), [rawStats, hiddenSet]);
   const weekStart = mondayISO(new Date());
   const arc = moodsToWeekArc(moods.map(x => ({ created_at: x.created_at, mood_score: x.mood_score })), weekStart);
   const arcAvg = arc.filter((v): v is number => v != null);
@@ -320,6 +332,9 @@ function Insights() {
         </TactileCard>
       </div>
 
+      {/* Patterns the user set aside — restorable, never silently lost */}
+      {hidden.length > 0 && <SetAside tags={hidden} />}
+
       {/* CTA — the moon cycle */}
       <div className="mt-10 flex flex-col items-center">
         <Link to="/home" className="qs-pill-cta">
@@ -464,6 +479,38 @@ function ConstellationSky({ stars }: { stars: Star[] }) {
 }
 
 /* ── Small pieces ── */
+
+function SetAside({ tags }: { tags: string[] }) {
+  const qc = useQueryClient();
+  const unhideFn = useServerFn(unhidePattern);
+  const restore = async (tag: string) => {
+    try {
+      await unhideFn({ data: { tag } });
+      qc.invalidateQueries({ queryKey: ["hiddenPatterns"] });
+    } catch { /* silent — the tag simply stays set aside */ }
+  };
+  return (
+    <TactileCard className="mt-4">
+      <p className="qs-section-label">set aside</p>
+      <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
+        Patterns you told me didn't fit. They're hidden from your sky — bring any back whenever you like.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {tags.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => restore(t)}
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition hover:-translate-y-0.5"
+            style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)", color: "var(--text-secondary)" }}
+          >
+            {t} <span className="text-[11px] text-muted-foreground">restore</span>
+          </button>
+        ))}
+      </div>
+    </TactileCard>
+  );
+}
 
 function Anchor({ value, label }: { value: string | number; label: string }) {
   return (

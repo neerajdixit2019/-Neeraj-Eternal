@@ -120,6 +120,18 @@ const EMPTY_STATE_CHIPS = [
   "i don't know where to start",
 ];
 
+// Human-facing "how would you like me to help?" — each seeds a natural opening
+// line, which the deterministic classifier then routes. We never expose the
+// internal mode names; the user just names what they need.
+const SUPPORT_MODES: { label: string; hint: string; seed: string }[] = [
+  { label: "Just listen", hint: "stay with me, no fixing", seed: "I just need you to listen right now — please don't try to fix it." },
+  { label: "Help me settle", hint: "calm my body and mind", seed: "Help me settle. My body and mind feel too fast right now." },
+  { label: "Help me understand", hint: "see what's really here", seed: "Help me see what's really going on underneath this." },
+  { label: "Help me decide", hint: "compare the choices", seed: "Help me compare my options clearly — I'm stuck on a decision." },
+  { label: "One small step", hint: "what can I actually do", seed: "Help me find the one small next step I can actually take." },
+  { label: "Pause an impulse", hint: "before I react", seed: "Help me not react yet — I want to pause before I do something." },
+];
+
 // Bubble skins — dawn-tinted glass for InnerMate, quiet forest for the writer.
 const ASSISTANT_BUBBLE =
   "rounded-[20px_20px_20px_6px] border border-white/[0.07] bg-[linear-gradient(150deg,color-mix(in_oklab,var(--dawn)_13%,var(--card))_0%,var(--card)_70%)] px-4 py-3 shadow-[0_18px_38px_-26px_rgb(0_0_0/0.7)] backdrop-blur-md";
@@ -754,11 +766,22 @@ function Companion() {
                 ))}
               </div>
 
-              {/* One companion — the facets live inside it, not as a menu */}
-              <p className="mt-8 max-w-[30ch] font-serif text-[13px] italic leading-relaxed text-muted-foreground/80">
-                One companion — it listens, steadies, helps you build, and
-                sits with you in deeper water when you need it.
-              </p>
+              {/* How would you like me to help? — one companion, many ways in */}
+              <p className="mt-9 text-[12px] text-muted-foreground">or tell me how to help</p>
+              <div className="mt-3 grid w-full max-w-md grid-cols-2 gap-2 sm:grid-cols-3">
+                {SUPPORT_MODES.map((s) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    onClick={() => onSuggestion(s.seed)}
+                    className="rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5"
+                    style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}
+                  >
+                    <span className="block text-[13px] font-medium text-foreground">{s.label}</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{s.hint}</span>
+                  </button>
+                ))}
+              </div>
               {lastConv && (
                 <button
                   onClick={() => setActiveId(lastConv.id)}

@@ -119,6 +119,9 @@ function Onboarding() {
 
   const back = () => setStep((s) => (s > 0 ? ((s - 1) as Step) : s));
 
+  // Soft worded stages instead of a clinical "Question 4 of 12".
+  const stageLabel = step <= 1 ? "Beginning" : step <= 3 ? "Understanding" : step === 4 ? "What you need" : "Your space";
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-6 py-8">
       {/* Header: back + progress + skip-to-end (everything after age+consent is optional) */}
@@ -128,11 +131,14 @@ function Onboarding() {
             <ArrowLeft className="h-4 w-4" strokeWidth={1.7} />
           </button>
         ) : <span className="h-9 w-9" />}
-        <div className="flex flex-1 gap-1.5" role="progressbar" aria-valuenow={step + 1} aria-valuemax={TOTAL_STEPS} aria-label="Setup progress">
-          {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-            <span key={i} className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: i <= step ? "var(--accent-primary)" : "oklch(1 0 0 / 0.12)" }} />
-          ))}
+        <div className="flex flex-1 flex-col gap-1.5">
+          <div className="flex gap-1.5" role="progressbar" aria-valuenow={step + 1} aria-valuemax={TOTAL_STEPS} aria-label={`Setup — ${stageLabel}`}>
+            {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+              <span key={i} className="h-1 flex-1 rounded-full transition-colors duration-300"
+                style={{ background: i <= step ? "var(--accent-primary)" : "oklch(1 0 0 / 0.12)" }} />
+            ))}
+          </div>
+          <p className="text-[10.5px] uppercase tracking-[0.2em] text-muted-foreground">{stageLabel}</p>
         </div>
         {step >= 1 && step <= 4 && (
           <button type="button" onClick={() => setStep(5)} className="text-[12px] text-muted-foreground transition hover:text-foreground">

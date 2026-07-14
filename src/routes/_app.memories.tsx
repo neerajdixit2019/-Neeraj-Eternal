@@ -9,12 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TactileCard } from "@/components/TactileCard";
 import { toast } from "sonner";
-import { listMemories, saveMemory, setMemoryReadable, deleteMemory } from "@/lib/data.functions";
+import { listMemories, saveMemory, setMemoryReadable, deleteMemory, updateMemory } from "@/lib/data.functions";
 import { listKeptLetters } from "@/lib/letters.functions";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Flame, Mail, Plus, Sparkles, Video, X, Image as ImageIcon, Music } from "lucide-react";
+import { Flame, Mail, Plus, Sparkles, Video, X, Image as ImageIcon, Music, Pencil, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/memories")({
   component: MemoriesPage,
@@ -179,6 +179,7 @@ function MemoriesPage() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [activeFeeling, setActiveFeeling] = useState<string | null>(null);
   const [reliveId, setReliveId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const stars = useMemo(() => (memories ?? []).map(starFor), [memories]);
   const constellations = useMemo(() => {
@@ -603,11 +604,38 @@ function MemoriesPage() {
           <NewMemory onSaved={invalidate} />
 
           {/* walk among them */}
-          {(memories?.length ?? 0) > 0 && (
+          {(memories?.length ?? 0) > 0 && (() => {
+            const q = query.trim().toLowerCase();
+            const walk = (memories ?? []).filter((m) => {
+              if (activeFeeling && (m.feeling_tag ?? "") !== activeFeeling) return false;
+              if (!q) return true;
+              return `${m.title ?? ""} ${m.story ?? ""} ${m.feeling_tag ?? ""}`.toLowerCase().includes(q);
+            });
+            return (
             <section aria-label="Walk among your memories" className="space-y-3">
-              <p className="qs-section-label">walk among them</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="qs-section-label">walk among them</p>
+                <label className="flex items-center gap-2 rounded-full border border-border/50 bg-card/40 px-3 py-1.5">
+                  <Search className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} aria-hidden />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="search your memories"
+                    aria-label="Search your memories"
+                    className="w-32 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70 sm:w-44"
+                  />
+                  {query && (
+                    <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-muted-foreground transition hover:text-foreground">
+                      <X className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    </button>
+                  )}
+                </label>
+              </div>
+              {walk.length === 0 ? (
+                <p className="py-4 text-[13.5px] italic text-muted-foreground">nothing matches “{query}” yet.</p>
+              ) : (
               <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-                {(memories ?? []).map((m) => {
+                {walk.map((m) => {
                   const label = m.title || (m.story ?? "").split("\n")[0].slice(0, 40) || "an untitled moment";
                   const when = m.memory_date
                     ? new Date(m.memory_date).toLocaleDateString(undefined, { month: "short", year: "numeric" })
@@ -666,8 +694,10 @@ function MemoriesPage() {
                   );
                 })}
               </div>
+              )}
             </section>
-          )}
+            );
+          })()}
 
           {/* the moon cycle — letters kept from InnerMate */}
           <button type="button" onClick={() => setTab("letters")} className="block w-full text-left">
@@ -972,8 +1002,22 @@ function ReliveDialog({
 }) {
   const toggleFn = useServerFn(setMemoryReadable);
   const delFn = useServerFn(deleteMemory);
+  const editFn = useServerFn(updateMemory);
   const [burning, setBurning] = useState(false);
   const [working, setWorking] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(memory.title ?? "");
+  const [story, setStory] = useState(memory.story ?? "");
+
+  const saveEdits = async () => {
+    setWorking(true);
+    try {
+      await editFn({ data: { id: memory.id, title: title.trim() || null, story: story.trim() || null } });
+      setEditing(false);
+      onChanged();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setWorking(false); }
+  };
 
   const toggle = async () => {
     setWorking(true);
@@ -1031,9 +1075,41 @@ function ReliveDialog({
             {memoryDateLabel(memory)}
             {memory.feeling_tag && <span style={{ color: tint }}>{` · ${memory.feeling_tag}`}</span>}
           </p>
-          {memory.title && <h3 className="mt-1.5 font-serif text-xl leading-snug">{memory.title}</h3>}
-          {memory.story && (
-            <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">{memory.story}</p>
+          {editing ? (
+            <div className="mt-2 space-y-2">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={200}
+                placeholder="a title (optional)"
+                aria-label="Memory title"
+                className="w-full rounded-xl border border-border/60 bg-card/50 px-3 py-2 font-serif text-lg leading-snug outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              />
+              <textarea
+                value={story}
+                onChange={(e) => setStory(e.target.value)}
+                maxLength={4000}
+                rows={5}
+                placeholder="the words you want to keep"
+                aria-label="Memory story"
+                className="w-full resize-y rounded-xl border border-border/60 bg-card/50 px-3 py-2 text-[15px] leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={saveEdits} disabled={working} className="qs-pill-cta" style={{ padding: "0.5rem 1rem", fontSize: "13px" }}>
+                  {working ? "saving…" : "save changes"}
+                </button>
+                <button type="button" onClick={() => { setEditing(false); setTitle(memory.title ?? ""); setStory(memory.story ?? ""); }} className="rounded-full px-3 py-2 text-[13px] text-muted-foreground transition hover:text-foreground">
+                  cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {memory.title && <h3 className="mt-1.5 font-serif text-xl leading-snug">{memory.title}</h3>}
+              {memory.story && (
+                <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">{memory.story}</p>
+              )}
+            </>
           )}
         </div>
 
@@ -1059,6 +1135,16 @@ function ReliveDialog({
           <button type="button" className="qs-pill-cta" onClick={() => onOpenChange(false)}>
             Sit with this a moment
           </button>
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
+            >
+              <Pencil className="h-3.5 w-3.5" strokeWidth={1.7} />
+              edit
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setBurning(true)}

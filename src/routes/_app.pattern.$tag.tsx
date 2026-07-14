@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo } from "react";
-import { listMoods } from "@/lib/data.functions";
-import { ArrowLeft, ArrowRight, MoonStar, Hand, Wind, Feather } from "lucide-react";
+import { useMemo, useState } from "react";
+import { listMoods, hidePattern } from "@/lib/data.functions";
+import { ArrowLeft, ArrowRight, MoonStar, Hand, Wind, Feather, MessageCircle, Check, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 /**
  * Insight detail — the reference boards' "Overthinking / evenings" screen,
@@ -56,9 +57,14 @@ function daysAgo(iso: string) {
 function PatternDetail() {
   const { tag } = Route.useParams();
   const decoded = decodeURIComponent(tag);
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const moodsFn = useServerFn(listMoods);
+  const hideFn = useServerFn(hidePattern);
   const { data: moodsRaw, isLoading } = useQuery({ queryKey: ["moods"], queryFn: () => moodsFn() });
   const moods = (moodsRaw ?? []) as Mood[];
+  const [confirmed, setConfirmed] = useState(false);
+  const [hiding, setHiding] = useState(false);
 
   const ev = useMemo(() => {
     const key = decoded.toLowerCase();
@@ -108,6 +114,26 @@ function PatternDetail() {
     return { to: "/checkin" as const, title: "A gentle check-in", line: "name it once more, and watch the pattern sharpen", icon: Feather };
   })();
   const ActionIcon = action.icon;
+
+  const askInnerMate = () => {
+    const co = ev.topCo[0] ? `, often alongside ${ev.topCo[0].label.toLowerCase()}` : "";
+    try { sessionStorage.setItem("innermate.reflect", `I noticed a pattern in my check-ins: ${ev.label.toLowerCase()} keeps coming up${co}. Can we look at it together?`); } catch { /* noop */ }
+    navigate({ to: "/companion" });
+  };
+
+  const doHide = async () => {
+    if (hiding) return;
+    setHiding(true);
+    try {
+      await hideFn({ data: { tag: ev.label, reasons: [] } });
+      qc.invalidateQueries({ queryKey: ["hiddenPatterns"] });
+      toast.success("Set aside. You can bring it back anytime from Insights.");
+      navigate({ to: "/insights" });
+    } catch (e) {
+      toast.error((e as Error).message);
+      setHiding(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-8 sm:px-8 sm:py-12">
@@ -239,7 +265,45 @@ function PatternDetail() {
             </div>
           )}
 
-          <p className="mt-8 text-center text-[11.5px] italic leading-relaxed text-muted-foreground">
+          {/* Does this fit you? — you decide, InnerMate doesn't. */}
+          <div className="mt-8 rounded-3xl border p-5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
+            <p className="qs-section-label">does this fit you?</p>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-secondary-foreground">
+              This is only what your check-ins show — you know your life better than any pattern does.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmed(true)}
+                disabled={confirmed}
+                className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition disabled:opacity-70"
+                style={confirmed
+                  ? { background: "color-mix(in oklab, var(--state-success) 18%, transparent)", borderColor: "color-mix(in oklab, var(--state-success) 40%, transparent)", color: "var(--text-primary)" }
+                  : { background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
+              >
+                <Check className="h-3.5 w-3.5" strokeWidth={2} /> {confirmed ? "noted" : "this fits"}
+              </button>
+              <button
+                type="button"
+                onClick={askInnerMate}
+                className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition"
+                style={{ background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
+              >
+                <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} /> ask InnerMate about this
+              </button>
+              <button
+                type="button"
+                onClick={doHide}
+                disabled={hiding}
+                className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition disabled:opacity-60"
+                style={{ background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
+              >
+                <EyeOff className="h-3.5 w-3.5" strokeWidth={1.8} /> this doesn't fit — set it aside
+              </button>
+            </div>
+          </div>
+
+          <p className="mt-6 text-center text-[11.5px] italic leading-relaxed text-muted-foreground">
             Based only on your own check-ins — {ev.count} {ev.count === 1 ? "moment" : "moments"}
             {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}. Not a diagnosis.
           </p>

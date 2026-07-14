@@ -407,6 +407,77 @@ export const deleteMemory = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Edit a memory's words (title / story / feeling / date). RLS keeps it owner-only.
+export const updateMemory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({
+    id: z.string().uuid(),
+    title: z.string().max(200).nullable().optional(),
+    story: z.string().max(4000).nullable().optional(),
+    feeling_tag: z.enum(FEELINGS).nullable().optional(),
+    memory_date: z.string().nullable().optional(),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const patch: { title?: string | null; story?: string | null; feeling_tag?: string | null; memory_date?: string | null } = {};
+    if (data.title !== undefined) patch.title = data.title;
+    if (data.story !== undefined) patch.story = data.story;
+    if (data.feeling_tag !== undefined) patch.feeling_tag = data.feeling_tag;
+    if (data.memory_date !== undefined) patch.memory_date = data.memory_date;
+    if (Object.keys(patch).length === 0) return { ok: true };
+    const { error } = await context.supabase.from("memories").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- Pattern control ----------
+// "This pattern doesn't fit me" is a form of feedback. We persist it in the
+// real user_feedback table (category 'pattern_hidden', the tag in `comment`),
+// so it survives reload, stays scoped to the user, and is covered by the
+// existing export & delete — no new schema.
+
+export const listHiddenPatterns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("user_feedback").select("comment")
+      .eq("user_id", context.userId).eq("category", "pattern_hidden");
+    return [...new Set((data ?? []).map((r) => r.comment).filter(Boolean) as string[])];
+  });
+
+export const hidePattern = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({
+    tag: z.string().min(1).max(64),
+    reasons: z.array(z.string().max(40)).max(8).default([]),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    // Clear any earlier hide for this tag so we don't stack duplicates.
+    await supabase.from("user_feedback").delete()
+      .eq("user_id", userId).eq("category", "pattern_hidden").eq("comment", data.tag);
+    const { error } = await supabase.from("user_feedback").insert({
+      user_id: userId,
+      category: "pattern_hidden",
+      comment: data.tag,
+      reasons: data.reasons,
+      rating: "not_really",
+      helpful: false,
+      save_mode: "private",
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const unhidePattern = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ tag: z.string().min(1).max(64) }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("user_feedback").delete()
+      .eq("user_id", context.userId).eq("category", "pattern_hidden").eq("comment", data.tag);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // ---------- My Story ----------
 
 export const getStory = createServerFn({ method: "GET" })
