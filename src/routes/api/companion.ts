@@ -121,9 +121,15 @@ async function logSafetyEventSafely(row: {
 type ReqBody = { conversationId: string | null; message: string; tone?: "gentle" | "poetic" | "practical" };
 
 export const Route = createFileRoute("/api/companion")({
+  // The installed @tanstack/react-start typings don't declare the `server`
+  // route option yet, but the runtime supports it — this IS the live
+  // streaming endpoint. Suppression is type-only; behaviour unchanged. The
+  // expect-error self-cleans: it fails the build if a future upgrade adds
+  // the typing.
+  // @ts-expect-error server handlers are supported at runtime, untyped in this version
   server: {
     handlers: {
-      POST: async ({ request }) => {
+      POST: async ({ request }: { request: Request }) => {
         const authHeader = request.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
           return new Response("Unauthorized", { status: 401 });

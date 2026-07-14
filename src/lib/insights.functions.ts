@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   eventsFromCheckins, eventsFromJournal, eventsFromMemories, eventsFromChat,
@@ -21,7 +23,7 @@ import {
 
 const SOURCES: InsightSource[] = ["daily_checkin", "journal", "memory", "innermate_chat"];
 
-async function readDisabled(supabase: { from: (t: string) => any }, userId: string): Promise<Set<string>> {
+async function readDisabled(supabase: SupabaseClient<Database>, userId: string): Promise<Set<string>> {
   const { data } = await supabase
     .from("user_feedback").select("comment")
     .eq("user_id", userId).eq("category", "insight_source_off");
