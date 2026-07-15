@@ -126,7 +126,7 @@ function UrgeShield() {
         <div className="glass mt-8 rounded-[26px] p-6 sm:p-7">
           <p className="font-serif text-xl leading-snug">what's the urge?</p>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            one short line. this stays with you.
+            one short line. when you finish, this is kept in your journal — only for you.
           </p>
           <Input
             value={target}
@@ -164,19 +164,29 @@ function UrgeShield() {
       )}
 
       {phase === "wave" && (
-        <div className="glass mt-8 overflow-hidden rounded-[26px] p-8 text-center sm:p-10">
-          <p className="qs-section-label">a wave, not a wall</p>
-          <p className="mt-4 font-serif text-6xl tabular-nums">{waveMm}:{waveSs}</p>
-          <div aria-hidden className="relative mt-8 h-10 overflow-hidden">
-            <div className="qs-wave absolute inset-0 w-[150%]" style={{
-              background: "radial-gradient(ellipse 60% 100% at 30% 50%, color-mix(in oklab, var(--dawn) 45%, transparent), transparent 65%), radial-gradient(ellipse 60% 100% at 70% 50%, color-mix(in oklab, var(--moss) 45%, transparent), transparent 65%)",
-              filter: "blur(10px)",
-            }} />
+        <div className="glass relative mt-8 overflow-hidden rounded-[26px] p-8 text-center sm:p-10">
+          {/* TURNING DOWN THE LAMP — the whole room breathes with the wave:
+              light dims toward the middle of the ninety seconds and re-warms
+              as it passes. The numeral goes secondary; the light is the timer.
+              Under reduced motion the room holds still and a dawnline fill
+              carries the time. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 hidden motion-safe:block"
+            style={{
+              background: `radial-gradient(30rem 18rem at 50% 20%, color-mix(in oklab, var(--lamp) ${Math.round(13 - Math.sin(((WAVE_SECONDS - waveLeft) / WAVE_SECONDS) * Math.PI) * 10)}%, transparent), transparent 72%)`,
+              transition: "background 1s linear",
+            }}
+          />
+          <p className="qs-section-label relative">a wave, not a wall</p>
+          <p className="relative mt-4 text-[17px] tabular-nums text-secondary-foreground" aria-live="off">{waveMm}:{waveSs}</p>
+          <div className="relative mx-auto mt-5 h-1 w-56 overflow-hidden rounded-full motion-safe:hidden" style={{ background: "color-mix(in oklab, var(--dawnline) 20%, transparent)" }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.round(((WAVE_SECONDS - waveLeft) / WAVE_SECONDS) * 100)}%`, background: "var(--dawnline)" }} />
           </div>
-          <p className="mx-auto mt-8 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
+          <p className="relative mx-auto mt-8 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
             it rises, peaks, and softens. you don't have to do anything with it.
           </p>
-          <div className="mt-8 flex flex-col items-center gap-2">
+          <div className="relative mt-8 flex flex-col items-center gap-2">
             <button className="qs-pill-cta" onClick={finish} disabled={saving}>
               {saving ? "keeping…" : "the urge passed"}
             </button>
@@ -185,7 +195,7 @@ function UrgeShield() {
               disabled={saving}
               className="text-xs text-muted-foreground/80 hover:text-foreground"
             >
-              skip the timer
+              I'm ready
             </button>
           </div>
         </div>

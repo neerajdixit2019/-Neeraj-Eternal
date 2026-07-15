@@ -1,11 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { TactileCard } from "@/components/TactileCard";
 import { Phone, Wind, Shield, MessageSquareOff, HeartPulse, Copy, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
+/**
+ * THE STEADY ROOM — crisis with dignity (Lamplit Study, Phase 2).
+ * Rules this screen obeys: the lamp holds at full steady brightness (no idle
+ * motion anywhere); one dominant clay door — a human voice — with everything
+ * else clearly secondary; 16px minimum text; nothing reflows mid-read; the
+ * only animation permitted is the breath itself, and it holds still under
+ * reduced motion. Every number, resource, and behaviour is unchanged.
+ */
 export const Route = createFileRoute("/_app/sos")({
   component: SOS,
   head: () => ({
@@ -28,6 +34,7 @@ function SOS() {
   const [phase, setPhase] = useState<"idle" | "breathe">("idle");
   const [count, setCount] = useState(60);
   const [unsent, setUnsent] = useState("");
+  const [heldSafe, setHeldSafe] = useState(false);
 
   useEffect(() => {
     if (phase !== "breathe") return;
@@ -37,189 +44,240 @@ function SOS() {
   }, [phase, count]);
 
   return (
-    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-8">
-      <p className="qs-section-label">you matter more than anything you were working through</p>
-      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight">Let's pause everything else.</h1>
-      <p className="mt-3 text-muted-foreground">
-        You don't have to solve your whole life tonight. Pick the one that fits this minute.
+    <div className="relative mx-auto max-w-xl px-5 py-8 sm:px-8">
+      {/* The lamp at full steady brightness — one still pool, no motion. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-72"
+        style={{ background: "radial-gradient(34rem 16rem at 50% 0%, color-mix(in oklab, var(--lamp) 9%, transparent), transparent 70%)" }}
+      />
+
+      <p className="qs-section-label relative">the steady room</p>
+      <h1 className="relative mt-3 font-serif text-[28px] font-light leading-tight tracking-tight sm:text-3xl">
+        Let's pause everything else.
+      </h1>
+      <p className="relative mt-3 text-[16px] leading-relaxed text-secondary-foreground">
+        You don't have to solve your whole life tonight. One thing at a time.
       </p>
 
-      {/* Immediate action buttons — large, tappable, no reading required */}
-      <div className="mt-6 grid gap-2 sm:grid-cols-2">
-        <a
-          href="tel:14416"
-          className="flex items-center justify-center gap-2 rounded-2xl bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive ring-1 ring-destructive/30 transition hover:bg-destructive/15"
-        >
-          <Phone className="h-4 w-4" /> Call Tele-MANAS (14416)
-        </a>
+      {/* THE DOOR — a human voice, dominant and unmissable */}
+      <a
+        href="tel:14416"
+        className="relative mt-7 flex items-center gap-4 rounded-[16px_16px_8px_8px] border px-5 py-4.5 py-5 transition hover:brightness-110"
+        style={{
+          background: "color-mix(in oklab, var(--clay) 20%, transparent)",
+          borderColor: "color-mix(in oklab, var(--clay) 55%, transparent)",
+        }}
+      >
+        <Phone className="h-6 w-6 shrink-0" strokeWidth={1.8} style={{ color: "var(--clay)" }} />
+        <span>
+          <span className="block text-[17px] font-semibold text-foreground">Call Tele-MANAS · 14416</span>
+          <span className="block text-[13.5px] text-secondary-foreground">free, confidential, 24×7, in your language — a real person</span>
+        </span>
+      </a>
+
+      {/* Secondary — clearly quieter ruled rows */}
+      <div className="relative mt-4 divide-y" style={{ borderColor: "var(--border-subtle)" }}>
         <button
-          onClick={() => {
-            if (typeof window !== "undefined" && "contacts" in navigator) {
-              window.location.href = "tel:";
-            } else {
-              window.location.href = "tel:";
-            }
-          }}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-card/70 px-4 py-3 text-sm font-medium text-foreground ring-1 ring-border/60 transition hover:bg-card"
+          onClick={() => { window.location.href = "tel:"; }}
+          className="flex w-full items-center gap-3.5 border-t py-3.5 text-left transition hover:brightness-110"
+          style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
         >
-          <Phone className="h-4 w-4" /> Call someone I trust
+          <Phone className="h-4.5 h-[18px] w-[18px] shrink-0 text-muted-foreground" strokeWidth={1.7} />
+          <span className="text-[16px] text-foreground/90">Call someone I trust</span>
         </button>
         <button
           onClick={() => { setFlow("body"); setCount(60); setPhase("breathe"); }}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-card/70 px-4 py-3 text-sm font-medium text-foreground ring-1 ring-border/60 transition hover:bg-card"
+          className="flex w-full items-center gap-3.5 border-t py-3.5 text-left transition hover:brightness-110"
+          style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
         >
-          <Wind className="h-4 w-4" /> 60-second grounding
+          <Wind className="h-[18px] w-[18px] shrink-0" strokeWidth={1.7} style={{ color: "var(--dawnline)" }} />
+          <span className="text-[16px] text-foreground/90">Sixty seconds of breath</span>
         </button>
-        <button
-          onClick={() => toast.success("Good. You're here. That's enough right now.")}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-card/70 px-4 py-3 text-sm font-medium text-foreground ring-1 ring-border/60 transition hover:bg-card"
-        >
-          <HeartPulse className="h-4 w-4" /> I am safe right now
-        </button>
+        {!heldSafe ? (
+          <button
+            onClick={() => setHeldSafe(true)}
+            className="flex w-full items-center gap-3.5 border-t py-3.5 text-left transition hover:brightness-110"
+            style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
+          >
+            <HeartPulse className="h-[18px] w-[18px] shrink-0" strokeWidth={1.7} style={{ color: "var(--mint)" }} />
+            <span className="text-[16px] text-foreground/90">I am safe right now</span>
+          </button>
+        ) : (
+          /* The room exhales — a held sentence, not a toast. */
+          <div
+            className="border-t px-4 py-5 fade-in"
+            style={{
+              borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)",
+              background: "color-mix(in oklab, var(--mint) 8%, transparent)",
+            }}
+          >
+            <p className="font-serif text-[18px] font-light leading-relaxed text-foreground">
+              Good. You're here. That's enough right now.
+            </p>
+            <p className="mt-2 text-[14px] leading-relaxed text-secondary-foreground">
+              This room stays open as long as you need it. When you're ready, the rest of the app is
+              exactly where you left it.
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        <FlowButton
-          active={flow === "unsafe"}
-          icon={<HeartPulse className="h-4 w-4" />}
-          label="I feel unsafe with myself"
-          onClick={() => setFlow("unsafe")}
-          tone="rose"
-        />
-        <FlowButton
-          active={flow === "impulse"}
-          icon={<MessageSquareOff className="h-4 w-4" />}
-          label="I might contact someone impulsively"
-          onClick={() => setFlow("impulse")}
-          tone="amber"
-        />
-        <FlowButton
-          active={flow === "body"}
-          icon={<Wind className="h-4 w-4" />}
-          label="I need to calm my body"
-          onClick={() => setFlow("body")}
-          tone="sky"
-        />
+      {/* The three flows — quiet doors, one open at a time */}
+      <div className="relative mt-8 space-y-2">
+        <FlowRow active={flow === "unsafe"} icon={<HeartPulse className="h-[18px] w-[18px]" strokeWidth={1.7} />} label="I feel unsafe with myself" onClick={() => setFlow("unsafe")} tint="var(--clay)" />
+        <FlowRow active={flow === "impulse"} icon={<MessageSquareOff className="h-[18px] w-[18px]" strokeWidth={1.7} />} label="I might contact someone impulsively" onClick={() => setFlow("impulse")} tint="var(--lamp)" />
+        <FlowRow active={flow === "body"} icon={<Wind className="h-[18px] w-[18px]" strokeWidth={1.7} />} label="I need to calm my body" onClick={() => setFlow("body")} tint="var(--dawnline)" />
       </div>
-
-      {flow === "choose" && (
-        <p className="mt-8 text-center text-sm italic text-muted-foreground">
-          Tap one above. Each opens a different short flow.
-        </p>
-      )}
 
       {flow === "unsafe" && (
-        <div className="mt-8 space-y-5">
-          <div className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6">
-            <h2 className="flex items-center gap-2 font-serif text-xl"><Phone className="h-5 w-5" />Please talk to a person, not an app.</h2>
-            <p className="mt-2 text-sm leading-relaxed">
+        <div className="relative mt-7 space-y-5">
+          <div
+            className="rounded-lg border p-6"
+            style={{ borderColor: "color-mix(in oklab, var(--clay) 40%, transparent)", background: "color-mix(in oklab, var(--clay) 8%, transparent)" }}
+          >
+            <h2 className="flex items-center gap-2 font-serif text-[20px] font-light"><Phone className="h-5 w-5" style={{ color: "var(--clay)" }} />Please talk to a person, not an app.</h2>
+            <p className="mt-2 text-[15px] leading-relaxed text-foreground/90">
               If there is any chance of harm to yourself or someone else, the kindest thing right now is a
               human voice. These lines are free, confidential, and answer 24/7.
             </p>
-            <div className="mt-4 space-y-2 text-sm">
-              <p><strong>India — Tele-MANAS:</strong> <a href="tel:14416" className="underline">14416</a> · <a href="tel:18008914416" className="underline">1-800-891-4416</a></p>
-              <p><strong>iCall (India):</strong> <a href="tel:+919152987821" className="underline">+91 9152987821</a></p>
-              <p><strong>International:</strong> <a href="https://findahelpline.com" target="_blank" rel="noreferrer" className="underline">findahelpline.com</a></p>
+            <div className="mt-4 space-y-2 text-[15px]">
+              <p><strong>India — Tele-MANAS:</strong> <a href="tel:14416" className="underline underline-offset-2">14416</a> · <a href="tel:18008914416" className="underline underline-offset-2">1-800-891-4416</a></p>
+              <p><strong>iCall (India):</strong> <a href="tel:+919152987821" className="underline underline-offset-2">+91 9152987821</a></p>
+              <p><strong>International:</strong> <a href="https://findahelpline.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">findahelpline.com</a></p>
             </div>
           </div>
-          <TactileCard tint="sky">
-            <h3 className="font-serif text-lg">While you wait — 5-4-3-2-1 grounding</h3>
-            <ul className="mt-3 space-y-1.5 text-sm">
-              <li><strong>5</strong> things you can see</li>
-              <li><strong>4</strong> things you can feel</li>
-              <li><strong>3</strong> things you can hear</li>
-              <li><strong>2</strong> things you can smell</li>
-              <li><strong>1</strong> small thing you can do now</li>
-            </ul>
-          </TactileCard>
+          <GroundingList />
         </div>
       )}
 
       {flow === "impulse" && (
-        <div className="mt-8 space-y-5">
-          <Link to="/urge-shield" className="block">
-            <TactileCard tint="amber" className="transition hover:-translate-y-0.5">
-              <div className="flex items-start gap-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background/70">
-                  <Shield className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="font-serif text-xl leading-snug">Open Urge Shield</p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                    Ten minutes with yourself before you check or message. No streaks, no shame.
-                  </p>
-                  <p className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    Begin the pause <ArrowRight className="h-3 w-3" />
-                  </p>
-                </div>
-              </div>
-            </TactileCard>
+        <div className="relative mt-7 space-y-5">
+          <Link
+            to="/urge-shield"
+            className="flex items-start gap-4 rounded-lg border p-5 transition hover:brightness-110"
+            style={{ borderColor: "color-mix(in oklab, var(--lamp) 30%, transparent)", background: "color-mix(in oklab, var(--lamp) 7%, transparent)" }}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background/70">
+              <Shield className="h-4 w-4" strokeWidth={1.7} style={{ color: "var(--lamp)" }} />
+            </span>
+            <span>
+              <span className="block font-serif text-[19px] font-light leading-snug">Open the Urge Shield</span>
+              <span className="mt-1 block text-[14px] leading-relaxed text-secondary-foreground">
+                Ten minutes with yourself before you check or message. No streaks, no shame.
+              </span>
+              <span className="mt-2 inline-flex items-center gap-1 text-[13px] text-muted-foreground">
+                begin the pause <ArrowRight className="h-3 w-3" />
+              </span>
+            </span>
           </Link>
 
-          <TactileCard tint="mint">
-            <h2 className="font-serif text-xl">Write it here instead.</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Nobody will see this. It is not saved.</p>
+          <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 60%, transparent)" }}>
+            <h2 className="font-serif text-[19px] font-light">Write it here instead.</h2>
+            <p className="mt-1.5 text-[14px] text-secondary-foreground">
+              This page burns itself — nothing here is saved, sent, or seen.
+            </p>
             <Textarea
               aria-label="Write what you'd rather not send"
-              className="mt-3 min-h-32 rounded-2xl"
+              className="mt-3 min-h-32 rounded-lg text-[16px]"
               placeholder="Everything you want to send…"
               value={unsent}
               onChange={(e) => setUnsent(e.target.value)}
             />
-          </TactileCard>
+          </div>
 
           <BoundaryScripts />
         </div>
       )}
 
       {flow === "body" && (
-        <div className="mt-8 space-y-5">
-          <div className="gradient-soft rounded-3xl p-8 text-center">
-            <Wind className="mx-auto h-8 w-8 text-primary" />
-            <p className="mt-3 font-serif text-xl">60-second breath</p>
-            {phase === "breathe" ? (
-              <p className="mt-6 font-serif text-6xl tabular-nums">{count}</p>
-            ) : (
-              <Button className="mt-6 rounded-full" onClick={() => { setCount(60); setPhase("breathe"); }}>Begin</Button>
-            )}
-            <p className="mt-3 text-xs text-muted-foreground">In for 4, hold 4, out for 6. Slowly.</p>
-          </div>
-          <TactileCard tint="sky">
-            <h3 className="font-serif text-lg">5-4-3-2-1 grounding</h3>
-            <ul className="mt-3 space-y-1.5 text-sm">
-              <li><strong>5</strong> things you can see</li>
-              <li><strong>4</strong> things you can feel</li>
-              <li><strong>3</strong> things you can hear</li>
-              <li><strong>2</strong> things you can smell</li>
-              <li><strong>1</strong> small thing you can do now</li>
-            </ul>
-          </TactileCard>
+        <div className="relative mt-7 space-y-5">
+          <BreathOfTheRoom phase={phase} count={count} onBegin={() => { setCount(60); setPhase("breathe"); }} />
+          <GroundingList />
         </div>
       )}
 
-      <p className="mt-12 text-center text-[12px] text-muted-foreground">
-        My Quiet Space is a companion, not a clinician. See <Link to="/privacy" className="underline">Data & Privacy</Link>.
+      {flow === "choose" && (
+        <p className="relative mt-8 text-[14px] italic leading-relaxed text-muted-foreground">
+          Whichever fits this minute. There's no wrong door.
+        </p>
+      )}
+
+      <p className="relative mt-12 text-[13px] leading-relaxed text-muted-foreground">
+        My Quiet Space is a companion, not a clinician. See <Link to="/privacy" className="underline underline-offset-2">Data & Privacy</Link>.
       </p>
     </div>
   );
 }
 
-function FlowButton({
-  active, icon, label, onClick, tone,
-}: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void; tone: "rose" | "amber" | "sky" }) {
-  const tint = tone === "rose" ? "var(--rose)" : tone === "amber" ? "var(--amber)" : "var(--sky)";
+/** TURNING DOWN THE LAMP — the breath rendered as the room's light dimming
+ *  and re-warming across the full 60 seconds. Under reduced motion the light
+ *  holds still and a dawnline fill bar carries the time instead. */
+function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe"; count: number; onBegin: () => void }) {
+  const progress = (60 - count) / 60; // 0 → 1
+  // The room dims toward the middle of the minute and re-warms toward the end.
+  const dim = phase === "breathe" ? Math.sin(progress * Math.PI) * 0.5 : 0;
+  return (
+    <div
+      className="relative overflow-hidden rounded-lg border p-8 text-center"
+      style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 60%, transparent)" }}
+    >
+      {/* the lamp of this panel — its warmth is the timer (motion-safe only) */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 hidden motion-safe:block"
+        style={{
+          background: `radial-gradient(24rem 14rem at 50% 30%, color-mix(in oklab, var(--lamp) ${Math.round(12 - dim * 9)}%, transparent), transparent 70%)`,
+          transition: "background 1s linear",
+        }}
+      />
+      <Wind className="relative mx-auto h-7 w-7" strokeWidth={1.6} style={{ color: "var(--dawnline)" }} />
+      <p className="relative mt-3 font-serif text-[19px] font-light">Sixty seconds of breath</p>
+      {phase === "breathe" ? (
+        <>
+          {/* the numeral goes secondary — the light is the timer */}
+          <p className="relative mt-5 text-[15px] tabular-nums text-secondary-foreground" aria-live="polite">{count}s</p>
+          {/* reduced-motion fallback: a still dawnline fill */}
+          <div className="relative mx-auto mt-4 h-1 w-48 overflow-hidden rounded-full motion-safe:hidden" style={{ background: "color-mix(in oklab, var(--dawnline) 20%, transparent)" }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.round(progress * 100)}%`, background: "var(--dawnline)" }} />
+          </div>
+        </>
+      ) : (
+        <button type="button" className="qs-pill-cta relative mt-6" onClick={onBegin}>Begin</button>
+      )}
+      <p className="relative mt-4 text-[14px] text-secondary-foreground">In for 4, hold 4, out for 6. Slowly.</p>
+    </div>
+  );
+}
+
+function GroundingList() {
+  return (
+    <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 55%, transparent)" }}>
+      <h3 className="font-serif text-[18px] font-light">5-4-3-2-1 grounding</h3>
+      <ul className="mt-3 space-y-2 text-[15px] leading-relaxed text-foreground/90">
+        <li><strong>5</strong> things you can see</li>
+        <li><strong>4</strong> things you can feel</li>
+        <li><strong>3</strong> things you can hear</li>
+        <li><strong>2</strong> things you can smell</li>
+        <li><strong>1</strong> small thing you can do now</li>
+      </ul>
+    </div>
+  );
+}
+
+function FlowRow({
+  active, icon, label, onClick, tint,
+}: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void; tint: string }) {
   return (
     <button
       onClick={onClick}
-      className={`tactile flex flex-col items-start gap-3 p-4 text-left text-sm transition hover:-translate-y-0.5 ${active ? "ring-2 ring-primary/40" : ""}`}
+      className="flex w-full items-center gap-3.5 rounded-lg border px-4 py-3.5 text-left transition"
+      style={active
+        ? { borderColor: `color-mix(in oklab, ${tint} 50%, transparent)`, background: `color-mix(in oklab, ${tint} 10%, transparent)` }
+        : { borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 50%, transparent)" }}
     >
-      <span
-        className="flex h-9 w-9 items-center justify-center rounded-full"
-        style={{ background: `color-mix(in oklab, ${tint} 45%, transparent)` }}
-      >
-        {icon}
-      </span>
-      <span className="font-serif text-[15px] leading-snug">{label}</span>
+      <span style={{ color: tint }}>{icon}</span>
+      <span className="font-serif text-[16px] font-light leading-snug text-foreground/95">{label}</span>
     </button>
   );
 }
@@ -258,27 +316,26 @@ function BoundaryScripts() {
   };
   return (
     <div className="mt-2">
-      <p className="font-serif text-lg">If you do need to say something — a few quiet scripts.</p>
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="font-serif text-[18px] font-light">If you do need to say something — a few quiet scripts.</p>
+      <p className="mt-1.5 text-[13px] text-muted-foreground">
         Read first. Edit to sound like you. Sending is your choice.
       </p>
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 divide-y" style={{ borderColor: "var(--border-subtle)" }}>
         {SCRIPTS.map((s) => (
-          <TactileCard key={s.title} tint="lavender">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-serif text-[15px] italic text-foreground/85">{s.title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.body}</p>
-              </div>
-              <button
-                onClick={() => copy(s.body)}
-                className="shrink-0 rounded-full border border-border/60 bg-background/60 p-2 text-muted-foreground transition hover:text-foreground"
-                aria-label={`Copy: ${s.title}`}
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
+          <div key={s.title} className="flex items-start justify-between gap-3 border-t py-4" style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}>
+            <div className="min-w-0">
+              <p className="font-serif text-[15.5px] italic text-foreground/90">{s.title}</p>
+              <p className="mt-1.5 text-[14.5px] leading-relaxed text-secondary-foreground">{s.body}</p>
             </div>
-          </TactileCard>
+            <button
+              onClick={() => copy(s.body)}
+              className="shrink-0 rounded-full border p-2.5 text-muted-foreground transition hover:text-foreground"
+              style={{ borderColor: "var(--border-subtle)" }}
+              aria-label={`Copy: ${s.title}`}
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ))}
       </div>
     </div>

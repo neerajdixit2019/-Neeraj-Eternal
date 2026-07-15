@@ -132,11 +132,14 @@ const SUPPORT_MODES: { label: string; hint: string; seed: string }[] = [
   { label: "Pause an impulse", hint: "before I react", seed: "Help me not react yet — I want to pause before I do something." },
 ];
 
-// Bubble skins — dawn-tinted glass for InnerMate, quiet forest for the writer.
+// Two voices, two materials (Lamplit Study, Phase 2): InnerMate's replies are
+// typeset ink directly on the wall — no bubble, no glass — while the user's
+// words arrive as small deodar-inked slips. The conversation reads like
+// correspondence across a desk.
 const ASSISTANT_BUBBLE =
-  "rounded-[20px_20px_20px_6px] border border-white/[0.07] bg-[linear-gradient(150deg,color-mix(in_oklab,var(--dawn)_13%,var(--card))_0%,var(--card)_70%)] px-4 py-3 shadow-[0_18px_38px_-26px_rgb(0_0_0/0.7)] backdrop-blur-md";
+  "rounded-none border-0 bg-transparent px-1 py-1 shadow-none font-reading text-[16.5px] leading-[1.7] text-foreground/95";
 const USER_BUBBLE =
-  "group-[.is-user]:rounded-[20px_20px_6px_20px] group-[.is-user]:bg-[var(--forest-mid)] group-[.is-user]:text-foreground group-[.is-user]:border group-[.is-user]:border-white/[0.05]";
+  "group-[.is-user]:rounded-[12px_12px_4px_12px] group-[.is-user]:bg-[color-mix(in_oklab,var(--deodar)_30%,var(--card))] group-[.is-user]:text-foreground group-[.is-user]:border group-[.is-user]:border-[color-mix(in_oklab,var(--deodar)_35%,transparent)]";
 
 // One companion, many facets. The facet line is InnerMate's living
 // presence in the header — it shifts with how the last reply met you.
@@ -766,22 +769,27 @@ function Companion() {
                 ))}
               </div>
 
-              {/* How would you like me to help? — one companion, many ways in */}
-              <p className="mt-9 text-[12px] text-muted-foreground">or tell me how to help</p>
-              <div className="mt-3 grid w-full max-w-md grid-cols-2 gap-2 sm:grid-cols-3">
-                {SUPPORT_MODES.map((s) => (
-                  <button
-                    key={s.label}
-                    type="button"
-                    onClick={() => onSuggestion(s.seed)}
-                    className="rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5"
-                    style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}
-                  >
-                    <span className="block text-[13px] font-medium text-foreground">{s.label}</span>
-                    <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{s.hint}</span>
-                  </button>
-                ))}
-              </div>
+              {/* How would you like me to help? — folded behind one quiet line
+                  so the empty room offers three openings, not ten. */}
+              <details className="mt-8 w-full max-w-md">
+                <summary className="cursor-pointer list-none text-center text-[13px] text-muted-foreground transition hover:text-foreground">
+                  or tell me how to help ›
+                </summary>
+                <div className="mt-3 grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
+                  {SUPPORT_MODES.map((s) => (
+                    <button
+                      key={s.label}
+                      type="button"
+                      onClick={() => onSuggestion(s.seed)}
+                      className="rounded-lg border px-3 py-3 text-left transition hover:-translate-y-0.5"
+                      style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}
+                    >
+                      <span className="block text-[13px] font-medium text-foreground">{s.label}</span>
+                      <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{s.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </details>
               {lastConv && (
                 <button
                   onClick={() => setActiveId(lastConv.id)}
@@ -805,20 +813,30 @@ function Companion() {
                     <Message from={m.role}>
                       {m.role === "assistant" && m.pending ? (
                         <MessageContent className={ASSISTANT_BUBBLE}>
+                          {/* the nib at rest — a single dot beside the phase */}
                           <span className="flex items-center gap-2.5 py-0.5">
-                            <span aria-hidden className="flex items-center gap-1">
-                              <span className="qs-typing-dot" />
-                              <span className="qs-typing-dot" style={{ animationDelay: "0.18s" }} />
-                              <span className="qs-typing-dot" style={{ animationDelay: "0.36s" }} />
-                            </span>
-                            <span className="text-xs italic text-muted-foreground">
+                            <span
+                              aria-hidden
+                              className="h-1.5 w-1.5 shrink-0 rounded-full motion-safe:animate-[qs-breathe_2.4s_ease-in-out_infinite]"
+                              style={{ background: "var(--lamp)", boxShadow: "0 0 8px color-mix(in oklab, var(--lamp) 55%, transparent)" }}
+                            />
+                            <span className="text-[13px] italic text-muted-foreground">
                               {(m.phase && m.phase !== "ready" ? PHASE_COPY[m.phase] : "Quietly thinking") + "…"}
                             </span>
                           </span>
                         </MessageContent>
                       ) : m.role === "assistant" ? (
-                        <MessageContent className={ASSISTANT_BUBBLE}>
+                        <MessageContent
+                          className={ASSISTANT_BUBBLE}
+                          style={(m.mode ?? lastMode) === "safety" && isLatestCompletedAssistant
+                            ? { borderLeft: "2px solid color-mix(in oklab, var(--clay) 60%, transparent)", paddingLeft: "14px" }
+                            : undefined}
+                        >
                           <MessageResponse>{m.content}</MessageResponse>
+                          {/* THE NIB LINE — ink still traveling while the reply streams */}
+                          {m.role === "assistant" && i === messages.length - 1 && sendStatus === "streaming" && (
+                            <span className="nib-line" aria-hidden />
+                          )}
                           {/* Suggestion chips stay out of normal conversation —
                               they render ONLY in safety mode, where the
                               safe/not-safe/SOS buttons are load-bearing. */}
@@ -827,7 +845,7 @@ function Companion() {
                               initial={{ opacity: 0, y: 4 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.4, delay: 0.2 }}
-                              className="mt-3 flex flex-wrap gap-2"
+                              className="mt-4 flex w-full flex-col gap-2"
                             >
                               {CHIPS_BY_MODE.safety.map(chip => (
                                 <button
@@ -836,7 +854,12 @@ function Companion() {
                                     if (chip.to) navigate({ to: chip.to });
                                     else if (chip.prompt) onSuggestion(chip.prompt);
                                   }}
-                                  className="qs-chip"
+                                  className="w-full rounded-lg border px-4 py-3.5 text-left font-sans text-[15px] font-medium transition hover:brightness-110"
+                                  style={{
+                                    borderColor: "color-mix(in oklab, var(--clay) 45%, transparent)",
+                                    background: "color-mix(in oklab, var(--clay) 12%, transparent)",
+                                    color: "var(--foreground)",
+                                  }}
                                 >
                                   {chip.label}
                                 </button>
@@ -896,7 +919,10 @@ function Companion() {
 
         <div ref={formRef} className="mx-auto max-w-2xl">
           <PromptInput
-            className="[&>div]:rounded-[24px] [&>div]:border-white/10 [&>div]:bg-card/45 [&>div]:shadow-[0_18px_44px_-28px_rgb(0_0_0/0.75)] [&>div]:backdrop-blur-xl"
+            /* THE ALCOVE — the composer is a solid recess in the wall: full
+               opacity for legibility over long scrolled conversations (no
+               blur, no translucency gamble on the app's most-used surface). */
+            className="[&>div]:rounded-[12px] [&>div]:border-[color-mix(in_oklab,var(--paper-shadow)_14%,transparent)] [&>div]:bg-[color-mix(in_oklab,var(--background)_45%,var(--card))] [&>div]:shadow-none"
             onSubmit={(msg) => { void send(msg.text || draft); }}
           >
             <PromptInputTextarea
@@ -972,8 +998,16 @@ function Companion() {
               </PromptInputSubmit>
             </PromptInputFooter>
           </PromptInput>
-          <p className="mt-2 text-center text-[10px] italic text-muted-foreground">
-            A reflection guide, not a therapist. In a crisis: Tele-MANAS 14416.
+          {/* Safety copy on its own hairline rule — never below 13px, and
+              louder when the conversation is in safety mode. */}
+          <p
+            className={`mt-2.5 border-t pt-2 text-center font-sans ${lastMode === "safety" ? "text-[14px] font-medium" : "text-[13px]"}`}
+            style={{
+              borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)",
+              color: lastMode === "safety" ? "color-mix(in oklab, var(--clay) 80%, var(--foreground))" : "var(--muted-foreground)",
+            }}
+          >
+            A reflection guide, not a therapist. In a crisis: <a href="tel:14416" className="underline underline-offset-2">Tele-MANAS 14416</a>.
           </p>
         </div>
       </div>

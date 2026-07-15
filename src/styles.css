@@ -396,6 +396,32 @@
     }
   }
 
+  /* THE NIB LINE — a 1px ink underline that travels beneath InnerMate's
+     reply as it streams: the typing indicator becomes handwriting. Static
+     hairline under reduced motion. */
+  .nib-line {
+    position: relative;
+    display: block;
+    height: 1px;
+    margin-top: 6px;
+    background: color-mix(in oklab, var(--lamp) 22%, transparent);
+    overflow: hidden;
+  }
+  .nib-line::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 34%;
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--lamp) 75%, transparent), transparent);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .nib-line::after { animation: nibTravel 1.6s ease-in-out infinite; }
+    @keyframes nibTravel {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(300%); }
+    }
+  }
+
   /* MARGIN NOTES — quiet in-place acknowledgments and honest errors,
      replacing toasts as rooms migrate. */
   .margin-note {
