@@ -379,6 +379,35 @@
 
   .font-serif { font-family: var(--font-serif); }
   .font-reading { font-family: var(--font-reading); }
+
+  /* THE LAMP WARMING UP — loading placeholders gain warmth, never spin.
+     Static under reduced motion; content replaces them in place. */
+  .lamp-skeleton {
+    border-radius: 6px;
+    background: color-mix(in oklab, var(--card) 80%, var(--background));
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .lamp-skeleton {
+      animation: lampWarm 1.8s ease-in-out infinite;
+    }
+    @keyframes lampWarm {
+      0%, 100% { background: color-mix(in oklab, var(--card) 80%, var(--background)); }
+      50%      { background: color-mix(in oklab, var(--lamp) 7%, var(--card)); }
+    }
+  }
+
+  /* MARGIN NOTES — quiet in-place acknowledgments and honest errors,
+     replacing toasts as rooms migrate. */
+  .margin-note {
+    font-size: 12px;
+    color: var(--muted-foreground);
+    border-left: 2px solid color-mix(in oklab, var(--lamp) 45%, transparent);
+    padding-left: 10px;
+  }
+  .margin-note--error {
+    color: color-mix(in oklab, var(--clay) 80%, var(--foreground));
+    border-left-color: color-mix(in oklab, var(--clay) 55%, transparent);
+  }
   h1, h2, h3 {
     font-family: var(--font-serif);
     font-weight: 400;
