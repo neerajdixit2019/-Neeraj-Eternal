@@ -100,8 +100,19 @@ function PatternDetail() {
     return { label, count: matches.length, times, peakTime, topCo, excerpts, spanDays, firstSeen: dates.length ? Math.min(...dates) : 0 };
   }, [moods, decoded]);
 
-  const level = ev.count >= 4 ? "High" : ev.count >= 2 ? "Medium" : "Low";
+  // The old High/Medium/Low badge, spoken instead of stamped.
+  const levelLine =
+    ev.count >= 4
+      ? "a steady visitor in your check-ins."
+      : ev.count >= 2
+        ? "beginning to repeat — worth keeping an eye on."
+        : "noted, but rarely — too soon to call it a pattern.";
   const timeMax = Math.max(1, ...Object.values(ev.times));
+
+  // Ink mixes for writing on the paper sheet.
+  const inkFaint = "color-mix(in oklab, var(--ink) 55%, var(--paper))";
+  const inkSoft = "color-mix(in oklab, var(--ink) 74%, var(--paper))";
+  const inkHair = "color-mix(in oklab, var(--ink) 16%, transparent)";
 
   // "What you can do" — a real practice, chosen from the real evidence.
   const action = (() => {
@@ -154,89 +165,105 @@ function PatternDetail() {
         </div>
       ) : (
         <>
-          {/* Header */}
-          <div className="mt-6 flex items-start justify-between gap-4">
-            <div>
-              <p className="qs-section-label">a pattern</p>
-              <h1 className="mt-2 font-serif text-[2rem] font-light leading-tight tracking-tight">{ev.label}</h1>
-              <p className="mt-2 text-[13.5px] text-muted-foreground">
-                appeared {ev.count} {ev.count === 1 ? "time" : "times"}
-                {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}
-                {ev.count > 0 ? ` · first noticed ${daysAgo(new Date(ev.firstSeen).toISOString())}` : ""}
-              </p>
-            </div>
-            <span
-              className="shrink-0 rounded-full px-3 py-1 text-[11px] font-medium"
-              style={{
-                color: "color-mix(in oklab, var(--accent-primary) 75%, var(--foreground))",
-                background: "color-mix(in oklab, var(--accent-primary) 14%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--accent-primary) 30%, transparent)",
-              }}
-            >
-              {level}
-            </span>
-          </div>
+          {/* THE FIELD NOTE — one sheet pulled from the notebook: everything the
+              check-ins actually show, written in ink on paper. Interactive
+              furniture (the door, the fit question) stays on the wall below. */}
+          <div
+            className="mt-6 rounded-[4px] p-6 sm:p-8"
+            style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)" }}
+          >
+            <p className="font-serif text-[13px] italic" style={{ color: inkFaint }}>field notes</p>
+            <h1 className="mt-1.5 font-serif text-[2rem] font-light leading-tight tracking-tight">{ev.label}</h1>
+            <p className="mt-2 text-[13.5px]" style={{ color: inkSoft }}>
+              appeared {ev.count} {ev.count === 1 ? "time" : "times"}
+              {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}
+              {ev.count > 0 ? ` · first noticed ${daysAgo(new Date(ev.firstSeen).toISOString())}` : ""}
+            </p>
+            <p className="mt-1 font-serif text-[14.5px] italic" style={{ color: inkSoft }}>{levelLine}</p>
 
-          {/* When it tends to appear — real time-of-day distribution */}
-          <div className="glass mt-7 rounded-3xl p-5">
-            <p className="qs-section-label">when it tends to appear</p>
-            <div className="mt-4 grid grid-cols-4 gap-3">
-              {TIME_LABELS.map((t) => {
-                const c = ev.times[t];
-                const h = Math.max(6, Math.round((c / timeMax) * 56));
-                const peak = ev.peakTime[0] === t && c > 0;
-                return (
-                  <div key={t} className="flex flex-col items-center gap-2">
-                    <div className="flex h-14 items-end">
-                      <div className="w-7 rounded-t-md" style={{ height: `${h}px`, background: peak ? "var(--accent-primary)" : "var(--foreground)", opacity: peak ? 0.9 : 0.22, transition: "height 400ms ease" }} aria-hidden />
+            {/* When it tends to appear — real time-of-day distribution, printed in ink */}
+            <div className="mt-6 border-t pt-5" style={{ borderColor: inkHair }}>
+              <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>when it tends to appear</p>
+              <div className="mt-4 grid grid-cols-4 gap-3">
+                {TIME_LABELS.map((t) => {
+                  const c = ev.times[t];
+                  const h = Math.max(6, Math.round((c / timeMax) * 56));
+                  const peak = ev.peakTime[0] === t && c > 0;
+                  return (
+                    <div key={t} className="flex flex-col items-center gap-2">
+                      <div className="flex h-14 items-end">
+                        <div className="w-7 rounded-t-[3px]" style={{ height: `${h}px`, background: "var(--ink)", opacity: peak ? 0.85 : 0.22, transition: "height 400ms ease" }} aria-hidden />
+                      </div>
+                      <p className="text-[10.5px] uppercase tracking-[0.12em]" style={{ color: peak ? inkSoft : inkFaint, fontWeight: peak ? 600 : 400 }}>{t}</p>
+                      <p className="text-[10.5px]" style={{ color: inkFaint }}>{c}</p>
                     </div>
-                    <p className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">{t}</p>
-                    <p className="text-[10.5px] text-foreground/60">{c}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* What it arrives alongside — real co-occurrence */}
-          {ev.topCo.length > 0 && (
-            <div className="glass mt-4 rounded-3xl p-5">
-              <p className="qs-section-label">what it arrives alongside</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {ev.topCo.map((c) => (
-                  <Link
-                    key={c.label}
-                    to="/pattern/$tag"
-                    params={{ tag: c.label }}
-                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition hover:-translate-y-0.5"
-                    style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)", color: "var(--text-secondary)" }}
-                  >
-                    {c.label}
-                    <span className="text-[10.5px] text-muted-foreground">×{c.count}</span>
-                  </Link>
-                ))}
+                  );
+                })}
               </div>
             </div>
-          )}
 
-          {/* What this means / Why it matters — cautious, evidence-anchored */}
-          <div className="glass mt-4 rounded-3xl p-5">
-            <p className="qs-section-label">what this might mean</p>
-            <p className="mt-2 text-[14px] leading-relaxed text-foreground/85">
-              Across your check-ins, {ev.label.toLowerCase()} showed up most often in the{" "}
-              <strong className="font-medium">{ev.peakTime[0].toLowerCase()}</strong>
-              {ev.topCo[0] ? <>, and <strong className="font-medium">{ev.topCo[0].label.toLowerCase()}</strong> was named alongside it {ev.topCo[0].count} {ev.topCo[0].count === 1 ? "time" : "times"}</> : null}.
-              That's a rhythm worth noticing — not a verdict, and not the whole of you.
-            </p>
-            <p className="qs-section-label mt-5">why it's worth seeing</p>
-            <p className="mt-2 text-[14px] leading-relaxed text-foreground/85">
-              Naming when a feeling tends to arrive, and what tends to arrive with it, is how it stops
-              running quietly in the background. You're not trying to fix it. You're just letting it be seen.
+            {/* What it arrives alongside — real co-occurrence, written as a sentence */}
+            {ev.topCo.length > 0 && (
+              <div className="mt-5 border-t pt-5" style={{ borderColor: inkHair }}>
+                <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>what it arrives alongside</p>
+                <p className="mt-2.5 text-[14px] leading-relaxed" style={{ color: inkSoft }}>
+                  {ev.topCo.map((c, i) => (
+                    <span key={c.label}>
+                      {i === 0 ? "most often " : i === ev.topCo.length - 1 ? " and " : ", "}
+                      <Link
+                        to="/pattern/$tag"
+                        params={{ tag: c.label }}
+                        className="underline decoration-[1px] underline-offset-4 transition hover:opacity-70"
+                        style={{ color: "var(--ink)", textDecorationColor: "color-mix(in oklab, var(--ink) 40%, transparent)" }}
+                      >
+                        {c.label.toLowerCase()}
+                      </Link>
+                      {` (×${c.count})`}
+                    </span>
+                  ))}
+                  .
+                </p>
+              </div>
+            )}
+
+            {/* What this means / Why it matters — cautious, evidence-anchored */}
+            <div className="mt-5 border-t pt-5" style={{ borderColor: inkHair }}>
+              <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>what this might mean</p>
+              <p className="mt-2.5 text-[14px] leading-relaxed" style={{ color: inkSoft }}>
+                Across your check-ins, {ev.label.toLowerCase()} showed up most often in the{" "}
+                <strong className="font-medium" style={{ color: "var(--ink)" }}>{ev.peakTime[0].toLowerCase()}</strong>
+                {ev.topCo[0] ? <>, and <strong className="font-medium" style={{ color: "var(--ink)" }}>{ev.topCo[0].label.toLowerCase()}</strong> was named alongside it {ev.topCo[0].count} {ev.topCo[0].count === 1 ? "time" : "times"}</> : null}.
+                That's a rhythm worth noticing — not a verdict, and not the whole of you.
+              </p>
+              <p className="mt-3 text-[14px] leading-relaxed" style={{ color: inkSoft }}>
+                Naming when a feeling tends to arrive, and what tends to arrive with it, is how it stops
+                running quietly in the background. You're not trying to fix it. You're just letting it be seen.
+              </p>
+            </div>
+
+            {/* The user's own words — real excerpts, quoted in the margin */}
+            {ev.excerpts.length > 0 && (
+              <div className="mt-5 border-t pt-5" style={{ borderColor: inkHair }}>
+                <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>in your own words</p>
+                <div className="mt-3 space-y-3">
+                  {ev.excerpts.map((e, i) => (
+                    <div key={i} className="border-l-2 pl-3.5" style={{ borderColor: "color-mix(in oklab, var(--ink) 28%, transparent)" }}>
+                      <p className="font-serif text-[14.5px] italic leading-relaxed" style={{ color: inkSoft }}>“{e.note}”</p>
+                      <p className="mt-1 text-[11px]" style={{ color: inkFaint }}>{e.when}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="mt-6 border-t pt-4 text-[11.5px] italic leading-relaxed" style={{ borderColor: inkHair, color: inkFaint }}>
+              based only on your own check-ins — {ev.count} {ev.count === 1 ? "moment" : "moments"}
+              {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}. not a diagnosis.
             </p>
           </div>
 
-          {/* What you can do — one real practice */}
-          <Link to={action.to} className="glass mt-4 block rounded-3xl p-5 transition hover:-translate-y-0.5">
+          {/* What you can do — one real practice, a door on the wall beneath the note */}
+          <Link to={action.to} className="glass mt-5 block rounded-3xl p-5 transition hover:-translate-y-0.5">
             <p className="qs-section-label">one thing you could try</p>
             <div className="mt-3 flex items-center gap-4">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background/60">
@@ -249,21 +276,6 @@ function PatternDetail() {
               <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
             </div>
           </Link>
-
-          {/* The user's own words — real excerpts */}
-          {ev.excerpts.length > 0 && (
-            <div className="mt-4">
-              <p className="qs-section-label">in your own words</p>
-              <div className="mt-3 space-y-2.5">
-                {ev.excerpts.map((e, i) => (
-                  <div key={i} className="rounded-2xl border px-4 py-3" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
-                    <p className="font-serif text-[14px] italic leading-relaxed text-foreground/85">“{e.note}”</p>
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">{e.when}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Does this fit you? — you decide, InnerMate doesn't. */}
           <div className="mt-8 rounded-3xl border p-5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
@@ -302,11 +314,6 @@ function PatternDetail() {
               </button>
             </div>
           </div>
-
-          <p className="mt-6 text-center text-[11.5px] italic leading-relaxed text-muted-foreground">
-            Based only on your own check-ins — {ev.count} {ev.count === 1 ? "moment" : "moments"}
-            {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}. Not a diagnosis.
-          </p>
         </>
       )}
     </div>

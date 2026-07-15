@@ -169,8 +169,34 @@ function Insights() {
         </select>
       </div>
 
+      {/* THE WINDOW — the sky sits directly under its reading, framed. */}
+      {isLoading ? (
+        <div className="study-window mt-6">
+          <div className="sky-panel flex h-[280px] items-center justify-center">
+            <p className="font-serif text-[14px] italic text-foreground/60">reading your sky…</p>
+          </div>
+        </div>
+      ) : view === "constellation" ? (
+        <ConstellationView
+          constellation={constellation}
+          periodMoods={engineEntries as Mood[]}
+          events={periodEvents}
+          period={period}
+          co={co}
+          selected={selected}
+          setSelected={setSelected}
+          onExplore={exploreConstellation}
+          onTalk={talkToInnerMate}
+        />
+      ) : (
+        <TimelineView periodMoods={periodMoods} visibleTags={visibleStats.map((s) => s.label)} filterTag={timelineTag} setFilterTag={setTimelineTag} />
+      )}
+
+      {/* NOTES ON THE SILL — everything below the window, one ruled column */}
+      <p className="qs-section-label mt-10">notes on the sill</p>
+
       {/* Compact check-in — expands to the full ritual */}
-      <div className="mt-6">
+      <div className="mt-3">
         {todayMood && !checkinOpen ? (
           <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-3xl px-5 py-4">
             <div className="min-w-0">
@@ -243,26 +269,6 @@ function Insights() {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="sky-panel mt-6 flex h-[280px] items-center justify-center">
-          <p className="font-serif text-[14px] italic text-foreground/60">reading your sky…</p>
-        </div>
-      ) : view === "constellation" ? (
-        <ConstellationView
-          constellation={constellation}
-          periodMoods={engineEntries as Mood[]}
-          events={periodEvents}
-          period={period}
-          co={co}
-          selected={selected}
-          setSelected={setSelected}
-          onExplore={exploreConstellation}
-          onTalk={talkToInnerMate}
-        />
-      ) : (
-        <TimelineView periodMoods={periodMoods} visibleTags={visibleStats.map((s) => s.label)} filterTag={timelineTag} setFilterTag={setTimelineTag} />
-      )}
-
       {/* A rhythm we noticed — weekday pattern with its own numbers */}
       <RhythmCard moods={moods} hidden={hidden} />
 
@@ -309,13 +315,13 @@ function SkyHero({ events }: { events: InsightEvent[] }) {
       <span aria-hidden className="absolute right-[22%] top-10 h-[2px] w-[2px] rounded-full bg-foreground/30 motion-safe:animate-[qs-twinkle_6s_ease-in-out_infinite]" style={{ animationDelay: "2s" }} />
       <span aria-hidden className="absolute right-[13%] top-24 h-[2px] w-[2px] rounded-full" style={{ background: "color-mix(in oklab, var(--dawn) 70%, transparent)" }} />
 
-      {/* the breathing orb — dawn-in-violet, the sky's presence */}
+      {/* the breathing orb — dawn held in lamplight, the sky's presence */}
       <div
         aria-hidden
         className="h-[84px] w-[84px] rounded-full motion-safe:animate-[qs-breathe_6.5s_ease-in-out_infinite]"
         style={{
           background:
-            "radial-gradient(circle at 38% 32%, color-mix(in oklab, var(--dawn) 85%, transparent), color-mix(in oklab, var(--violet) 55%, transparent) 46%, color-mix(in oklab, var(--violet) 12%, transparent) 72%, transparent 78%)",
+            "radial-gradient(circle at 38% 32%, color-mix(in oklab, var(--dawn) 85%, transparent), color-mix(in oklab, var(--lamp) 55%, transparent) 46%, color-mix(in oklab, var(--lamp) 12%, transparent) 72%, transparent 78%)",
           filter: "blur(0.4px)",
         }}
       />
@@ -339,7 +345,7 @@ function SkyHero({ events }: { events: InsightEvent[] }) {
       {showWhy && (
         <div
           className="fade-in mt-3 rounded-2xl border p-4"
-          style={{ borderColor: "color-mix(in oklab, var(--violet) 18%, transparent)", background: "color-mix(in oklab, var(--violet) 8%, transparent)" }}
+          style={{ borderColor: "color-mix(in oklab, var(--lamp) 18%, transparent)", background: "color-mix(in oklab, var(--lamp) 6%, transparent)" }}
         >
           <p className="qs-section-label">read from what you shared</p>
           <ul className="mt-2.5 space-y-2 text-[12.5px] leading-relaxed text-secondary-foreground">
@@ -384,7 +390,8 @@ function ConstellationView({
   /* Low-data: no fake maps. */
   if (!center) {
     return (
-      <div className="sky-panel mt-6 flex min-h-[260px] flex-col items-center justify-center px-8 py-10 text-center">
+      <div className="study-window mt-6">
+      <div className="sky-panel flex min-h-[260px] flex-col items-center justify-center px-8 py-10 text-center">
         <CompanionCloud size={64} state="calm" />
         <p className="mt-4 max-w-sm font-serif text-[16px] italic leading-relaxed text-foreground/75">
           Your constellation is beginning to form.
@@ -409,6 +416,7 @@ function ConstellationView({
           Add today's moment
         </button>
       </div>
+      </div>
     );
   }
 
@@ -421,8 +429,9 @@ function ConstellationView({
 
   return (
     <>
-      {/* The map */}
-      <div className="sky-panel relative mt-6 h-[340px] sm:h-[400px]" role="group" aria-label={`Your pattern constellation — strongest: ${center.label}, ${center.count} appearances`}>
+      {/* The map — held in the study's etched window frame */}
+      <div className="study-window mt-6">
+      <div className="sky-panel relative h-[340px] sm:h-[400px]" role="group" aria-label={`Your pattern constellation — strongest: ${center.label}, ${center.count} appearances`}>
         {/* faint background stars (fixed, decorative) */}
         {Array.from({ length: 26 }, (_, i) => (
           <span key={i} aria-hidden className="absolute rounded-full"
@@ -437,7 +446,7 @@ function ConstellationView({
             const dimmed = activeSet ? !(activeSet.has(e.a) && activeSet.has(e.b)) : false;
             return (
               <line key={`${e.a}|${e.b}`} x1={A.x} y1={A.y} x2={B.x} y2={B.y}
-                stroke="oklch(1 0 0 / 0.30)"
+                stroke="color-mix(in oklab, var(--moth) 38%, transparent)"
                 strokeWidth={0.35 + (e.strength / maxEdge) * 1.05}
                 strokeDasharray={e.strength >= 2 ? undefined : "2 3"}
                 opacity={dimmed ? 0.12 : 0.75}
@@ -450,6 +459,8 @@ function ConstellationView({
         {nodes.map((n) => {
           const isCenter = n.label === center.label;
           const tint = tagTint(n.label);
+          // Moth-silver stars: the tag's tint survives only as a whisper in the silver.
+          const star = `color-mix(in oklab, var(--moth) ${isCenter ? 60 : 74}%, ${tint})`;
           const dimmed = activeSet ? !activeSet.has(n.label) && n.label !== selected : false;
           const dot = isCenter ? 18 + n.weight * 8 : 9 + n.weight * 9;
           return (
@@ -464,12 +475,12 @@ function ConstellationView({
             >
               <span aria-hidden className="rounded-full motion-safe:animate-[qs-twinkle_6s_ease-in-out_infinite]"
                 style={{
-                  width: dot, height: dot, background: tint,
+                  width: dot, height: dot, background: star,
                   opacity: 0.5 + n.glow * 0.5,
-                  boxShadow: `0 0 ${6 + Math.round(n.glow * 16)}px ${1 + Math.round(n.glow * 4)}px color-mix(in oklab, ${tint} 55%, transparent)`,
+                  boxShadow: `0 0 ${6 + Math.round(n.glow * 16)}px ${1 + Math.round(n.glow * 4)}px color-mix(in oklab, ${star} 50%, transparent)`,
                 }} />
               <span className="mt-1.5 whitespace-nowrap text-center font-serif text-[11px] italic leading-tight"
-                style={{ color: `color-mix(in oklab, ${tint} 40%, var(--foreground))` }}>
+                style={{ color: `color-mix(in oklab, ${tint} 28%, var(--foreground))` }}>
                 {n.label.toLowerCase()}
               </span>
               <span className="text-[9.5px] text-muted-foreground">×{n.count}{isCenter ? ` · ${statusFor(n.count).toLowerCase()}` : ""}</span>
@@ -487,6 +498,7 @@ function ConstellationView({
         <p className="absolute inset-x-0 bottom-2.5 text-center font-serif text-[10.5px] italic text-foreground/40">
           tap a star to see its connections · size is frequency, light is recency
         </p>
+      </div>
       </div>
 
       {/* Selected node panel */}
@@ -696,7 +708,8 @@ function TimelineView({
         </div>
       )}
 
-      <div className="sky-panel mt-4 p-4">
+      <div className="study-window mt-4">
+      <div className="sky-panel p-4">
         {points.length === 0 ? (
           <p className="py-10 text-center font-serif text-[14px] italic text-foreground/60">
             no check-ins {filterTag ? `with ${filterTag.toLowerCase()} ` : ""}in this period.
@@ -714,7 +727,7 @@ function TimelineView({
                   <circle cx={xFor(p.iso)} cy={yFor(p.score)} r={10} fill="transparent"
                     style={{ cursor: "pointer" }} onClick={() => setOpenIso(openIso === p.iso ? null : p.iso)} />
                   <circle cx={xFor(p.iso)} cy={yFor(p.score)} r={openIso === p.iso ? 5 : 3.4}
-                    fill={tint} opacity={0.9} pointerEvents="none" />
+                    fill={`color-mix(in oklab, var(--moth) 68%, ${tint})`} opacity={0.9} pointerEvents="none" />
                 </g>
               );
             })}
@@ -725,6 +738,7 @@ function TimelineView({
           <span>gaps are simply days you didn't check in — they don't count against you</span>
           <span>{points.length ? new Date(points[points.length - 1].iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
         </div>
+      </div>
       </div>
 
       {open && (
@@ -1014,8 +1028,8 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
       <div
         className="mt-6 rounded-[18px] border p-5"
         style={{
-          background: "linear-gradient(160deg, color-mix(in oklab, var(--violet) 14%, transparent), color-mix(in oklab, var(--dawn) 8%, transparent))",
-          borderColor: "color-mix(in oklab, var(--violet) 28%, transparent)",
+          background: "linear-gradient(160deg, color-mix(in oklab, var(--lamp) 12%, transparent), color-mix(in oklab, var(--dawn) 7%, transparent))",
+          borderColor: "color-mix(in oklab, var(--lamp) 26%, transparent)",
         }}
       >
         <p className="qs-section-label" style={{ color: "var(--accent-secondary)" }}>one small thing</p>

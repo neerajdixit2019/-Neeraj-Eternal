@@ -396,6 +396,38 @@
     }
   }
 
+  /* THE STUDY WINDOW — the etched frame that holds the sky. Two hairlines
+     with an arched lintel: jharokha-inspired geometry, drawn not decorated.
+     Used only where stars mean something (Insights, and later Memories). */
+  .study-window {
+    position: relative;
+    border: 1px solid color-mix(in oklab, var(--paper-shadow) 22%, transparent);
+    border-radius: 22px 22px 8px 8px;
+    padding: 7px;
+  }
+  .study-window > * {
+    border-radius: 16px 16px 4px 4px !important;
+  }
+  .study-window::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border: 1px solid color-mix(in oklab, var(--paper-shadow) 11%, transparent);
+    border-radius: 19px 19px 6px 6px;
+    pointer-events: none;
+  }
+  /* the sill — a slightly heavier base line */
+  .study-window::after {
+    content: "";
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: -6px;
+    height: 2px;
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--paper-shadow) 18%, transparent);
+  }
+
   /* THE NIB LINE — a 1px ink underline that travels beneath InnerMate's
      reply as it streams: the typing indicator becomes handwriting. Static
      hairline under reduced motion. */
