@@ -244,8 +244,21 @@ function CheckinJourney() {
     );
   }
 
+  const sheetLines: string[] = [
+    emotions.length ? `feeling: ${emotions.join(", ").toLowerCase()}` : "",
+    triggers.length || hearts.length ? `around: ${[...triggers, ...hearts.map((h) => h.toLowerCase())].join(", ").toLowerCase()}` : "",
+    mind.trim() ? `on my mind: ${mind.trim().slice(0, 60)}${mind.trim().length > 60 ? "…" : ""}` : "",
+    need ? `needing: ${NEEDS.find((n) => n.key === need)?.label.toLowerCase() ?? need}` : "",
+  ].filter(Boolean);
+
   return (
-    <div className="mx-auto max-w-md px-5 py-8 sm:py-12">
+    <div
+      className="mx-auto max-w-md px-5 py-8 sm:py-12"
+      style={step === "deeper"
+        // the deeper step earns weight — the room dims, the pool tightens
+        ? { background: "radial-gradient(16rem 11rem at 50% 12%, color-mix(in oklab, var(--lamp) 8%, transparent), transparent 65%)" }
+        : undefined}
+    >
       {/* Header: back + adaptive progress */}
       <div className="flex items-center gap-3">
         {stepIndex > 0 ? (
@@ -268,6 +281,22 @@ function CheckinJourney() {
         </div>
         <Link to="/home" className="text-[12px] text-muted-foreground transition hover:text-foreground">exit</Link>
       </div>
+
+      {/* THE SHEET — each step writes its line onto one page, pinned here.
+          The user literally watches their check-in being written. */}
+      {sheetLines.length > 0 && step !== "summary" && (
+        <div
+          className="mt-5 rounded-[4px] px-4 py-3 fade-in"
+          style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 10px 30px rgba(10, 8, 4, 0.4)" }}
+          aria-label="Your check-in so far"
+        >
+          {sheetLines.map((line) => (
+            <p key={line} className="font-reading text-[13.5px] leading-[1.7]" style={{ color: "color-mix(in oklab, var(--ink) 82%, var(--paper))" }}>
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
 
       {/* ── Step: mood ── */}
       {step === "mood" && (

@@ -107,9 +107,11 @@ function Home() {
   const profile = useServerFn(getProfile);
   const moods = useServerFn(listMoods);
   const journal = useServerFn(listJournal);
+  const convsFn = useServerFn(listConversations);
   const { data: p } = useQuery({ queryKey: ["profile"], queryFn: () => profile() });
   const { data: m } = useQuery({ queryKey: ["moods"], queryFn: () => moods() });
   const { data: j } = useQuery({ queryKey: ["journal"], queryFn: () => journal() });
+  const { data: convs } = useQuery({ queryKey: ["convs"], queryFn: () => convsFn() });
   const todayMood = m?.[0];
   const { enabled: privacy } = usePrivacyMode();
   const hour = useLocalHour();
@@ -119,6 +121,13 @@ function Home() {
   const weekStart = currentWeekStartISO();
   const arc = m ? moodsToWeekArc(m as { created_at: string; mood_score: number | null }[], weekStart) : null;
   const arcHasAny = !!arc && arc.some((v) => v != null);
+  // The desk chooses: one slip (write until you have; then reflect), and one
+  // door (the warm last thread if there is one, else the recommendation).
+  const wroteToday = !!j?.[0]?.created_at
+    && new Date(j[0].created_at as string).toDateString() === new Date().toDateString();
+  const lastConvAt = (convs?.[0] as { updated_at?: string | null } | undefined)?.updated_at;
+  const hasRecentConv = !!lastConvAt
+    && Date.now() - new Date(lastConvAt).getTime() < 7 * 86400000;
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
@@ -173,81 +182,37 @@ function Home() {
       {/* 3 · Emotional weather */}
       <MoodOrbs alreadyLogged={!!todayMood} />
 
-      {/* 4 · One reflection star */}
-      <ReflectionStar />
+      {/* 4 · ONE paper slip — write, or reflect: chosen by real state.
+          If nothing was written today, the desk offers the page; once
+          something's down, it offers the reflection star instead. */}
+      {wroteToday ? <ReflectionStar /> : <HeavyOnMind />}
 
-      {/* 5 · Journal gateway — what is heavy on your mind */}
-      <HeavyOnMind />
+      {/* 5 · ONE door — the real last thread when one is warm, otherwise
+          the recommendation with its real reason. */}
+      {hasRecentConv ? <ContinueWithInnerMate /> : <RecommendedForYou moods={(m ?? []) as MoodRow[]} />}
 
-      {/* 6 · Or begin from a feeling — deep-links into InnerMate */}
-      <div className="mt-8">
-        <p className="qs-section-label">or begin from a feeling</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {FEELING_CHIPS.map((c) => (
-            <Link key={c.label} to="/companion" search={{ seed: c.seed }} className="qs-chip">
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: c.tint, boxShadow: `0 0 8px ${c.tint}` }}
-              />
-              {c.label}
-            </Link>
+      {/* 6 · also on the desk — everything else, as a quiet margin list */}
+      <div className="mt-10">
+        <p className="qs-section-label">also on the desk</p>
+        <ul className="mt-2">
+          {([
+            ["calm me now", "/sos", "sixty seconds of breath"],
+            ["think this through", "/checkin", "a guided check-in, 3–5 min"],
+            ["stop an impulse", "/urge-shield", "pause before the text"],
+            ["begin from a feeling", "/companion", "InnerMate is listening"],
+            ...(arcHasAny ? [["your constellation", "/insights", "the week, becoming a shape"]] as const : []),
+            ["a small light for today", "/reflect", "one quiet line to sit with"],
+            ["night reset", "/wind-down", isEvening ? "the day is done — set it down" : "for when the mind won't quiet"],
+          ] as const).map(([label, to, hint]) => (
+            <li key={to} className="border-t" style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 9%, transparent)" }}>
+              <Link to={to} className="group flex items-baseline justify-between gap-4 py-3 transition">
+                <span className="text-[14.5px] text-foreground/90 transition group-hover:text-foreground">{label}</span>
+                <span className="shrink-0 text-[12px] text-muted-foreground">{hint} →</span>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
-
-      {/* 7 · Continue with InnerMate — the real last thread, or meet it fresh */}
-      <ContinueWithInnerMate />
-
-      {/* 8 · Quick support — three doors, with honest durations */}
-      <div className="mt-8">
-        <p className="qs-section-label">quick support</p>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">choose what you need right now</p>
-        <div className="mt-3 grid grid-cols-3 gap-3">
-          <Link to="/sos" className="glass block rounded-3xl p-4 transition hover:-translate-y-0.5">
-            <Wind className="h-4 w-4" strokeWidth={1.7} style={{ color: "var(--emotion-calm)" }} />
-            <p className="mt-2.5 font-serif text-[14.5px] leading-snug">Calm me now</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">2 min · breathing</p>
-          </Link>
-          <Link to="/checkin" className="glass block rounded-3xl p-4 transition hover:-translate-y-0.5">
-            <Lightbulb className="h-4 w-4" strokeWidth={1.7} style={{ color: "var(--emotion-clarity)" }} />
-            <p className="mt-2.5 font-serif text-[14.5px] leading-snug">Think this through</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">3–5 min · check-in</p>
-          </Link>
-          <Link to="/urge-shield" className="glass block rounded-3xl p-4 transition hover:-translate-y-0.5">
-            <Shield className="h-4 w-4" strokeWidth={1.7} style={{ color: "oklch(0.72 0.11 45)" }} />
-            <p className="mt-2.5 font-serif text-[14.5px] leading-snug">Stop an impulse</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">2 min · pause first</p>
-          </Link>
-        </div>
-        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[12px] text-muted-foreground">
-          {isEvening && (
-            <Link to="/wind-down" className="transition hover:text-foreground">night reset →</Link>
-          )}
-          <Link to="/reflect" className="transition hover:text-foreground">see a thought clearly →</Link>
-          {!isEvening && (
-            <Link to="/wind-down" className="transition hover:text-foreground">night reset →</Link>
-          )}
-        </div>
-      </div>
-
-      {/* 9 · Your week's constellation — the shape plus one honest pattern line */}
-      {arcHasAny && (
-        <div className="sky-panel mt-8 p-5">
-          <p className="qs-section-label">your constellation</p>
-          <ConstellationLine moods={(m ?? []) as MoodRow[]} />
-          <WeekArc days={arc!} className="-ml-1 mt-3 w-full max-w-xs" label="Your week's constellation" />
-          <Link
-            to="/insights"
-            className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
-          >
-            reveal this week's patterns <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-      )}
-
-      {/* 10 · One recommendation, with its reason */}
-      <RecommendedForYou moods={(m ?? []) as MoodRow[]} />
 
       <OnThisDay />
 
@@ -256,19 +221,6 @@ function Home() {
       <LetterWaiting enabled={!!(p as { weekly_letter_enabled?: boolean } | null | undefined)?.weekly_letter_enabled} />
 
       <ContinuePath />
-
-      <TactileCard tint="lavender" className="hero-drift mt-9">
-        <p className="qs-section-label">a small light for today</p>
-        <div className="mt-2">
-          <VerseQuote initial={dailyVerse()} rotate variant="plain" />
-        </div>
-        <Link
-          to="/reflect"
-          className="mt-4 inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
-        >
-          sit with it a while longer <ArrowRight className="h-3 w-3" />
-        </Link>
-      </TactileCard>
 
       {/* 11 · Closing */}
       <p className="mt-12 text-center font-serif text-[15px] italic text-muted-foreground">
@@ -736,34 +688,45 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
   const mindsetRead = qStep >= questions.length ? read : null;
 
   return (
-    <div
-      className="mt-7 rounded-3xl border border-white/10 bg-card/55 p-5 backdrop-blur-xl rise-in"
-      style={{ boxShadow: "0 20px 54px -34px oklch(0 0 0 / 0.7)" }}
-    >
+    <div className="mt-7 rise-in">
       <p className="qs-section-label">how are you arriving today?</p>
-      <div className="mt-4 grid grid-cols-5 gap-2">
-        {MOOD_ORBS.map((o) => {
-          const on = selected === o.score;
-          const Icon = MOOD_ICONS[o.word] ?? Cloud;
-          return (
-            <button
-              key={o.score}
-              type="button"
-              onClick={() => pick(o.score)}
-              aria-label={o.word}
-              aria-pressed={on}
-              className="flex flex-col items-center gap-1.5 rounded-2xl border px-1 py-2.5 outline-none transition focus-visible:ring-2 focus-visible:ring-primary/50"
-              style={on
-                ? { background: "var(--surface-selected)", borderColor: "var(--border-active)" }
-                : { background: "color-mix(in oklab, var(--card) 40%, transparent)", borderColor: "var(--border-subtle)" }}
-            >
-              <Icon className="h-4 w-4" strokeWidth={1.7} style={{ color: on ? "var(--accent-primary)" : "var(--text-secondary)" }} />
-              <span className="text-[10.5px] leading-none" style={{ color: on ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: on ? 600 : 400 }}>
-                {o.word}
-              </span>
-            </button>
-          );
-        })}
+      {/* THE LAMP-DIAL — five stops on one brass hairline, heavy to bright.
+          Same 5-point logMood contract, same AI follow-up questions. */}
+      <div className="relative mt-5" role="radiogroup" aria-label="How are you arriving today">
+        <span
+          aria-hidden
+          className="absolute left-[10%] right-[10%] top-[21px] h-px"
+          style={{ background: "color-mix(in oklab, var(--ember) 35%, transparent)" }}
+        />
+        <div className="relative grid grid-cols-5">
+          {MOOD_ORBS.map((o) => {
+            const on = selected === o.score;
+            const Icon = MOOD_ICONS[o.word] ?? Cloud;
+            return (
+              <button
+                key={o.score}
+                type="button"
+                onClick={() => pick(o.score)}
+                role="radio"
+                aria-checked={on}
+                aria-label={o.word}
+                className="group flex min-h-[44px] flex-col items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-lg py-1"
+              >
+                <span
+                  className="flex h-[42px] w-[42px] items-center justify-center rounded-full border transition"
+                  style={on
+                    ? { background: "color-mix(in oklab, var(--lamp) 22%, var(--card))", borderColor: "color-mix(in oklab, var(--lamp) 60%, transparent)", boxShadow: "0 0 14px color-mix(in oklab, var(--lamp) 35%, transparent)" }
+                    : { background: "var(--card)", borderColor: "color-mix(in oklab, var(--paper-shadow) 14%, transparent)" }}
+                >
+                  <Icon className="h-4 w-4" strokeWidth={1.7} style={{ color: on ? "var(--lamp)" : "var(--text-secondary)" }} />
+                </span>
+                <span className="text-[10.5px] leading-none" style={{ color: on ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: on ? 600 : 400 }}>
+                  {o.word}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
       {chosen && (
         <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4 fade-in">

@@ -143,6 +143,7 @@ function Journal() {
   // ---- Autosave editor ----
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [savingNow, setSavingNow] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const currentIdRef = useRef<string | null>(null);
   useEffect(() => { currentIdRef.current = editing?.id ?? null; }, [editing?.id]);
 
@@ -165,15 +166,20 @@ function Journal() {
         }}) as { id?: string } | undefined;
         if (res?.id && !currentIdRef.current) currentIdRef.current = res.id;
         setSavedAt(Date.now());
+        setSaveFailed(false);
         track("journal_entry_autosaved");
         qc.invalidateQueries({ queryKey: ["journal"] });
-      } catch { /* silent — will retry on next change */ }
+      } catch {
+        // Not silent anymore — an honest clay margin note; retry happens on
+        // the next keystroke's debounce as before.
+        setSaveFailed(true);
+      }
       finally { setSavingNow(false); }
     }, 1200);
     return () => clearTimeout(t);
   }, [editing, save, qc]);
 
-  const savedLabel = savingNow ? "saving…" : savedAt ? "saved a moment ago" : "nothing saved yet";
+  const savedLabel = savingNow ? "keeping…" : savedAt ? "kept · a moment ago" : "nothing kept yet";
 
   // Month-grouped timeline. MUST live above the editor's early return —
   // hooks after a conditional return break React's hook ordering the
@@ -193,25 +199,39 @@ function Journal() {
     <div className="motion-calm mx-auto max-w-2xl px-5 py-8 sm:px-8">
       <div className="flex items-center justify-between">
         <button onClick={() => setEditing(null)} className="text-sm text-muted-foreground">← back to the vault</button>
-        <span className="text-[11px] italic text-muted-foreground">{savedLabel}</span>
+        <span className="margin-note italic">{savedLabel}</span>
       </div>
-      <div className="parchment mt-5 p-5 sm:p-7">
-        <p className="font-serif italic text-sm text-muted-foreground">
+      {saveFailed && (
+        <p className="margin-note margin-note--error mt-3" role="status">
+          this page didn't keep — trying again as you write.
+        </p>
+      )}
+      {/* THE PAGE — the app's one paper surface: ink on warm paper, the only
+          drop shadow in the room. The prompt sits as faint pencil marginalia. */}
+      <div
+        className="mt-5 rounded-[4px] p-5 sm:p-7"
+        style={{
+          background: "var(--paper)",
+          color: "var(--ink)",
+          boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)",
+        }}
+      >
+        <p className="font-serif italic text-sm" style={{ color: "color-mix(in oklab, var(--ink) 55%, var(--paper))" }}>
           {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </p>
         {editing.mode.key !== "free" && (
-          <p className="mt-1 font-serif italic text-[13px] text-muted-foreground/80">{editing.mode.whisper}</p>
+          <p className="mt-1 font-serif italic text-[13px]" style={{ color: "color-mix(in oklab, var(--ink) 45%, var(--paper))" }}>{editing.mode.whisper}</p>
         )}
         <Input
           aria-label="Journal entry title"
-          className="mt-3 h-12 rounded-xl border-transparent bg-transparent text-xl font-serif focus-visible:border-border/60"
+          className="mt-3 h-12 rounded-md border-transparent bg-transparent font-serif text-xl text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_35%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
           placeholder="a title, if you'd like…"
           value={editing.title}
           onChange={e => setEditing({ ...editing, title: e.target.value })}
         />
         <Textarea
           aria-label="Journal entry body"
-          className="mt-2 min-h-[420px] rounded-xl border-transparent bg-transparent text-base leading-[1.75] focus-visible:border-border/60"
+          className="font-reading mt-2 min-h-[420px] rounded-md border-transparent bg-transparent text-[17px] leading-[1.75] text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_35%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
           placeholder={editing.mode.placeholder}
           value={editing.body}
           onChange={e => setEditing({ ...editing, body: e.target.value })}
@@ -257,65 +277,84 @@ function Journal() {
       <span aria-hidden className="qs-firefly" style={{ top: "22%", left: "6%", pointerEvents: "none" }} />
 
       <p className="qs-section-label">your private vault</p>
-      <div className="mt-3 flex items-end justify-between gap-4">
-        <h1 className="font-serif text-3xl font-light leading-tight tracking-tight sm:text-[2.4rem]">Journal</h1>
-        <button className="qs-pill-cta" onClick={() => start(FREE_MODE)}>
-          <Feather className="h-4 w-4" strokeWidth={1.7} /> Begin tonight's page
-        </button>
-      </div>
-      <p className="mt-2 font-serif italic text-[15px] leading-relaxed text-muted-foreground">
-        a page that's only yours
-      </p>
-      <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-muted-foreground/80">
-        yours alone. autosaves as you write. delete anytime.
+      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight sm:text-[2.4rem]">Journal</h1>
+      <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-muted-foreground">
+        yours alone. keeps itself as you write. let any page go, anytime.
       </p>
 
-      <div className="mt-8">
-        <p className="qs-section-label">or begin with a shape</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {MODES.map(m => (
-            <button
-              key={m.key}
-              onClick={() => start(m)}
-              className="glass rounded-2xl px-4 py-3.5 text-left transition hover:bg-card/60"
-            >
-              <p className="font-serif text-[15px] leading-snug">{m.label}</p>
-              <p className="mt-1 text-xs italic leading-relaxed text-muted-foreground">{m.whisper}</p>
-            </button>
-          ))}
-        </div>
+      {/* TONIGHT'S PAGE — already waiting under the lamp. One tap begins. */}
+      <div className="relative mt-7">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-6"
+          style={{ background: "radial-gradient(24rem 12rem at 50% 40%, color-mix(in oklab, var(--lamp) 9%, transparent), transparent 70%)" }}
+        />
+        <button
+          onClick={() => start(FREE_MODE)}
+          className="relative block w-full rounded-[4px] px-6 py-7 text-left transition hover:-translate-y-0.5"
+          style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)" }}
+        >
+          <p className="font-serif italic text-sm" style={{ color: "color-mix(in oklab, var(--ink) 55%, var(--paper))" }}>
+            {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+          </p>
+          <p className="font-reading mt-2 text-[17px]" style={{ color: "color-mix(in oklab, var(--ink) 40%, var(--paper))" }}>
+            tonight's page is waiting…
+          </p>
+          <p className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--ember)" }}>
+            <Feather className="h-3.5 w-3.5" strokeWidth={1.7} /> begin writing
+          </p>
+        </button>
       </div>
+
+      {/* the shapes, demoted to a line of ink whispers */}
+      <p className="mt-5 text-[13px] leading-[1.9] text-muted-foreground">
+        or begin with a shape:{" "}
+        {MODES.filter(m => m.key !== "free").map((m, i, arr) => (
+          <span key={m.key}>
+            <button
+              onClick={() => start(m)}
+              className="underline decoration-transparent underline-offset-4 transition hover:decoration-current hover:text-foreground"
+              title={m.whisper}
+            >
+              {m.label.toLowerCase()}
+            </button>
+            {i < arr.length - 1 ? " · " : ""}
+          </span>
+        ))}
+      </p>
 
       <div className="mt-10">
         {entries?.length ? (
           <>
             <p className="qs-section-label">pages you've kept</p>
+            {/* THE LEDGER — ruled rows, date hung in the margin, "let it go"
+                always visible (hover-only delete fails on touch). */}
             <ol className="mt-4 space-y-8">
               {grouped.map(([month, items]) => (
-                <li key={month} className="space-y-3">
-                  <p className="font-serif italic text-sm text-muted-foreground/80">{month}</p>
-                  <ul className="space-y-3">
+                <li key={month} className="space-y-1">
+                  <p className="font-serif italic text-sm text-muted-foreground">{month}</p>
+                  <ul>
                     {items!.map(e => {
                       const mode = detectMode(e.title);
                       return (
-                        <li key={e.id} className="group relative">
+                        <li
+                          key={e.id}
+                          className="flex items-start gap-3 border-t py-3.5"
+                          style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
+                        >
+                          <span className="w-12 shrink-0 pt-0.5 text-right text-[11px] tabular-nums text-muted-foreground">
+                            {new Date(e.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </span>
                           <button
-                            className="glass block w-full rounded-2xl px-4 py-3.5 text-left transition hover:bg-card/60"
+                            className="min-w-0 flex-1 text-left"
                             onClick={() => { start(mode ?? FREE_MODE, e.id, e.title ?? "", e.body); setSavedAt(Date.now()); }}
                           >
-                            {mode && (
-                              <span className="qs-chip pointer-events-none mb-1.5 inline-flex text-[10px]">
-                                {mode.label.toLowerCase()}
-                              </span>
-                            )}
                             <p className={`font-serif text-base leading-snug ${privacy ? "blur-sm select-none" : ""}`}>
                               {e.title || (e.body.split("\n")[0].slice(0, 60) || "untitled")}
+                              {mode && <span className="ml-2 align-middle text-[11px] font-sans italic text-muted-foreground">· {mode.label.toLowerCase()}</span>}
                             </p>
-                            <p className={`mt-1 text-xs leading-relaxed text-muted-foreground line-clamp-1 ${privacy ? "blur-sm select-none" : ""}`}>
+                            <p className={`mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground line-clamp-1 ${privacy ? "blur-sm select-none" : ""}`}>
                               {e.body}
-                            </p>
-                            <p className="mt-1 text-[11px] text-muted-foreground/70">
-                              {new Date(e.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                             </p>
                           </button>
                           <button
@@ -324,8 +363,8 @@ function Journal() {
                               await del({ data: { id: e.id } });
                               qc.invalidateQueries({ queryKey: ["journal"] });
                             }}
-                            className="absolute right-3 top-3 hidden items-center gap-1 rounded-full px-2 py-1 text-[11px] italic text-muted-foreground transition hover:text-foreground group-hover:inline-flex"
-                            aria-label="delete entry"
+                            className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] italic text-muted-foreground/80 transition hover:text-foreground"
+                            aria-label={`Let go of entry: ${e.title || "untitled"}`}
                           >
                             <Trash2 className="h-3 w-3" strokeWidth={1.7} /> let it go
                           </button>
@@ -338,10 +377,9 @@ function Journal() {
             </ol>
           </>
         ) : (
-          <div className="parchment px-6 py-10 text-center">
-            <p className="font-serif text-xl leading-snug">Your Vault is quiet.</p>
-            <p className="mt-2 font-serif italic text-sm text-muted-foreground">Write one honest line.</p>
-            <button className="qs-pill-cta mt-6" onClick={() => start(FREE_MODE)}>Begin tonight's page</button>
+          <div className="mt-2 px-6 py-8 text-center">
+            <p className="font-serif text-xl font-light leading-snug">no pages yet — the desk is ready.</p>
+            <p className="mt-2 font-serif italic text-sm text-muted-foreground">one honest line is a whole beginning.</p>
           </div>
         )}
       </div>
