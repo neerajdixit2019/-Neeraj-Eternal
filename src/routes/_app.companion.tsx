@@ -966,7 +966,7 @@ function Companion() {
                 status={sendStatus}
                 disabled={!draft.trim() && sendStatus === "ready"}
                 onStop={() => { abortRef.current?.abort(); }}
-                className="h-9 w-9 rounded-full bg-[linear-gradient(140deg,var(--violet),color-mix(in_oklab,var(--violet)_72%,oklch(0.52_0.14_305)))] text-[oklch(0.975_0.008_290)] shadow-[0_12px_26px_-14px_color-mix(in_oklab,var(--violet)_70%,transparent)] hover:brightness-110"
+                className="h-9 w-9 rounded-full bg-[linear-gradient(170deg,color-mix(in_oklab,var(--lamp)_94%,white),var(--lamp)_45%,var(--ember))] text-[color:var(--ink)] shadow-[0_12px_26px_-14px_color-mix(in_oklab,var(--lamp)_70%,transparent)] hover:brightness-110"
               >
                 {sendStatus === "ready" ? <ArrowUp className="h-4 w-4" strokeWidth={1.7} /> : null}
               </PromptInputSubmit>

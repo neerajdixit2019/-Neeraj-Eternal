@@ -1,11 +1,10 @@
-import "@fontsource/sora/400.css";
-import "@fontsource/sora/500.css";
-import "@fontsource/sora/600.css";
-import "@fontsource/sora/700.css";
-import "@fontsource/manrope/300.css";
-import "@fontsource/manrope/400.css";
-import "@fontsource/manrope/500.css";
-import "@fontsource/manrope/600.css";
+// The Lamplit Study type stack, bundled locally — no Google Fonts requests
+// leave the app (privacy-first). Fraunces = letterpress display, Newsreader =
+// reading prose, Spline Sans = UI utility.
+import "@fontsource-variable/fraunces/index.css";
+import "@fontsource-variable/newsreader/index.css";
+import "@fontsource-variable/newsreader/opsz-italic.css";
+import "@fontsource-variable/spline-sans/index.css";
 import { QueryCache, MutationCache, QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";

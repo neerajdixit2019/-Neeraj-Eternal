@@ -56,8 +56,8 @@ function HeartMark({ size = 26 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
       <defs>
         <linearGradient id="hm" x1="0" y1="0" x2="24" y2="24">
-          <stop offset="0%" stopColor="oklch(0.72 0.11 300)" />
-          <stop offset="100%" stopColor="oklch(0.62 0.13 288)" />
+          <stop offset="0%" stopColor="oklch(0.80 0.11 75)" />
+          <stop offset="100%" stopColor="oklch(0.63 0.105 65)" />
         </linearGradient>
       </defs>
       <path d="M12 20.5c-.4 0-.8-.15-1.1-.43C6.3 15.9 3.5 13.3 3.5 9.9 3.5 7.4 5.4 5.5 7.8 5.5c1.5 0 2.9.7 3.7 1.9l.5.7.5-.7c.8-1.2 2.2-1.9 3.7-1.9 2.4 0 4.3 1.9 4.3 4.4 0 3.4-2.8 6-7.4 10.17-.3.28-.7.43-1.1.43Z" fill="url(#hm)" />
@@ -130,7 +130,7 @@ function Landing() {
               <article key={v.title} className="rounded-3xl border p-6"
                 style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--surface-primary, var(--card)) 55%, transparent)" }}>
                 <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "color-mix(in oklab, var(--violet) 18%, transparent)" }}>
-                  <v.icon className="h-5 w-5" strokeWidth={1.7} style={{ color: "oklch(0.82 0.08 295)" }} />
+                  <v.icon className="h-5 w-5" strokeWidth={1.7} style={{ color: "oklch(0.82 0.09 75)" }} />
                 </span>
                 <h3 className="mt-4 text-[17px] font-semibold text-foreground">{v.title}</h3>
                 <p className="mt-2 text-[14.5px] leading-relaxed text-secondary-foreground">{v.body}</p>

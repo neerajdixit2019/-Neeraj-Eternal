@@ -11,8 +11,10 @@
  */
 
 @theme inline {
-  --font-serif: 'Fraunces', ui-serif, Georgia, serif;
-  --font-sans: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Fraunces Variable', 'Fraunces', ui-serif, Georgia, serif;
+  --font-sans: 'Spline Sans Variable', 'Spline Sans', ui-sans-serif, system-ui, sans-serif;
+  /* Reading prose — InnerMate's replies, letters, journal rendering. Ink, not UI. */
+  --font-reading: 'Newsreader Variable', 'Newsreader', 'Iowan Old Style', Georgia, serif;
   --font-display: 'Fraunces', ui-serif, Georgia, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -66,42 +68,55 @@
 }
 
 :root {
-  --radius: 1rem;
-  /* Inner Universe — midnight navy with warm violet presence and dawn-gold warmth.
-     The old forest variable NAMES are kept (they thread the whole codebase);
-     their VALUES now speak night sky. */
-  --forest-deep: oklch(0.165 0.030 272);         /* deep midnight navy */
-  --forest-mid:  oklch(0.235 0.038 276);         /* indigo surface */
-  --moss:        oklch(0.560 0.085 290);         /* muted violet (structural accent) */
-  --dawn:        oklch(0.860 0.060 85);          /* warm dawn gold (secondary accent) */
-  --violet:      oklch(0.640 0.120 292);         /* warm violet (primary accent) */
-  --mist:        oklch(0.95 0.010 280 / 0.06);
+  --radius: 0.5rem;
+  /* THE LAMPLIT STUDY — a private writing room at night: indigo-slate walls,
+     one warm brass lamp, ink on good paper. The legacy variable NAMES are
+     kept (they thread the whole codebase); their VALUES now speak the room.
+     Color contract: brass = understanding & action · dawnline = steadiness ·
+     deodar = the user's voice · clay = the door to help. */
+  --forest-deep: oklch(0.205 0.024 268);         /* NIGHTWALL  ≈ #141824 */
+  --forest-mid:  oklch(0.250 0.026 266);         /* WALL SHADE ≈ #1B2130 — matte plaster */
+  --moss:        oklch(0.600 0.095 68);          /* muted brass (structural accent) */
+  --dawn:        oklch(0.860 0.060 85);          /* pale gold — stars, letters, kept things */
+  --violet:      oklch(0.760 0.115 72);          /* LAMPLIGHT ≈ #E2A14E — the rationed amber */
+  --mist:        oklch(0.95 0.012 85 / 0.06);
   --background: var(--forest-deep);
-  --foreground: oklch(0.95 0.011 285);           /* soft starlight ink */
+  --foreground: oklch(0.915 0.020 85);           /* LAMPLIT TEXT ≈ #EAE3D2 — warm, never cold */
   --card: var(--forest-mid);
-  --card-foreground: oklch(0.95 0.011 285);
+  --card-foreground: oklch(0.915 0.020 85);
   --popover: var(--forest-mid);
-  --popover-foreground: oklch(0.95 0.011 285);
-  --primary: var(--violet);                      /* violet = primary action */
-  --primary-foreground: oklch(0.975 0.008 290);
-  --secondary: oklch(0.29 0.036 278);
-  --secondary-foreground: oklch(0.95 0.011 285);
-  --muted: oklch(0.27 0.034 278);
-  --muted-foreground: oklch(0.795 0.024 285);    /* readable indigo mist — AA on navy */
+  --popover-foreground: oklch(0.915 0.020 85);
+  --primary: var(--violet);                      /* lamplight = the one primary action */
+  --primary-foreground: oklch(0.230 0.018 80);   /* iron-gall ink on brass */
+  --secondary: oklch(0.285 0.026 265);
+  --secondary-foreground: oklch(0.915 0.020 85);
+  --muted: oklch(0.265 0.025 265);
+  --muted-foreground: oklch(0.745 0.022 85);     /* WHISPER — warm grey, AA-floored */
   --accent: var(--moss);
-  --accent-foreground: oklch(0.96 0.010 290);
-  --destructive: oklch(0.62 0.16 28);
-  --destructive-foreground: oklch(0.96 0.012 95);
-  --border: oklch(1 0 0 / 0.10);
-  --input: oklch(1 0 0 / 0.12);
-  --ring: oklch(0.70 0.10 292);
-  /* Emotion accents — tuned to the reference emotional palette */
-  --lavender: oklch(0.720 0.058 295);            /* soft lavender */
-  --sand:     oklch(0.860 0.045 85);             /* parchment */
-  --sky:      oklch(0.710 0.065 245);            /* clarity blue */
-  --rose:     oklch(0.720 0.095 15);             /* pink-coral (relationship) */
-  --amber:    oklch(0.810 0.090 75);             /* warm amber (confidence) */
-  --mint:     oklch(0.730 0.070 175);            /* calm green-teal */
+  --accent-foreground: oklch(0.945 0.018 85);
+  --destructive: oklch(0.565 0.115 32);          /* CLAY ≈ #B65441 — dignified, not alarm */
+  --destructive-foreground: oklch(0.96 0.014 85);
+  --border: oklch(0.92 0.02 85 / 0.11);
+  --input: oklch(0.92 0.02 85 / 0.13);
+  --ring: oklch(0.630 0.105 65);                 /* EMBER — focus & pressed states */
+  /* Emotion accents — retuned to the study's contract */
+  --lavender: oklch(0.720 0.042 240);            /* dawnline-soft (sadness, reflection) */
+  --sand:     oklch(0.880 0.028 85);             /* paper shadow */
+  --sky:      oklch(0.685 0.048 240);            /* DAWNLINE ≈ #7E9DB5 — steadiness */
+  --rose:     oklch(0.665 0.090 30);             /* clay-soft (relationship, anger's edge) */
+  --amber:    oklch(0.810 0.090 75);             /* warm amber (confidence, gratitude) */
+  --mint:     oklch(0.600 0.052 148);            /* DEODAR-soft ≈ #55704F — the user's voice */
+  /* The study's own words — new tokens for the phases ahead */
+  --paper:        oklch(0.930 0.024 85);         /* what the user writes on ≈ #F2E9D8 */
+  --paper-night:  oklch(0.850 0.028 85);         /* dimmed page for late hours / heavy moods */
+  --paper-shadow: oklch(0.880 0.028 85);
+  --ink:          oklch(0.245 0.014 80);         /* iron-gall ≈ #2A2620 */
+  --clay:         oklch(0.565 0.115 32);
+  --deodar:       oklch(0.500 0.055 148);
+  --dawnline:     oklch(0.685 0.048 240);
+  --moth:         oklch(0.845 0.010 260);        /* starlight — Insights & Memories windows only */
+  --lamp:         var(--violet);
+  --ember:        oklch(0.630 0.105 65);
 
   /* ── Semantic token layer (redesign vocabulary; aliases over the palette) ── */
   --background-primary: var(--forest-deep);
@@ -363,6 +378,7 @@
   }
 
   .font-serif { font-family: var(--font-serif); }
+  .font-reading { font-family: var(--font-reading); }
   h1, h2, h3 {
     font-family: var(--font-serif);
     font-weight: 400;
@@ -376,21 +392,17 @@
 }
 
 @layer utilities {
+  /* WALL SHADE — matte plaster. Glassmorphism is retired: no blur, no heavy
+     shadow. Depth comes from the lamplight pool and hairline rules. */
   .glass {
-    background: color-mix(in oklab, var(--card) 62%, transparent);
-    backdrop-filter: blur(22px) saturate(120%);
-    border: 1px solid color-mix(in oklab, #ffffff 8%, transparent);
-    box-shadow: 0 24px 60px -28px oklch(0 0 0 / 0.55);
+    background: color-mix(in oklab, var(--card) 88%, var(--background));
+    border: 1px solid color-mix(in oklab, var(--paper-shadow) 12%, transparent);
   }
   .tactile {
     padding: 1.5rem;
-    background: color-mix(in oklab, var(--card) 66%, transparent);
-    backdrop-filter: blur(20px) saturate(120%);
-    border: 1px solid color-mix(in oklab, #ffffff 7%, transparent);
-    box-shadow:
-      0 1px 0 color-mix(in oklab, #ffffff 8%, transparent) inset,
-      0 28px 70px -32px oklch(0 0 0 / 0.6);
-    border-radius: 2rem;
+    background: color-mix(in oklab, var(--card) 90%, var(--background));
+    border: 1px solid color-mix(in oklab, var(--paper-shadow) 11%, transparent);
+    border-radius: 8px;
   }
   .tactile-tint-rose     { background: linear-gradient(145deg, color-mix(in oklab, var(--rose)     18%, var(--card)) 0%, color-mix(in oklab, var(--card) 92%, transparent) 100%); border-color: color-mix(in oklab, var(--rose)  20%, transparent); }
   .tactile-tint-sky      { background: linear-gradient(145deg, color-mix(in oklab, var(--sky)      16%, var(--card)) 0%, color-mix(in oklab, var(--card) 92%, transparent) 100%); border-color: color-mix(in oklab, var(--sky)   18%, transparent); }
@@ -654,26 +666,27 @@
   .qs-chip--active {
     background: color-mix(in oklab, var(--violet) 16%, transparent);
     border-color: color-mix(in oklab, var(--violet) 50%, transparent);
-    color: oklch(0.84 0.07 292);
+    color: oklch(0.86 0.075 78); /* lamplit selection text */
     font-weight: 600;
   }
 
-  /* Primary pill CTA — warm violet gradient, the one primary action per screen */
+  /* THE DOORWAY — the one brass primary action per screen. Lintel silhouette
+     (arched top, grounded base): the study's ownable shape. */
   .qs-pill-cta {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 9999px;
-    padding: 0.85rem 1.4rem;
+    border-radius: 20px 20px 8px 8px;
+    padding: 0.85rem 1.5rem;
     font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 600;
-    color: oklch(0.975 0.008 290);
-    background: linear-gradient(140deg, var(--violet), color-mix(in oklab, var(--violet) 72%, oklch(0.52 0.14 305)));
-    box-shadow: 0 16px 34px -16px color-mix(in oklab, var(--violet) 65%, transparent);
+    color: var(--ink);
+    background: linear-gradient(170deg, color-mix(in oklab, var(--lamp) 94%, white), var(--lamp) 45%, var(--ember));
+    box-shadow: 0 14px 30px -16px color-mix(in oklab, var(--lamp) 60%, transparent);
     cursor: pointer;
-    transition: transform 220ms cubic-bezier(.22,.61,.36,1), filter 220ms ease, box-shadow 240ms ease;
+    transition: transform 220ms cubic-bezier(.32,0,.16,1), filter 220ms ease, box-shadow 240ms ease;
   }
   .qs-pill-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
   .qs-pill-cta:active { transform: scale(0.98); }

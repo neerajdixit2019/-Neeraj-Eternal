@@ -87,12 +87,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "preload", as: "image", href: "/night-mountains.jpg", type: "image/jpeg" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..600,30..100&family=Inter+Tight:wght@400;500;600&display=swap",
-      },
+      // Fonts are bundled via @fontsource (see router.tsx) — no requests to
+      // Google leave the app. Privacy-first, and faster on first paint.
     ],
     scripts: [
       {

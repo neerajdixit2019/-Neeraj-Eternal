@@ -1,16 +1,15 @@
 /**
- * The InnerMate companion — a soft cloud presence from the reference
- * illustration universe. Deliberately restrained: serene closed eyes, the
- * gentlest mouth, no big grin (the references' childish smiles were flagged
- * in the audit; this is the matured version).
+ * The InnerMate presence — re-skinned for The Lamplit Study as an abstract
+ * LAMP-GLOW: a soft radial warmth over a faint wick line. No face, no body,
+ * no mascot (per the approved direction's hard bans). The component name and
+ * API are kept so every call site survives unchanged.
  *
- * States map to what the moment needs:
- *   calm      — resting, eyes closed, soft breath (default)
- *   listening — eyes open, attentive
- *   thinking  — eyes closed, slight tilt
- *   steady    — protective, level gaze (no-impulse / safety adjacent)
- * Pure SVG, no assets; breathing uses the shared motion rules and respects
- * reduced motion via .motion-calm ancestors and the media query.
+ * States modulate the light, not a character:
+ *   calm      — resting glow, slow breath (default)
+ *   listening — the flame stands a little taller and brighter
+ *   thinking  — the glow leans, gently unsettled
+ *   steady    — full, still brightness; the lamp holding for you
+ * Breathing respects reduced motion via the motion-safe gate.
  */
 
 type CloudState = "calm" | "listening" | "thinking" | "steady";
@@ -26,28 +25,15 @@ export function CompanionCloud({
   glow?: boolean;
   className?: string;
 }) {
-  const eyes =
-    state === "listening" || state === "steady" ? (
-      <>
-        <circle cx="38" cy="46" r="2.4" fill="oklch(0.22 0.04 285)" />
-        <circle cx="58" cy="46" r="2.4" fill="oklch(0.22 0.04 285)" />
-        <circle cx="38.8" cy="45.2" r="0.7" fill="oklch(0.95 0.01 290)" />
-        <circle cx="58.8" cy="45.2" r="0.7" fill="oklch(0.95 0.01 290)" />
-      </>
-    ) : (
-      <>
-        {/* closed, serene */}
-        <path d="M34.5 46 q3.5 2.8 7 0" stroke="oklch(0.22 0.04 285)" strokeWidth="1.8" strokeLinecap="round" fill="none" />
-        <path d="M54.5 46 q3.5 2.8 7 0" stroke="oklch(0.22 0.04 285)" strokeWidth="1.8" strokeLinecap="round" fill="none" />
-      </>
-    );
+  // Flame geometry per state — height, brightness, lean.
+  const flame =
+    state === "listening" ? { h: 30, coreOpacity: 1, lean: 0 }
+    : state === "thinking" ? { h: 26, coreOpacity: 0.9, lean: -3.5 }
+    : state === "steady" ? { h: 28, coreOpacity: 1, lean: 0 }
+    : { h: 24, coreOpacity: 0.85, lean: 0 };
 
-  const mouth =
-    state === "steady" ? (
-      <path d="M45 55.5 h6" stroke="oklch(0.30 0.05 290)" strokeWidth="1.6" strokeLinecap="round" />
-    ) : (
-      <path d="M44.5 55 q3.5 2.4 7 0" stroke="oklch(0.30 0.05 290)" strokeWidth="1.6" strokeLinecap="round" fill="none" />
-    );
+  // The steady lamp does not breathe — it holds still for you.
+  const breathing = state === "steady" ? "" : "motion-safe:animate-[qs-breathe_7s_ease-in-out_infinite]";
 
   return (
     <span
@@ -57,42 +43,49 @@ export function CompanionCloud({
     >
       {glow && (
         <span
-          className="absolute inset-[-18%] rounded-full blur-xl"
-          style={{ background: "radial-gradient(circle at 50% 55%, color-mix(in oklab, var(--violet) 34%, transparent), transparent 70%)" }}
+          className={`absolute inset-[-16%] rounded-full blur-xl ${breathing}`}
+          style={{
+            background:
+              "radial-gradient(circle at 50% 58%, color-mix(in oklab, var(--lamp) 38%, transparent), color-mix(in oklab, var(--lamp) 10%, transparent) 55%, transparent 72%)",
+          }}
         />
       )}
       <svg
         viewBox="0 0 96 78"
         width={size}
         height={size * 0.8125}
-        className="relative motion-safe:animate-[qs-breathe_7s_ease-in-out_infinite]"
-        style={state === "thinking" ? { transform: "rotate(-3deg)" } : undefined}
+        className={`relative ${breathing}`}
       >
         <defs>
-          <radialGradient id="cc-body" cx="42%" cy="30%" r="85%">
-            <stop offset="0%" stopColor="oklch(0.72 0.09 292)" />
-            <stop offset="55%" stopColor="oklch(0.58 0.11 290)" />
-            <stop offset="100%" stopColor="oklch(0.44 0.10 286)" />
+          <radialGradient id="lampCore" cx="50%" cy="62%" r="55%">
+            <stop offset="0%" stopColor="oklch(0.93 0.07 85)" />
+            <stop offset="45%" stopColor="oklch(0.80 0.11 72)" />
+            <stop offset="100%" stopColor="oklch(0.63 0.105 65 / 0)" />
+          </radialGradient>
+          <radialGradient id="lampHalo" cx="50%" cy="58%" r="70%">
+            <stop offset="0%" stopColor="oklch(0.76 0.115 72 / 0.5)" />
+            <stop offset="100%" stopColor="oklch(0.76 0.115 72 / 0)" />
           </radialGradient>
         </defs>
-        {/* cloud body: one soft mass, three lobes */}
-        <path
-          d="M22 62
-             C 10 62, 6 50, 14 43
-             C 10 32, 22 24, 31 28
-             C 34 16, 52 13, 59 23
-             C 70 18, 84 26, 82 38
-             C 92 42, 92 56, 80 60
-             C 76 66, 66 68, 60 64
-             C 52 70, 36 70, 30 64
-             C 27 65, 24 64, 22 62 Z"
-          fill="url(#cc-body)"
-        />
-        {/* soft cheeks, barely there */}
-        <ellipse cx="31" cy="52" rx="4" ry="2.4" fill="oklch(0.72 0.10 20 / 0.28)" />
-        <ellipse cx="65" cy="52" rx="4" ry="2.4" fill="oklch(0.72 0.10 20 / 0.28)" />
-        {eyes}
-        {mouth}
+
+        {/* halo */}
+        <ellipse cx="48" cy="44" rx="34" ry="30" fill="url(#lampHalo)" />
+
+        {/* the flame — a soft teardrop of light */}
+        <g transform={`rotate(${flame.lean} 48 52)`}>
+          <path
+            d={`M48 ${52 - flame.h}
+               C 55 ${52 - flame.h * 0.45}, 57 ${52 - flame.h * 0.16}, 48 56
+               C 39 ${52 - flame.h * 0.16}, 41 ${52 - flame.h * 0.45}, 48 ${52 - flame.h} Z`}
+            fill="url(#lampCore)"
+            opacity={flame.coreOpacity}
+          />
+        </g>
+
+        {/* the wick line — the etching's single stroke */}
+        <line x1="48" y1="56" x2="48" y2="61" stroke="oklch(0.42 0.03 75)" strokeWidth="1.5" strokeLinecap="round" />
+        {/* the lamp's lip — a faint brass hairline */}
+        <path d="M39 62.5 q9 4 18 0" stroke="oklch(0.63 0.105 65 / 0.55)" strokeWidth="1.5" strokeLinecap="round" fill="none" />
       </svg>
     </span>
   );
