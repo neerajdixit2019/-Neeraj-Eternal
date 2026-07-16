@@ -152,9 +152,13 @@ function Landing() {
                   ))}
                   {PREVIEW_STARS.map((s, i) => (
                     <g key={i}>
-                      <circle cx={s.x} cy={s.y} r={s.r} fill="var(--moth)" opacity="0.85">
-                        <animate attributeName="opacity" values="0.55;1;0.55" dur="4.5s" begin={`${i * 0.6}s`} repeatCount="indefinite" />
-                      </circle>
+                      {/* CSS animation, not SMIL — SMIL ignores the reduced-motion
+                          setting; this class variant honours it. */}
+                      <circle
+                        cx={s.x} cy={s.y} r={s.r} fill="var(--moth)" opacity="0.85"
+                        className="motion-safe:animate-[qs-svg-twinkle_4.5s_ease-in-out_infinite]"
+                        style={{ animationDelay: `${i * 0.6}s` }}
+                      />
                       {s.label && <text x={s.x} y={s.y + s.r + 4} textAnchor="middle" fontSize="3.2" fill="oklch(0.8 0.03 290)" fontStyle="italic">{s.label}</text>}
                     </g>
                   ))}
@@ -170,7 +174,7 @@ function Landing() {
           <ol className="mt-5">
             {STEPS.map((s) => (
               <li key={s.n} className="grid grid-cols-[3rem_1fr] gap-4 border-t py-5" style={{ borderColor: "var(--border-subtle)" }}>
-                <p aria-hidden className="pt-0.5 font-serif text-[13px]" style={{ color: "color-mix(in oklab, var(--lamp) 60%, transparent)" }}>{s.n}</p>
+                <p aria-hidden className="pt-0.5 font-serif text-[13px]" style={{ color: "color-mix(in oklab, var(--lamp) 82%, transparent)" }}>{s.n}</p>
                 <div>
                   <h3 className="text-[16px] font-semibold text-foreground">{s.title}</h3>
                   <p className="mt-1.5 max-w-lg text-[14px] leading-relaxed text-secondary-foreground">{s.body}</p>

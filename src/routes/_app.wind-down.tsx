@@ -52,12 +52,15 @@ function WindDown() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background px-6 text-center">
+      {/* the drawn window at night — no photograph, no third sky: the same
+          nightwall the whole study lives in, with one dawnline horizon */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "linear-gradient(180deg, color-mix(in oklab, var(--background) 68%, transparent) 0%, color-mix(in oklab, var(--background) 90%, transparent) 100%), url(/night-sky.jpg) center / cover no-repeat",
+            "radial-gradient(120% 80% at 50% 112%, color-mix(in oklab, var(--dawnline) 14%, transparent) 0%, transparent 55%)," +
+            "linear-gradient(185deg, oklch(0.145 0.028 268) 10%, oklch(0.16 0.03 274) 60%, oklch(0.185 0.028 280) 100%)",
         }}
       />
       <Link to="/home" className="absolute right-5 top-5 text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground">
@@ -65,7 +68,7 @@ function WindDown() {
       </Link>
       <div className="pointer-events-none absolute inset-x-0 top-7 px-16">
         <p className="qs-section-label">the anchor · for the end of the day</p>
-        <p className="mt-1.5 font-serif text-lg font-light text-foreground/80">Night reset</p>
+        <h1 className="mt-1.5 font-serif text-lg font-light text-foreground/80">Night reset</h1>
       </div>
 
       {phase === "breath" && (
@@ -90,6 +93,7 @@ function WindDown() {
           <Textarea
             value={line}
             onChange={(e) => setLine(e.target.value)}
+            aria-label="One thing to set down before sleep"
             placeholder="A sentence. Or none — that's allowed."
             maxLength={500}
             rows={3}

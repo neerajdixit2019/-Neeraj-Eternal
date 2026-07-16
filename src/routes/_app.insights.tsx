@@ -599,7 +599,7 @@ function NodePanel({
       <div className="mt-4 flex flex-wrap gap-2.5">
         <button type="button"
           onClick={() => onTalk(`${node.label} has come up in ${node.count} of my recent moments${mixLine ? ` (${mixLine})` : ""}${peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}. Does that feel accurate to explore together?`)}
-          className="qs-pill-cta" style={{ padding: "0.55rem 1.05rem", fontSize: "13px" }}>
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition hover:brightness-110" style={{ borderColor: "var(--border-active)", background: "color-mix(in oklab, var(--violet) 14%, transparent)", color: "var(--text-primary)" }}>
           <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> Explore with InnerMate
         </button>
         <Link to="/pattern/$tag" params={{ tag: node.label }}
@@ -646,7 +646,7 @@ function RevealCard({
         </p>
       )}
       <div className="mt-4 flex flex-wrap gap-2.5">
-        <button type="button" onClick={onExplore} className="qs-pill-cta" style={{ padding: "0.55rem 1.05rem", fontSize: "13px" }}>
+        <button type="button" onClick={onExplore} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition hover:brightness-110" style={{ borderColor: "var(--border-active)", background: "color-mix(in oklab, var(--violet) 14%, transparent)", color: "var(--text-primary)" }}>
           <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> Explore this with InnerMate
         </button>
         <button type="button" onClick={onSelectCenter}
@@ -722,10 +722,21 @@ function TimelineView({
             {points.map((p) => {
               const domEmotion = p.emotions[0];
               const tint = domEmotion ? tagTint(domEmotion) : "var(--mint)";
+              const when = new Date(p.iso).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+              const toggle = () => setOpenIso(openIso === p.iso ? null : p.iso);
               return (
                 <g key={p.iso}>
-                  <circle cx={xFor(p.iso)} cy={yFor(p.score)} r={10} fill="transparent"
-                    style={{ cursor: "pointer" }} onClick={() => setOpenIso(openIso === p.iso ? null : p.iso)} />
+                  {/* keyboard-reachable point: Enter/Space opens the same detail */}
+                  <circle
+                    cx={xFor(p.iso)} cy={yFor(p.score)} r={10} fill="transparent"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Check-in ${when}, feels ${WEIGHT_WORD(p.score)}`}
+                    aria-pressed={openIso === p.iso}
+                    style={{ cursor: "pointer" }}
+                    onClick={toggle}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } }}
+                  />
                   <circle cx={xFor(p.iso)} cy={yFor(p.score)} r={openIso === p.iso ? 5 : 3.4}
                     fill={`color-mix(in oklab, var(--moth) 68%, ${tint})`} opacity={0.9} pointerEvents="none" />
                 </g>
@@ -1071,7 +1082,11 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
       </TactileCard>
 
       <div className="mt-10 flex flex-col items-center">
-        <Link to="/home" className="qs-pill-cta">
+        <Link
+          to="/home"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13.5px] transition hover:brightness-110"
+          style={{ borderColor: "color-mix(in oklab, var(--dawn) 35%, transparent)", background: "color-mix(in oklab, var(--dawn) 8%, transparent)", color: "var(--dawn)" }}
+        >
           <Sparkles className="h-4 w-4" strokeWidth={1.7} />
           Open your letter from the moon cycle
         </Link>

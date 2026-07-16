@@ -281,7 +281,14 @@
     filter: blur(10px);
     opacity: 0.85;
     pointer-events: none;
-    animation: mistDrift 90s ease-in-out infinite alternate;
+  }
+  /* The mist drifts only when the user's own background-animation toggle is
+     on AND the OS allows motion — the Sanctuary switch actually governs the
+     one full-screen animation it claims to. */
+  @media (prefers-reduced-motion: no-preference) {
+    body.animate-background .app-bg::before {
+      animation: mistDrift 90s ease-in-out infinite alternate;
+    }
   }
   /* Morning and afternoon warm the sky toward dawn */
   body.tod-morning .app-bg::before,
@@ -293,9 +300,6 @@
   @keyframes mistDrift {
     0%   { transform: translate3d(0, 0, 0) scale(1); }
     100% { transform: translate3d(-2%, 1.5%, 0) scale(1.04); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .app-bg::before { animation: none; }
   }
 
   /* Living sky — a few real twinkles and a rare shooting star,
@@ -358,13 +362,15 @@
   body.motion-calm-always .motion-calm {
     /* no-op anchor */
   }
+  /* Note: no `transform: none` here — static transforms (centering
+     translates on star labels/spikes) are layout, not motion, and killing
+     them scattered the Memories sky for reduced-motion users. */
   body.motion-reduced .motion-calm *,
   body.motion-reduced .motion-calm *::before,
   body.motion-reduced .motion-calm *::after {
     animation: none !important;
     transition-property: color, background-color, border-color, opacity, fill, stroke !important;
     transition-duration: 120ms !important;
-    transform: none !important;
   }
   @media (prefers-reduced-motion: reduce) {
     .motion-calm *,
@@ -373,7 +379,12 @@
       animation: none !important;
       transition-property: color, background-color, border-color, opacity, fill, stroke !important;
       transition-duration: 120ms !important;
-      transform: none !important;
+    }
+    /* Radix portals (sheets, dialogs) mount outside .motion-calm and their
+       tw-animate-css entrances have no guard of their own. */
+    [data-state="open"],
+    [data-state="closed"] {
+      animation-duration: 0.001s !important;
     }
   }
 
@@ -393,6 +404,67 @@
     @keyframes lampWarm {
       0%, 100% { background: color-mix(in oklab, var(--card) 80%, var(--background)); }
       50%      { background: color-mix(in oklab, var(--lamp) 7%, var(--card)); }
+    }
+  }
+
+  /* THE ROOM THAT RESPONDS — emotional-state atmosphere, set as data-room on
+     <body> by the app shell ON NAVIGATION ONLY (never mid-view). Every rule
+     here obeys the contrast floor: backgrounds may darken, text colours are
+     never lightened toward them, so AA holds in every dimmed state. Driven
+     only by real signals — absent signals leave the neutral room. */
+
+  /* grief — the pool narrows and warms, the periphery quiets. The room gets
+     quieter, not sadder: leading opens, decoration pauses. */
+  body[data-room="grief"] {
+    --background: oklch(0.185 0.026 268);
+    --background-secondary: oklch(0.170 0.030 274);
+    --mist: oklch(0.95 0.012 85 / 0.03);
+  }
+  body[data-room="grief"] .font-reading { line-height: 1.95; }
+  body[data-room="grief"] .qs-firefly { animation-play-state: paused !important; opacity: 0.35; }
+  body[data-room="grief"] .sky-panel * { animation-play-state: paused !important; }
+  body[data-room="grief"] .nib-line { animation-play-state: paused !important; }
+
+  /* panic — motion stops dead. Breath timers are JS-driven (requestAnimation-
+     Frame), so they alone keep moving: the one allowed exception. */
+  body[data-room="panic"] *,
+  body[data-room="panic"] *::before,
+  body[data-room="panic"] *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+  body[data-room="panic"] { --mist: transparent; }
+
+  /* anger — the room cools and sharpens. No soothing performed at someone
+     who didn't ask for it: corners tighten, warm decoration steps back.
+     Brass stays brass (the one-primary-action contract) and no text token
+     is dimmed. */
+  body[data-room="anger"] {
+    --radius: 0.375rem;
+    --amber: var(--dawnline);
+    --ember: var(--dawnline);
+  }
+
+  /* growth — the app's only celebration: a single amber underline that draws
+     itself once under the greeting. Static under reduced motion. */
+  .growth-underline { position: relative; }
+  .growth-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    height: 2px;
+    width: 100%;
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--lamp) 70%, transparent);
+    transform-origin: left center;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .growth-underline::after { animation: qs-growth-draw 1.2s ease-out both; }
+    @keyframes qs-growth-draw {
+      from { transform: scaleX(0); }
+      to   { transform: scaleX(1); }
     }
   }
 
@@ -435,7 +507,7 @@
     text-transform: lowercase;
     letter-spacing: 0.24em;
     text-align: center;
-    color: color-mix(in oklab, var(--paper-shadow) 48%, transparent);
+    color: color-mix(in oklab, var(--paper-shadow) 68%, transparent);
     margin-top: 12px;
   }
 
@@ -556,7 +628,6 @@
       transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
       box-shadow 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
       border-color 380ms ease;
-    will-change: transform;
   }
   a:hover > .tactile,
   button:hover > .tactile,
@@ -692,12 +763,16 @@
   }
 
   /* Urge Shield — breathing shield + wave */
+  /* transform/opacity only — animating box-shadow spread forced a full
+     repaint every frame on budget GPUs; the halo is static, the breath is
+     composited scale. */
   @keyframes qs-shield-pulse {
-    0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 color-mix(in oklab, var(--dawn) 30%, transparent); opacity: 0.9; }
-    50%      { transform: scale(1.08); box-shadow: 0 0 0 22px color-mix(in oklab, var(--dawn) 0%, transparent);  opacity: 1; }
+    0%, 100% { transform: scale(1);    opacity: 0.9; }
+    50%      { transform: scale(1.08); opacity: 1; }
   }
   .qs-shield {
     background: radial-gradient(circle at 50% 40%, oklch(0.92 0.05 90) 0%, var(--dawn) 55%, transparent 78%);
+    box-shadow: 0 0 22px 4px color-mix(in oklab, var(--dawn) 20%, transparent);
     animation: qs-shield-pulse 6s ease-in-out infinite;
   }
   @keyframes qs-wave {
@@ -714,10 +789,9 @@
   .parchment {
     background:
       radial-gradient(120% 100% at 50% 0%, color-mix(in oklab, var(--sand) 20%, transparent) 0%, transparent 60%),
-      color-mix(in oklab, var(--card) 78%, transparent);
+      color-mix(in oklab, var(--card) 94%, var(--background));
     border: 1px solid color-mix(in oklab, var(--sand) 22%, transparent);
     border-radius: 22px;
-    backdrop-filter: blur(14px);
   }
 }
 
@@ -932,6 +1006,12 @@
   @keyframes qs-sel-ring {
     0%, 100% { opacity: 0.5;  transform: scale(1); }
     50%      { opacity: 0.95; transform: scale(1.14); }
+  }
+  /* opacity-only twinkle for SVG shapes (no transform: SVG transform-box
+     quirks) — used where SMIL <animate> was retired */
+  @keyframes qs-svg-twinkle {
+    0%, 100% { opacity: 0.55; }
+    50%      { opacity: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {

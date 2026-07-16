@@ -389,7 +389,7 @@ function CheckinJourney() {
             onChange={(e) => setMind(e.target.value)}
             maxLength={400}
             placeholder="Whatever's here. Or leave it empty."
-            className="mt-4 min-h-36 rounded-2xl border-border/60 bg-card/50 text-[15px] leading-relaxed placeholder:text-muted-foreground/60"
+            className="mt-4 min-h-36 rounded-2xl border-border/60 bg-card/50 text-[15px] leading-relaxed placeholder:text-muted-foreground"
           />
           <div className="mt-1.5 flex items-center justify-between px-1">
             <p className="text-[11px] text-muted-foreground">saves into this check-in · private to you</p>
@@ -468,7 +468,7 @@ function CheckinJourney() {
             onChange={(e) => setCommitment(e.target.value)}
             maxLength={120}
             placeholder="e.g. a ten-minute walk · not texting tonight · one page of notes"
-            className="mt-2 min-h-16 rounded-2xl border-border/60 bg-card/50 text-[14px] leading-relaxed placeholder:text-muted-foreground/60"
+            className="mt-2 min-h-16 rounded-2xl border-border/60 bg-card/50 text-[14px] leading-relaxed placeholder:text-muted-foreground"
           />
 
           <button type="button" onClick={save} disabled={saving} className="qs-pill-cta mt-6 w-full disabled:opacity-60">

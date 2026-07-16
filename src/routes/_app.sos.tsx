@@ -235,8 +235,12 @@ function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe";
       <p className="relative mt-3 font-serif text-[19px] font-light">Sixty seconds of breath</p>
       {phase === "breathe" ? (
         <>
-          {/* the numeral goes secondary — the light is the timer */}
-          <p className="relative mt-5 text-[15px] tabular-nums text-secondary-foreground" aria-live="polite">{count}s</p>
+          {/* the numeral goes secondary — the light is the timer. The live
+              region speaks only at milestones, never every second. */}
+          <p className="relative mt-5 text-[15px] tabular-nums text-secondary-foreground" aria-hidden="true">{count}s</p>
+          <p className="sr-only" aria-live="polite">
+            {count === 45 ? "45 seconds left" : count === 30 ? "halfway there" : count === 10 ? "10 seconds left" : ""}
+          </p>
           {/* reduced-motion fallback: a still dawnline fill */}
           <div className="relative mx-auto mt-4 h-1 w-48 overflow-hidden rounded-full motion-safe:hidden" style={{ background: "color-mix(in oklab, var(--dawnline) 20%, transparent)" }}>
             <div className="h-full rounded-full" style={{ width: `${Math.round(progress * 100)}%`, background: "var(--dawnline)" }} />
@@ -271,6 +275,7 @@ function FlowRow({
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       className="flex w-full items-center gap-3.5 rounded-lg border px-4 py-3.5 text-left transition"
       style={active
         ? { borderColor: `color-mix(in oklab, ${tint} 50%, transparent)`, background: `color-mix(in oklab, ${tint} 10%, transparent)` }

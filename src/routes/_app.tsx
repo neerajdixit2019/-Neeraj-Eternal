@@ -6,7 +6,8 @@ import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getProfile } from "@/lib/data.functions";
+import { getProfile, listMoods } from "@/lib/data.functions";
+import { roomFor, type RoomMood } from "@/lib/room-state";
 import { CompanionCloud } from "@/components/CompanionCloud";
 
 export const Route = createFileRoute("/_app")({ component: AppLayout });
@@ -35,17 +36,33 @@ const mobileNav = [
 /** The Steady half-sheet — one calm door to every kind of help. */
 function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const firstRef = useRef<HTMLAnchorElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
+    // aria-modal means it: keep Tab inside the sheet, and hand focus back to
+    // the trigger when the door closes — this is a crisis surface.
+    const returnTo = document.activeElement as HTMLElement | null;
     firstRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab" || !sheetRef.current) return;
+      const focusables = sheetRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])');
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      returnTo?.focus?.();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Steady — help right now">
+    <div ref={sheetRef} className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Steady — help right now">
       <button
         type="button"
         aria-label="Close"
@@ -151,6 +168,27 @@ function AppLayout() {
       document.body.classList.remove("motion-reduced");
     };
   }, [bgEnabled]);
+
+  // THE ROOM THAT RESPONDS — the atmosphere is chosen from real check-in
+  // signals, and applied only when the user moves between rooms: the path is
+  // the sole trigger, so the room never shifts under someone mid-view. The
+  // freshest moods ride along in a ref without re-running the effect.
+  const moodsFn = useServerFn(listMoods);
+  const { data: roomMoods } = useQuery({
+    queryKey: ["moods"],
+    queryFn: () => moodsFn(),
+    enabled: ready && !devPreview,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const roomMoodsRef = useRef<RoomMood[] | undefined>(undefined);
+  roomMoodsRef.current = roomMoods as RoomMood[] | undefined;
+  useEffect(() => {
+    if (typeof document === "undefined" || !ready) return;
+    const room = roomFor(roomMoodsRef.current ?? [], new Date());
+    document.body.setAttribute("data-room", room);
+    return () => { document.body.removeAttribute("data-room"); };
+  }, [path, ready]);
 
   useEffect(() => {
     // Dev-only walkthrough mode: view every screen without an account.
@@ -278,7 +316,7 @@ function AppLayout() {
         <nav
           aria-label="Primary"
           className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t pb-[max(env(safe-area-inset-bottom),0.25rem)] md:hidden"
-          style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)", background: "color-mix(in oklab, var(--background) 92%, transparent)", backdropFilter: "blur(10px)" }}
+          style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)", background: "color-mix(in oklab, var(--background) 97%, var(--foreground))" }}
         >
           {mobileNav.map((n) => {
             const active = path === n.to || path.startsWith(n.to + "/");

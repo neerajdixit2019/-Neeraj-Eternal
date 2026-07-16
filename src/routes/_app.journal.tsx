@@ -216,22 +216,22 @@ function Journal() {
           boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)",
         }}
       >
-        <p className="font-serif italic text-sm" style={{ color: "color-mix(in oklab, var(--ink) 55%, var(--paper))" }}>
+        <p className="font-serif italic text-sm" style={{ color: "color-mix(in oklab, var(--ink) 70%, var(--paper))" }}>
           {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </p>
         {editing.mode.key !== "free" && (
-          <p className="mt-1 font-serif italic text-[13px]" style={{ color: "color-mix(in oklab, var(--ink) 45%, var(--paper))" }}>{editing.mode.whisper}</p>
+          <p className="mt-1 font-serif italic text-[13px]" style={{ color: "color-mix(in oklab, var(--ink) 66%, var(--paper))" }}>{editing.mode.whisper}</p>
         )}
         <Input
           aria-label="Journal entry title"
-          className="mt-3 h-12 rounded-md border-transparent bg-transparent font-serif text-xl text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_35%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
+          className="mt-3 h-12 rounded-md border-transparent bg-transparent font-serif text-xl text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
           placeholder="a title, if you'd like…"
           value={editing.title}
           onChange={e => setEditing({ ...editing, title: e.target.value })}
         />
         <Textarea
           aria-label="Journal entry body"
-          className="font-reading mt-2 min-h-[420px] rounded-md border-transparent bg-transparent text-[17px] leading-[1.75] text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_35%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
+          className="font-reading mt-2 min-h-[420px] rounded-md border-transparent bg-transparent text-[17px] leading-[1.75] text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
           placeholder={editing.mode.placeholder}
           value={editing.body}
           onChange={e => setEditing({ ...editing, body: e.target.value })}
@@ -294,13 +294,13 @@ function Journal() {
           className="relative block w-full rounded-[4px] px-6 py-7 text-left transition hover:-translate-y-0.5"
           style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)" }}
         >
-          <p className="font-serif italic text-sm" style={{ color: "color-mix(in oklab, var(--ink) 55%, var(--paper))" }}>
+          <p className="font-serif italic text-sm" style={{ color: "color-mix(in oklab, var(--ink) 70%, var(--paper))" }}>
             {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
           </p>
-          <p className="font-reading mt-2 text-[17px]" style={{ color: "color-mix(in oklab, var(--ink) 40%, var(--paper))" }}>
+          <p className="font-reading mt-2 text-[17px]" style={{ color: "color-mix(in oklab, var(--ink) 72%, var(--paper))" }}>
             tonight's page is waiting…
           </p>
-          <p className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--ember)" }}>
+          <p className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "color-mix(in oklab, var(--ember) 55%, var(--ink))" }}>
             <Feather className="h-3.5 w-3.5" strokeWidth={1.7} /> begin writing
           </p>
         </button>

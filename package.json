@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test:risk": "node src/lib/__tests__/companion-risk.test.ts",
-    "test:companion": "node --test src/lib/__tests__/companion-risk.test.ts src/lib/__tests__/companion-classification.test.ts src/lib/__tests__/companion-prompt-contracts.test.ts src/lib/__tests__/golden-library.test.ts src/lib/__tests__/companion-evaluator.test.ts src/lib/__tests__/pattern-map.test.ts src/lib/__tests__/insight-events.test.ts",
+    "test:companion": "node --test src/lib/__tests__/companion-risk.test.ts src/lib/__tests__/companion-classification.test.ts src/lib/__tests__/companion-prompt-contracts.test.ts src/lib/__tests__/golden-library.test.ts src/lib/__tests__/companion-evaluator.test.ts src/lib/__tests__/pattern-map.test.ts src/lib/__tests__/insight-events.test.ts src/lib/__tests__/room-state.test.ts",
     "format": "prettier --write ."
   },
   "dependencies": {

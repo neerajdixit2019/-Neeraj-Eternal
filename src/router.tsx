@@ -3,7 +3,7 @@
 // reading prose, Spline Sans = UI utility.
 import "@fontsource-variable/fraunces/index.css";
 import "@fontsource-variable/newsreader/index.css";
-import "@fontsource-variable/newsreader/opsz-italic.css";
+import "@fontsource-variable/newsreader/wght-italic.css";
 import "@fontsource-variable/spline-sans/index.css";
 import { QueryCache, MutationCache, QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
@@ -31,6 +31,10 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     queryCache: new QueryCache({ onError: handleUnauthorized }),
     mutationCache: new MutationCache({ onError: handleUnauthorized }),
+    // One quiet minute of freshness app-wide: screens share query keys
+    // (moods, profile, journal), and without this every navigation refired
+    // every server function on budget connections.
+    defaultOptions: { queries: { staleTime: 60_000 } },
   });
 
   const router = createRouter({

@@ -12,7 +12,7 @@ import companionMark from "@/assets/companion-mark.png";
 import { CompanionCloud } from "@/components/CompanionCloud";
 import { HelpfulnessPrompt } from "@/components/HelpfulnessPrompt";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import {
   Conversation,
   ConversationContent,
@@ -606,6 +606,10 @@ function Companion() {
     : "ready";
 
   return (
+    // reducedMotion="user" makes every framer animation in this room respect
+    // the OS setting — including the safety-mode chips, which must never
+    // slide in front of someone in crisis with motion turned off.
+    <MotionConfig reducedMotion="user">
     <div className="relative mx-auto flex h-[100dvh] max-w-3xl flex-col md:h-screen">
       {/* Header */}
       <header className="flex items-center gap-2 px-4 py-3 sm:px-5">
@@ -613,7 +617,8 @@ function Companion() {
           size="icon"
           variant="ghost"
           aria-label="Back to home"
-          className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-card/40 backdrop-blur-md hover:bg-card/70"
+          className="h-9 w-9 shrink-0 rounded-full border bg-card/70 hover:bg-card"
+          style={{ borderColor: "var(--border-subtle)" }}
           onClick={() => navigate({ to: "/home" })}
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={1.7} />
@@ -906,7 +911,7 @@ function Companion() {
             >
               <div className="flex items-center gap-2 text-xs text-foreground">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                  <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-primary opacity-60" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                 </span>
                 <span className="font-medium">Listening</span>
@@ -1012,5 +1017,6 @@ function Companion() {
         </div>
       </div>
     </div>
+    </MotionConfig>
   );
 }

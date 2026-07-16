@@ -37,13 +37,14 @@ const FEELINGS = [
 ] as const;
 type Feeling = typeof FEELINGS[number]["value"];
 
-const FEELING_CHIP: Record<Feeling, string> = {
-  warm: "bg-rose-100/70 text-rose-900",
-  bittersweet: "bg-violet-100/70 text-violet-900",
-  heavy: "bg-sky-100/70 text-sky-900",
-  grateful: "bg-amber-100/70 text-amber-900",
-  longing: "bg-fuchsia-100/70 text-fuchsia-900",
-  peaceful: "bg-emerald-100/70 text-emerald-900",
+// Selected-chip tints from the study's own tokens — no raw palette classes.
+const FEELING_CHIP_STYLE: Record<Feeling, React.CSSProperties> = {
+  warm:        { background: "color-mix(in oklab, var(--rose) 26%, var(--card))",     color: "var(--foreground)", borderColor: "color-mix(in oklab, var(--rose) 45%, transparent)" },
+  bittersweet: { background: "color-mix(in oklab, var(--lavender) 26%, var(--card))", color: "var(--foreground)", borderColor: "color-mix(in oklab, var(--lavender) 45%, transparent)" },
+  heavy:       { background: "color-mix(in oklab, var(--sky) 26%, var(--card))",      color: "var(--foreground)", borderColor: "color-mix(in oklab, var(--sky) 45%, transparent)" },
+  grateful:    { background: "color-mix(in oklab, var(--amber) 26%, var(--card))",    color: "var(--foreground)", borderColor: "color-mix(in oklab, var(--amber) 45%, transparent)" },
+  longing:     { background: "color-mix(in oklab, var(--lavender) 22%, var(--card))", color: "var(--foreground)", borderColor: "color-mix(in oklab, var(--lavender) 40%, transparent)" },
+  peaceful:    { background: "color-mix(in oklab, var(--mint) 26%, var(--card))",     color: "var(--foreground)", borderColor: "color-mix(in oklab, var(--mint) 45%, transparent)" },
 };
 
 const MAX_BYTES = 50 * 1024 * 1024;
@@ -147,7 +148,7 @@ const BG_STARS: BgStar[] = (() => {
     top: Math.round(rnd() * 8600) / 100,
     size: Math.round((1 + rnd() * 1.3) * 100) / 100,
     opacity: Math.round((0.12 + rnd() * 0.48) * 100) / 100,
-    twinkle: i % 3 === 0,
+    twinkle: i % 6 === 0, // budget-Android: ~18 animating, the rest hold still
     dur: Math.round((2.6 + rnd() * 3.4) * 100) / 100,
     delay: Math.round(rnd() * 600) / 100,
   }));
@@ -258,8 +259,8 @@ function MemoriesPage() {
       </div>
 
       <div className="flex gap-2">
-        <button type="button" onClick={() => setTab("memories")} className={`qs-chip ${tab === "memories" ? "qs-chip--active" : ""}`}>the sky</button>
-        <button type="button" onClick={() => setTab("letters")} className={`qs-chip ${tab === "letters" ? "qs-chip--active" : ""}`}>letters</button>
+        <button type="button" onClick={() => setTab("memories")} aria-pressed={tab === "memories"} className={`qs-chip ${tab === "memories" ? "qs-chip--active" : ""}`}>the sky</button>
+        <button type="button" onClick={() => setTab("letters")} aria-pressed={tab === "letters"} className={`qs-chip ${tab === "letters" ? "qs-chip--active" : ""}`}>letters</button>
       </div>
 
       {tab === "letters" ? (
@@ -288,27 +289,21 @@ function MemoriesPage() {
           >
             {/* ambient layers */}
             <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-              {/* milky way — a diagonal breath of light */}
+              {/* milky way — a diagonal breath of light. Two blurred layers,
+                  not three: budget-Android GPUs pay per blurred pixel. */}
               <div className="absolute -left-24 -right-12 top-[28%] h-44 -rotate-[18deg]">
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
                     background: "linear-gradient(90deg, transparent 0%, oklch(0.88 0.02 265 / 0.09) 30%, oklch(0.9 0.015 265 / 0.11) 55%, transparent 100%)",
-                    filter: "blur(20px)",
-                  }}
-                />
-                <div
-                  className="absolute inset-x-12 top-8 h-20 rounded-full"
-                  style={{
-                    background: "linear-gradient(90deg, transparent, oklch(0.85 0.045 300 / 0.08), transparent)",
-                    filter: "blur(28px)",
+                    filter: "blur(16px)",
                   }}
                 />
                 <div
                   className="absolute inset-x-24 top-14 h-9 rounded-full"
                   style={{
                     background: "linear-gradient(90deg, transparent, oklch(0.96 0.01 90 / 0.08), transparent)",
-                    filter: "blur(12px)",
+                    filter: "blur(10px)",
                   }}
                 />
               </div>
@@ -318,7 +313,7 @@ function MemoriesPage() {
                 className="absolute -left-8 top-10 h-28 w-4/5 rounded-full"
                 style={{
                   background: "linear-gradient(100deg, transparent 5%, color-mix(in oklab, var(--mint) 20%, transparent) 35%, color-mix(in oklab, var(--lavender) 16%, transparent) 65%, transparent 95%)",
-                  filter: "blur(24px)",
+                  filter: "blur(18px)",
                   animation: "qs-aurora 18s ease-in-out infinite alternate",
                 }}
               />
@@ -470,14 +465,14 @@ function MemoriesPage() {
                 <button
                   key={s.memory.id}
                   type="button"
-                  aria-label={s.memory.title || "an untitled memory"}
+                  aria-label={label}
                   aria-pressed={isSelected}
                   onClick={() => setSelectedId(isSelected ? null : s.memory.id)}
                   onMouseEnter={() => setHoveredId(s.memory.id)}
                   onMouseLeave={() => setHoveredId((id) => (id === s.memory.id ? null : id))}
                   onFocus={() => setHoveredId(s.memory.id)}
                   onBlur={() => setHoveredId((id) => (id === s.memory.id ? null : id))}
-                  className="group absolute z-[6] flex h-10 w-10 items-center justify-center rounded-full outline-none"
+                  className="group absolute z-[6] flex h-10 w-10 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                   style={{
                     left: `${s.x}%`,
                     top: `${s.y}%`,
@@ -601,8 +596,8 @@ function MemoriesPage() {
                   </div>
                   <button
                     type="button"
-                    className="qs-pill-cta shrink-0"
-                    style={{ padding: "0.5rem 0.95rem", fontSize: "12.5px" }}
+                    className="inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium transition hover:-translate-y-0.5"
+                    style={{ borderColor: "color-mix(in oklab, var(--ink) 35%, transparent)", color: "var(--ink)" }}
                     onClick={() => setReliveId(selectedStar.memory.id)}
                   >
                     relive
@@ -685,7 +680,7 @@ function MemoriesPage() {
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="search your memories"
                     aria-label="Search your memories"
-                    className="w-32 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70 sm:w-44"
+                    className="w-32 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground sm:w-44"
                   />
                   {query && (
                     <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-muted-foreground transition hover:text-foreground">
@@ -988,7 +983,9 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
                   key={f.value}
                   type="button"
                   onClick={() => setFeeling(active ? "" : f.value)}
-                  className={`rounded-full px-3 py-1.5 text-xs transition ${active ? FEELING_CHIP[f.value] : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                  aria-pressed={active}
+                  className="rounded-full border px-3 py-1.5 text-xs transition"
+                  style={active ? FEELING_CHIP_STYLE[f.value] : { background: "color-mix(in oklab, var(--muted) 50%, transparent)", color: "var(--muted-foreground)", borderColor: "transparent" }}
                 >
                   {f.label}
                 </button>
@@ -1133,7 +1130,7 @@ function ReliveDialog({
                 className="w-full resize-y rounded-xl border border-border/60 bg-card/50 px-3 py-2 text-[15px] leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               />
               <div className="flex gap-2">
-                <button type="button" onClick={saveEdits} disabled={working} className="qs-pill-cta" style={{ padding: "0.5rem 1rem", fontSize: "13px" }}>
+                <button type="button" onClick={saveEdits} disabled={working} className="inline-flex min-h-11 items-center rounded-full border px-4 text-[13px] font-medium transition hover:brightness-110 disabled:opacity-60" style={{ borderColor: "var(--border-active)", color: "var(--text-primary)", background: "color-mix(in oklab, var(--violet) 14%, transparent)" }}>
                   {working ? "saving…" : "save changes"}
                 </button>
                 <button type="button" onClick={() => { setEditing(false); setTitle(memory.title ?? ""); setStory(memory.story ?? ""); }} className="rounded-full px-3 py-2 text-[13px] text-muted-foreground transition hover:text-foreground">

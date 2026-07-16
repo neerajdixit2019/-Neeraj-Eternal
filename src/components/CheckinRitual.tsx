@@ -186,7 +186,7 @@ export function CheckinRitual() {
         <Textarea
           id="checkin-note"
           aria-label="Optional note about today"
-          className="mt-3 min-h-24 rounded-2xl border-border/60 bg-card/50 text-[14.5px] leading-relaxed placeholder:text-muted-foreground/60"
+          className="mt-3 min-h-24 rounded-2xl border-border/60 bg-card/50 text-[14.5px] leading-relaxed placeholder:text-muted-foreground"
           placeholder="Whatever's here. Or leave it empty."
           value={note}
           onChange={e => setNote(e.target.value)}

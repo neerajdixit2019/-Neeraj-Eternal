@@ -60,17 +60,19 @@ function ResetPasswordPage() {
   };
 
   return (
+    // The same wall as everywhere else — one quiet pool of lamplight, no
+    // violet wash, no glass.
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-10">
       <div
         aria-hidden
         className="absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(1200px 600px at 20% 10%, color-mix(in oklab, var(--lavender) 22%, transparent), transparent 60%), radial-gradient(900px 500px at 90% 90%, color-mix(in oklab, var(--sky) 18%, transparent), transparent 65%), var(--background)",
+            "radial-gradient(70% 50% at 50% 30%, color-mix(in oklab, var(--lamp) 8%, transparent), transparent 65%), var(--background)",
         }}
       />
 
-      <div className="w-full max-w-md rounded-3xl border border-border/60 bg-card/85 p-7 shadow-xl backdrop-blur sm:p-9">
+      <div className="w-full max-w-md rounded-[20px_20px_10px_10px] border p-7 sm:p-9" style={{ borderColor: "var(--border-subtle)", background: "var(--card)" }}>
         <Link to="/login" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> back to sign in
         </Link>

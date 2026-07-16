@@ -7,6 +7,7 @@ import { generateArrivalQuestions, generateArrivalRead } from "@/lib/arrival.fun
 import { FALLBACK_QUESTIONS, fallbackRead, type ArrivalQuestion, type ArrivalOption } from "@/lib/arrival-schema";
 import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions";
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
+import { roomFor, GROWTH_NOTE, type Room, type RoomMood } from "@/lib/room-state";
 import {
   Heart, PenLine, Mail, Clock, ArrowRight, MessageCircle, HeartHandshake,
   Wind, X, AlertTriangle, Settings, Shield, Sparkles, Lightbulb,
@@ -129,6 +130,15 @@ function Home() {
   const hasRecentConv = !!lastConvAt
     && Date.now() - new Date(lastConvAt).getTime() < 7 * 86400000;
 
+  // The room that responds — client-only, computed from the same signals the
+  // shell uses, so the desk can say one honest thing about it. Read once per
+  // mount (never re-derived mid-view; navigation remounts this screen).
+  const [room, setRoom] = useState<Room>("neutral");
+  useEffect(() => {
+    setRoom(roomFor((m ?? []) as RoomMood[], new Date()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
       {/* 1 · Header row — brand eyebrow, SOS pill, sanctuary door */}
@@ -163,20 +173,25 @@ function Home() {
         <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "78%", left: "58%", animationDelay: "-9s" }} />
         <p className="qs-section-label">today's inner sky</p>
         <h1 className="mt-3 font-serif text-[2.05rem] font-light leading-[1.08] tracking-tight sm:text-[2.5rem]">
-          {hour == null
-            ? <>Welcome{firstName ? `, ${firstName}` : ""}.</>
-            : hour < 5 ? <>Still up{firstName ? `, ${firstName}` : ""}?</>
-            : hour < 12 ? <>Good morning{firstName ? `, ${firstName}` : ""}.</>
-            : hour < 17 ? <>Good afternoon{firstName ? `, ${firstName}` : ""}.</>
-            : hour < 21 ? <>Good evening{firstName ? `, ${firstName}` : ""}.</>
-            : <>Winding down{firstName ? `, ${firstName}` : ""}?</>}
+          <span className={room === "growth" ? "growth-underline" : undefined}>
+            {hour == null
+              ? <>Welcome{firstName ? `, ${firstName}` : ""}.</>
+              : hour < 5 ? <>Still up{firstName ? `, ${firstName}` : ""}?</>
+              : hour < 12 ? <>Good morning{firstName ? `, ${firstName}` : ""}.</>
+              : hour < 17 ? <>Good afternoon{firstName ? `, ${firstName}` : ""}.</>
+              : hour < 21 ? <>Good evening{firstName ? `, ${firstName}` : ""}.</>
+              : <>Winding down{firstName ? `, ${firstName}` : ""}?</>}
+          </span>
         </h1>
         <p className="mt-2 font-serif text-[17px] font-light text-foreground/85">
           How are you arriving today?
         </p>
         <p className="mt-2 max-w-[38ch] text-[13.5px] leading-relaxed text-muted-foreground">
-          {skyLine ?? "A quiet place, ready when you are."}
+          {room === "loneliness" && hour != null
+            ? (hour >= 21 || hour < 5 ? "still here, this late, with you." : "here with you — not going anywhere.")
+            : (skyLine ?? "A quiet place, ready when you are.")}
         </p>
+        {room === "growth" && <p className="margin-note mt-3">{GROWTH_NOTE}</p>}
       </div>
 
       {/* 3 · Emotional weather */}
@@ -834,11 +849,11 @@ function ReflectionStar() {
   if (idx == null) return null;
   return (
     <div
-      className="mt-4 rounded-3xl border p-5 backdrop-blur-xl fade-in"
+      className="mt-4 rounded-3xl border p-5 fade-in"
       style={{
         borderColor: "color-mix(in oklab, var(--dawn) 26%, transparent)",
         background:
-          "linear-gradient(150deg, color-mix(in oklab, var(--dawn) 12%, color-mix(in oklab, var(--card) 60%, transparent)), color-mix(in oklab, var(--card) 60%, transparent))",
+          "linear-gradient(150deg, color-mix(in oklab, var(--dawn) 12%, var(--card)), var(--card))",
       }}
     >
       <p className="qs-section-label flex items-center gap-1.5">
@@ -881,10 +896,10 @@ function HeavyOnMind() {
 
   return (
     <div
-      className="mt-4 rounded-3xl border border-white/10 p-5 backdrop-blur-xl rise-in"
+      className="mt-4 rounded-3xl border p-5 rise-in"
       style={{
         background:
-          "linear-gradient(150deg, color-mix(in oklab, var(--dawn) 14%, color-mix(in oklab, var(--card) 62%, transparent)), color-mix(in oklab, var(--card) 62%, transparent))",
+          "linear-gradient(150deg, color-mix(in oklab, var(--dawn) 14%, var(--card)), var(--card))",
       }}
     >
       <p className="font-serif text-[19px] leading-snug">What is heavy on your mind?</p>
@@ -894,7 +909,7 @@ function HeavyOnMind() {
         placeholder="Say it plainly — no one is reading but you…"
         rows={3}
         maxLength={2000}
-        className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-background/40 px-4 py-3 font-serif text-[15px] italic leading-relaxed text-foreground/90 placeholder:text-muted-foreground/70 focus:border-white/25 focus:outline-none"
+        className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-background/40 px-4 py-3 font-serif text-[15px] italic leading-relaxed text-foreground/90 placeholder:text-muted-foreground focus:border-white/25 focus:outline-none"
       />
       <div className="mt-3">
         {kept ? (

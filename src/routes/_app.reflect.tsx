@@ -482,7 +482,7 @@ function Write({
         value={entry}
         onChange={(e) => setEntry(e.target.value.slice(0, MAX_CHARS))}
         placeholder="Start anywhere…"
-        className="mt-4 min-h-[280px] resize-none rounded-[1.75rem] border-border bg-card/40 p-6 text-base leading-relaxed shadow-sm placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary/20"
+        className="mt-4 min-h-[280px] resize-none rounded-[1.75rem] border-border bg-card/40 p-6 text-base leading-relaxed shadow-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20"
       />
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground/70">
         <span className="inline-flex items-center gap-1.5">
@@ -555,7 +555,7 @@ function Loading() {
   return (
     <div className="fade-in flex min-h-[60vh] flex-col items-center justify-center text-center">
       <div className="relative h-14 w-14">
-        <span className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+        <span className="absolute inset-0 motion-safe:animate-ping rounded-full bg-primary/20" />
         <span className="absolute inset-2 rounded-full bg-primary/40" />
       </div>
       <p className="mt-6 font-serif text-xl text-foreground/90">Creating a quiet reflection…</p>
@@ -1025,7 +1025,7 @@ function Guided({
             onChange={(e) => setFollowupText(e.target.value.slice(0, FOLLOWUP_MAX))}
             placeholder="Write what comes up. A few honest words are enough."
             disabled={loading}
-            className="mt-4 min-h-[200px] resize-none rounded-[1.75rem] border-border bg-card/40 p-6 text-base leading-relaxed shadow-sm placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary/20"
+            className="mt-4 min-h-[200px] resize-none rounded-[1.75rem] border-border bg-card/40 p-6 text-base leading-relaxed shadow-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20"
           />
           <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground/70">
             <span className="inline-flex items-center gap-1.5">
