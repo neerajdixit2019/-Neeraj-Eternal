@@ -4,16 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
 import { listMoods, listJournal, getProfile } from "@/lib/data.functions";
 import { listMemories } from "@/lib/data.functions";
-import { TactileCard } from "@/components/TactileCard";
 import {
   Shield, Settings, BookHeart, Sparkles, HeartHandshake, Star, ArrowRight, Mail,
 } from "lucide-react";
 
 /**
- * You — the growth-journey tab from the reference boards, built on honest
- * numbers only: real week counts (days showed up, check-ins, journal pages),
- * never invented percentages. Growth-area bars from the mock are deliberately
- * omitted (no defensible calculation exists — see docs/redesign/audit.md).
+ * You — the book's flyleaf: the reader's name inscribed, the honest week as
+ * one prose sentence (real counts as margin tallies, never invented
+ * percentages), and every doorway as a single table of contents.
  */
 export const Route = createFileRoute("/_app/you")({
   component: YouPage,
@@ -40,6 +38,25 @@ function weekCounts(moods: MoodRow[], journal: JournalRow[]) {
   return { checkins, pages, daysShowedUp: days.size };
 }
 
+const SMALL_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"] as const;
+const word = (n: number) => SMALL_WORDS[n] ?? String(n);
+
+// The honest week, spoken as one sentence. Real counts only.
+function weekSentence(week: { daysShowedUp: number; checkins: number; pages: number }): string {
+  if (week.daysShowedUp === 0) {
+    return "this book is just beginning — its first page is yours whenever you're ready.";
+  }
+  const days = `you came back ${week.daysShowedUp === 1 ? "one day" : `${word(week.daysShowedUp)} days`} this week`;
+  const pages = week.pages > 0 ? ` and kept ${week.pages === 1 ? "one page" : `${word(week.pages)} pages`}` : "";
+  const felt = week.checkins === 1 ? "once" : `${word(week.checkins)} times`;
+  // With pages the check-ins ride along as a participle; without, they need
+  // their own finite verb ("…and named how it felt twice").
+  const checkins = week.checkins > 0
+    ? (pages ? `, naming how it felt ${felt}` : ` and named how it felt ${felt}`)
+    : "";
+  return `${days}${pages}${checkins}.`;
+}
+
 function YouPage() {
   const profileFn = useServerFn(getProfile);
   const moodsFn = useServerFn(listMoods);
@@ -50,106 +67,72 @@ function YouPage() {
   const { data: journal } = useQuery({ queryKey: ["journal"], queryFn: () => journalFn() });
   const { data: memories } = useQuery({ queryKey: ["memories"], queryFn: () => memoriesFn() });
 
-  const name = (profile as { display_name?: string | null } | null | undefined)?.display_name;
-  const initial = (name?.trim()?.[0] ?? "•").toUpperCase();
+  const name = (profile as { display_name?: string | null } | null | undefined)?.display_name?.trim();
   const week = useMemo(
     () => weekCounts((moods ?? []) as MoodRow[], (journal ?? []) as JournalRow[]),
     [moods, journal],
   );
   const starCount = memories?.length ?? 0;
+  const sentence = weekSentence(week);
 
-  const stats: { value: string; top: string; bottom: string }[] = [
-    { value: `${week.daysShowedUp}/7`, top: "Days", bottom: "showed up" },
-    { value: String(week.checkins), top: "Check-ins", bottom: "this week" },
-    { value: String(week.pages), top: "Pages", bottom: "written" },
-    { value: String(starCount), top: "Stars", bottom: "in your sky" },
+  const tallies: { value: string; label: string }[] = [
+    { value: `${week.daysShowedUp}/7`, label: "days" },
+    { value: String(week.checkins), label: "check-ins" },
+    { value: String(week.pages), label: "pages" },
+    { value: String(starCount), label: "stars" },
   ];
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14">
-      {/* Header — You, with a real initial, no stock avatar */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-[2rem] font-light leading-tight tracking-tight">You</h1>
-          <p className="mt-1 text-[13.5px] text-muted-foreground">your growth journey</p>
-        </div>
-        <span
-          aria-hidden
-          className="flex h-12 w-12 items-center justify-center rounded-full font-serif text-lg"
-          style={{
-            background: "color-mix(in oklab, var(--accent-primary) 22%, var(--card))",
-            border: "1px solid var(--border-active)",
-            color: "var(--text-primary)",
-          }}
-        >
-          {initial}
-        </span>
-      </div>
+      {/* The flyleaf — the reader's name, inscribed */}
+      <p className="qs-section-label">the flyleaf</p>
+      <h1 className="mt-3 font-serif text-[2.6rem] font-light leading-[1.08] tracking-tight sm:text-[3.1rem]" style={{ textWrap: "balance" }}>
+        {name || "This is your book."}
+      </h1>
+      <p className="mt-2 font-serif text-[14px] italic text-muted-foreground">
+        {name ? "this book is yours alone." : "it will learn your name when you offer it."}
+      </p>
 
-      {/* This week — real counts only */}
-      <p className="qs-section-label mt-8">this week</p>
-      <div className="mt-3 grid grid-cols-4 gap-2.5">
-        {stats.map((s) => (
-          <div
-            key={s.top}
-            className="rounded-2xl border px-2 py-3.5 text-center"
-            style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 50%, transparent)" }}
-          >
-            <p className="font-serif text-[1.35rem] leading-none" style={{ color: "var(--accent-secondary)" }}>{s.value}</p>
-            <p className="mt-1.5 text-[10.5px] leading-tight text-foreground/85">{s.top}</p>
-            <p className="text-[10px] leading-tight text-muted-foreground">{s.bottom}</p>
-          </div>
+      {/* The honest week — one sentence, with the numbers as margin tallies */}
+      <p className="font-reading mt-8 max-w-md text-[16.5px] leading-relaxed text-foreground/90">{sentence}</p>
+      <div className="mt-4 flex gap-7 border-t pt-3" style={{ borderColor: "var(--border-subtle)" }}>
+        {tallies.map((t) => (
+          <p key={t.label} className="text-[11px] text-muted-foreground">
+            <span className="font-serif text-[15px] not-italic" style={{ color: "var(--accent-secondary)" }}>{t.value}</span>
+            <span className="ml-1.5 lowercase tracking-[0.08em]">{t.label}</span>
+          </p>
         ))}
       </div>
-      <p className="mt-2 px-1 text-[11px] italic text-muted-foreground">
+      <p className="mt-2 text-[11px] italic text-muted-foreground">
         counts, not scores — showing up is the whole metric.
       </p>
 
-      {/* Your places — everything that moved off the 4-tab bar stays one tap away */}
-      <p className="qs-section-label mt-8">your places</p>
-      <div className="mt-3 space-y-2">
-        <PlaceRow to="/journal" icon={BookHeart} title="Journal" line="your private vault" />
-        <PlaceRow to="/insights" icon={Sparkles} title="Insights & check-in" line="your pattern constellation" />
-        <PlaceRow to="/heal" icon={HeartHandshake} title="Tools" line="practices & gentle paths" />
-        <PlaceRow to="/memories" icon={Star} title="Memories" line="your night sky" />
-        <PlaceRow to="/home" icon={Mail} title="Weekly letter" line="waits on Today when it arrives" />
+      {/* Table of contents — every doorway, one ruled list */}
+      <p className="qs-section-label mt-10">contents</p>
+      <div className="mt-2">
+        <TocRow to="/journal" icon={BookHeart} title="journal" line="your private vault" />
+        <TocRow to="/insights" icon={Sparkles} title="insights & check-in" line="your pattern constellation" />
+        <TocRow to="/heal" icon={HeartHandshake} title="tools" line="practices & gentle paths" />
+        <TocRow to="/memories" icon={Star} title="memories" line="your night sky" />
+        <TocRow to="/home" icon={Mail} title="weekly letter" line="waits on Today when it arrives" />
       </div>
 
-      {/* Privacy & Safety — honest wording, real controls behind it */}
-      <Link to="/privacy" className="mt-8 block">
-        <TactileCard tint="lavender" className="transition hover:-translate-y-0.5">
-          <div className="flex items-center gap-4">
-            <span
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-              style={{ background: "color-mix(in oklab, var(--state-privacy) 22%, transparent)" }}
-            >
-              <Shield className="h-5 w-5" strokeWidth={1.6} style={{ color: "var(--accent-secondary)" }} />
-            </span>
-            <div className="min-w-0">
-              <p className="font-serif text-lg leading-snug">Privacy & Safety</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-                Your data stays in your account, and you control what InnerMate can read. Plain-language details inside.
-              </p>
-            </div>
-            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
-          </div>
-        </TactileCard>
-      </Link>
-
-      {/* Settings door */}
-      <Link
-        to="/settings"
-        className="glass mt-3 flex items-center gap-4 rounded-3xl p-4 transition hover:-translate-y-0.5"
-      >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background/60">
-          <Settings className="h-4.5 w-4.5 h-[18px] w-[18px]" strokeWidth={1.6} />
-        </span>
-        <div className="min-w-0">
-          <p className="font-serif text-lg leading-snug">The Sanctuary</p>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">settings, memory controls, tone, export & delete</p>
-        </div>
-        <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
-      </Link>
+      {/* The keeping of this place — controls, same ledger */}
+      <p className="qs-section-label mt-9">the keeping of this place</p>
+      <div className="mt-2">
+        <TocRow
+          to="/privacy"
+          icon={Shield}
+          title="privacy & safety"
+          line="what InnerMate can read, and what delete keeps — in plain language"
+        />
+        <TocRow
+          to="/settings"
+          icon={Settings}
+          title="the sanctuary"
+          line="settings, memory controls, tone, export & delete"
+        />
+      </div>
 
       <p className="mt-10 text-center font-serif text-[13.5px] italic text-muted-foreground">
         growth here is quiet. it counts anyway.
@@ -158,22 +141,22 @@ function YouPage() {
   );
 }
 
-function PlaceRow({ to, icon: Icon, title, line }: {
-  to: "/journal" | "/insights" | "/heal" | "/memories" | "/home";
+function TocRow({ to, icon: Icon, title, line }: {
+  to: "/journal" | "/insights" | "/heal" | "/memories" | "/home" | "/privacy" | "/settings";
   icon: typeof Shield; title: string; line: string;
 }) {
   return (
     <Link
       to={to}
-      className="flex items-center gap-3.5 rounded-2xl border px-4 py-3 transition hover:-translate-y-0.5"
-      style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}
+      className="group flex min-h-11 items-center gap-3.5 border-t px-1 py-3 transition"
+      style={{ borderColor: "var(--border-subtle)" }}
     >
       <Icon className="h-4 w-4 shrink-0" strokeWidth={1.7} style={{ color: "var(--text-secondary)" }} />
       <div className="min-w-0">
-        <p className="text-[14px] text-foreground/90">{title}</p>
+        <p className="text-[14.5px] text-foreground/90 transition group-hover:text-foreground">{title}</p>
         <p className="text-[11.5px] text-muted-foreground">{line}</p>
       </div>
-      <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+      <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/70 transition group-hover:translate-x-0.5" />
     </Link>
   );
 }

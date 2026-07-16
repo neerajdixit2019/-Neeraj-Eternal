@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, LifeBuoy, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TactileCard } from "@/components/TactileCard";
@@ -31,41 +31,83 @@ export const Route = createFileRoute("/_app/settings")({
   }),
 });
 
+const CHAPTERS = [
+  { id: "feel", label: "how it feels" },
+  { id: "letters", label: "the moon cycle" },
+  { id: "inner-map", label: "the inner map" },
+  { id: "insight-sources", label: "insights" },
+  { id: "vault", label: "the vault" },
+  { id: "account", label: "account" },
+  { id: "safety", label: "safety" },
+] as const;
+
 function Settings() {
   return (
     <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14 space-y-10">
       <header className="fade-in">
         <p className="qs-section-label">your space, your way</p>
         <h1 className="mt-3 font-serif font-light tracking-tight text-3xl sm:text-[2.4rem] leading-tight">Sanctuary</h1>
+        {/* the steady line — crisis support lives at the top of this room, always */}
+        <Link
+          to="/sos"
+          className="mt-4 flex min-h-11 items-center gap-2.5 border-l-2 py-1.5 pl-3.5 text-[13px] transition hover:brightness-110"
+          style={{ borderColor: "var(--clay)", color: "var(--rose)" }}
+        >
+          <LifeBuoy className="h-4 w-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
+          in a hard moment? the steady room is one tap away — or call Tele-MANAS 14416.
+        </Link>
       </header>
 
-      <SectionGroup label="how it feels here">
+      {/* the ledger's margin — a chapter list that stays in reach. On mobile it
+          pins below the fixed privacy-eye button so nothing overlaps it. */}
+      <nav
+        aria-label="Sanctuary chapters"
+        className="sticky top-14 z-20 -mx-5 -my-2 overflow-x-auto px-5 py-1 md:top-0 sm:-mx-8 sm:px-8"
+        style={{
+          background: "color-mix(in oklab, var(--background) 94%, transparent)",
+          borderBottom: "1px solid var(--border-subtle)",
+        }}
+      >
+        <div className="flex gap-5 whitespace-nowrap">
+          {CHAPTERS.map((c) => (
+            <a
+              key={c.id}
+              href={`#${c.id}`}
+              className="inline-flex min-h-11 items-center text-[11.5px] lowercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+            >
+              {c.label}
+            </a>
+          ))}
+        </div>
+      </nav>
+
+      <SectionGroup id="feel" label="how it feels here">
         <BackgroundAnimationSection />
         <ToneSection />
       </SectionGroup>
 
-      <SectionGroup label="the moon cycle">
+      <SectionGroup id="letters" label="the moon cycle">
         <SundayLetterSection />
       </SectionGroup>
 
-      <SectionGroup label="the inner map — what InnerMate remembers">
+      <SectionGroup id="inner-map" label="the inner map — what InnerMate remembers">
         <InnerMapSection />
       </SectionGroup>
 
-      <SectionGroup label="personal insights — what your sky may learn from">
+      <SectionGroup id="insight-sources" label="personal insights — what your sky may learn from">
         <InsightSourcesSection />
       </SectionGroup>
 
-      <SectionGroup label="your vault, your rules">
+      <SectionGroup id="vault" label="your vault, your rules">
         <VaultSection />
       </SectionGroup>
 
-      <SectionGroup label="account">
+      <SectionGroup id="account" label="account">
         <PasswordSection />
         <SignOutCard />
       </SectionGroup>
 
-      <SectionGroup label="safety">
+      <SectionGroup id="safety" label="safety">
         <SafetySection />
       </SectionGroup>
 
@@ -138,9 +180,9 @@ function InsightSourcesSection() {
   );
 }
 
-function SectionGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function SectionGroup({ id, label, children }: { id?: string; label: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-4">
+    <section id={id} className="scroll-mt-32 space-y-4 md:scroll-mt-16">
       <p className="qs-section-label">{label}</p>
       {children}
     </section>
@@ -163,30 +205,15 @@ function SignOutCard() {
 }
 
 function SafetySection() {
+  // Crisis support itself lives as the steady line under the page title —
+  // this chapter keeps the honest boundary statement.
   return (
-    <>
-      <Link to="/sos" className="block">
-        <TactileCard tint="rose" className="transition hover:brightness-105">
-          <div className="flex items-start gap-4">
-            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background/40">
-              <LifeBuoy className="h-5 w-5" strokeWidth={1.6} style={{ color: "var(--rose)" }} aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="font-serif text-xl">Crisis support</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                Helplines and a way to reach someone, anytime. This door is always open — day or night.
-              </p>
-            </div>
-          </div>
-        </TactileCard>
-      </Link>
-      <TactileCard>
-        <h2 className="font-serif text-xl">What this space is, and isn't</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          My Quiet Space is for self-reflection and emotional wellness. It is not therapy, medical advice, or emergency support. If you feel at risk, contact emergency services or a crisis helpline — India: Tele-MANAS 14416 / 1-800-891-4416.
-        </p>
-      </TactileCard>
-    </>
+    <TactileCard>
+      <h2 className="font-serif text-xl">What this space is, and isn't</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        My Quiet Space is for self-reflection and emotional wellness. It is not therapy, medical advice, or emergency support. If you feel at risk, contact emergency services or a crisis helpline — India: Tele-MANAS 14416 / 1-800-891-4416.
+      </p>
+    </TactileCard>
   );
 }
 
@@ -204,6 +231,17 @@ function VaultSection() {
   const [includeDateRange, setIncludeDateRange] = useState(true);
   const [includeLastReflection, setIncludeLastReflection] = useState(false);
   const [includeLastMoodCheckin, setIncludeLastMoodCheckin] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // The page-turn confirm must not lose the keyboard.
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const keepThingsRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirmingDelete) keepThingsRef.current?.focus();
+  }, [confirmingDelete]);
+  const cancelDelete = () => {
+    setConfirmingDelete(false);
+    requestAnimationFrame(() => deleteTriggerRef.current?.focus());
+  };
 
   const download = async () => {
     setExporting(true);
@@ -223,7 +261,6 @@ function VaultSection() {
   };
 
   const wipe = async () => {
-    if (!confirm("Delete all your journals, moods, conversations, memories, letters, and reflections? Only legally required consent/safety records will remain. This cannot be undone.")) return;
     setDeleting(true);
     try {
       await del();
@@ -232,6 +269,9 @@ function VaultSection() {
       navigate({ to: "/home" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete your data.");
+      // The buttons were disabled while deleting, which dropped keyboard
+      // focus to <body> — put it back inside the open confirm.
+      requestAnimationFrame(() => keepThingsRef.current?.focus());
     } finally {
       setDeleting(false);
     }
@@ -301,14 +341,66 @@ function VaultSection() {
         <Button variant="outline" className="rounded-full" onClick={download} disabled={exporting}>
           {exporting ? "Exporting…" : "Export my data (JSON)"}
         </Button>
-        <Button variant="outline" className="rounded-full text-destructive" onClick={wipe} disabled={deleting}>
-          {deleting ? "Deleting…" : "Delete my data"}
+        <Button
+          ref={deleteTriggerRef}
+          variant="outline"
+          className="rounded-full text-destructive"
+          onClick={() => setConfirmingDelete(true)}
+          disabled={deleting || confirmingDelete}
+          aria-expanded={confirmingDelete}
+        >
+          Delete my data
         </Button>
         <p className="w-full text-xs text-muted-foreground italic">
           Delete removes everything you created — journals, moods, AI chats, memories, letters, reflections, paths.
           A minimal audit trail (consent, rights requests, safety events) is retained as legally required.
         </p>
       </div>
+
+      {/* the page-turn — deletion confirmed in-world, on paper, never in a
+          browser dialog. Focus moves in (to the safe choice) and returns. */}
+      {confirmingDelete && (
+        <div
+          role="alertdialog"
+          aria-label="Confirm deleting your data"
+          aria-describedby="delete-confirm-detail"
+          onKeyDown={(e) => { if (e.key === "Escape" && !deleting) cancelDelete(); }}
+          className="fade-in mt-5 rounded-[4px] p-5 sm:p-6"
+          style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 14px 40px rgba(5, 4, 2, 0.5)" }}
+        >
+          <p className="font-serif text-[13px] italic" style={{ color: "color-mix(in oklab, var(--ink) 66%, var(--paper))" }}>
+            before this book closes
+          </p>
+          <p className="mt-2 font-serif text-[19px] font-light leading-snug">
+            Delete all your journals, moods, conversations, memories, letters, and reflections?
+          </p>
+          <p id="delete-confirm-detail" className="mt-2.5 text-[13.5px] leading-relaxed" style={{ color: "color-mix(in oklab, var(--ink) 80%, var(--paper))" }}>
+            Only legally required consent/safety records will remain. This cannot be undone — it is a true goodbye
+            to everything written here.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-6 border-t pt-4" style={{ borderColor: "color-mix(in oklab, var(--ink) 14%, transparent)" }}>
+            <button
+              ref={keepThingsRef}
+              type="button"
+              disabled={deleting}
+              onClick={cancelDelete}
+              className="inline-flex min-h-11 items-center text-[13.5px] font-medium underline-offset-4 transition hover:underline"
+              style={{ color: "var(--ink)" }}
+            >
+              keep my things
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={wipe}
+              className="inline-flex min-h-11 items-center text-[13.5px] underline-offset-4 transition hover:underline disabled:opacity-60"
+              style={{ color: "color-mix(in oklab, var(--clay) 70%, var(--ink))" }}
+            >
+              {deleting ? "clearing…" : "yes — clear everything"}
+            </button>
+          </div>
+        </div>
+      )}
     </TactileCard>
   );
 }
@@ -598,15 +690,17 @@ function InnerMapSection() {
         </button>
       </div>
 
-      <div className="mt-6 space-y-5">
+      {/* five landmarks, five ruled entries in the ledger */}
+      <div className="mt-4">
         {STORY_FIELDS.map((f) => (
-          <StoryField
-            key={f.key}
-            field={f.key}
-            label={f.label}
-            hint={f.hint}
-            initial={(story?.[f.key] as string | null) ?? ""}
-          />
+          <div key={f.key} className="border-t py-5 first:border-t-0" style={{ borderColor: "var(--border-subtle)" }}>
+            <StoryField
+              field={f.key}
+              label={f.label}
+              hint={f.hint}
+              initial={(story?.[f.key] as string | null) ?? ""}
+            />
+          </div>
         ))}
       </div>
 

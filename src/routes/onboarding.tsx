@@ -10,11 +10,12 @@ import { toast } from "sonner";
 import { ArrowLeft, CloudRain, Cloud, CloudSun, Sun, Sparkles, Lock } from "lucide-react";
 
 /**
- * First-session onboarding — rebuilt from the research spec: one question at a
- * time, an acknowledgment of the previous answer before every new question,
- * skip options on everything optional, no survey feel, and a constellation
- * close. The completeOnboarding contract (age/struggle/mood/need/tone/styles)
- * is unchanged, so downstream personalization keeps working.
+ * First-session onboarding — the first page being written: one Fraunces
+ * question at a time, an acknowledgment after every answer, and everything
+ * the user chooses to share accumulating as handwritten lines on a paper
+ * sheet pinned below. The finale seals the page with a letterpress stamp.
+ * The completeOnboarding contract (age/struggle/mood/need/tone/styles) is
+ * unchanged, so downstream personalization keeps working.
  */
 export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
@@ -38,7 +39,7 @@ const TONE_MAP: Record<string, "gentle" | "practical" | "poetic"> = {
   "Deep and reflective": "poetic",
 };
 
-/* Acknowledgment before the next question — adapted to what they just said.
+/* Acknowledgment after every answer — adapted to what they just said.
    Specific and warm, never "I see you" filler. */
 const STRUGGLE_ACK: Record<string, string> = {
   "Heartbreak": "Heartbreak has real weight. Thank you for naming it.",
@@ -49,6 +50,15 @@ const STRUGGLE_ACK: Record<string, string> = {
   "Social Media Comparison": "Other people's highlight reels are a hard mirror. Good that you noticed what it does to you.",
   "Career Pressure": "Career pressure can sit on your chest. It's allowed to be heavy.",
   "I Just Need to Write": "Then this will be your page. No performance needed.",
+};
+
+const NEED_ACK: Record<string, string> = {
+  "Calm down": "then we'll keep things slow and low-light.",
+  "Write freely": "the page will always be ready first.",
+  "Understand my emotions": "we'll name things gently, one at a time.",
+  "Stop overthinking": "shorter loops, softer landings.",
+  "Sleep": "evenings here will wind down with you.",
+  "Feel less alone": "you won't be writing into a void.",
 };
 
 const MOODS = [
@@ -107,20 +117,27 @@ function Onboarding() {
     }
   };
 
-  /* Stars for the closing constellation — only what was actually shared. */
-  const stars = useMemo(() => {
-    const s: { label: string; x: number; y: number }[] = [];
-    if (struggle) s.push({ label: struggle.toLowerCase(), x: 22, y: 30 });
-    if (moodEntry) s.push({ label: `arriving ${moodEntry.word.toLowerCase()}`, x: 58, y: 18 });
-    if (need) s.push({ label: need.toLowerCase(), x: 76, y: 48 });
-    if (speakStyle) s.push({ label: TONE_MAP[speakStyle] ?? "your tone", x: 40, y: 62 });
-    return s;
-  }, [struggle, moodEntry, need, speakStyle]);
+  /* The first page — only what was actually shared becomes a written line. */
+  const sheetLines = useMemo(() => {
+    const lines: string[] = [];
+    if (struggle) {
+      lines.push(struggle === "I Just Need to Write" ? "i just need to write." : `i came carrying ${struggle.toLowerCase()}.`);
+    }
+    if (moodEntry) lines.push(`arriving ${moodEntry.word.toLowerCase()}.`);
+    if (need) lines.push(`to begin: ${need.toLowerCase()}.`);
+    if (speakStyle) lines.push(`speak to me ${speakStyle.toLowerCase()}.`);
+    if (avoidStyles.length) {
+      lines.push(`please don't ${avoidStyles.map((s) => s.toLowerCase().replace(/^don't /, "")).join(" · ")}.`);
+    }
+    return lines;
+  }, [struggle, moodEntry, need, speakStyle, avoidStyles]);
 
   const back = () => setStep((s) => (s > 0 ? ((s - 1) as Step) : s));
 
   // Soft worded stages instead of a clinical "Question 4 of 12".
   const stageLabel = step <= 1 ? "Beginning" : step <= 3 ? "Understanding" : step === 4 ? "What you need" : "Your space";
+
+  const inkFaint = "color-mix(in oklab, var(--ink) 66%, var(--paper))";
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-6 py-8">
@@ -141,7 +158,7 @@ function Onboarding() {
           <p className="text-[10.5px] uppercase tracking-[0.2em] text-muted-foreground">{stageLabel}</p>
         </div>
         {step >= 1 && step <= 4 && (
-          <button type="button" onClick={() => setStep(5)} className="text-[12px] text-muted-foreground transition hover:text-foreground">
+          <button type="button" onClick={() => setStep(5)} className="inline-flex min-h-11 items-center text-[12.5px] text-secondary-foreground transition hover:text-foreground">
             skip ahead
           </button>
         )}
@@ -174,7 +191,7 @@ function Onboarding() {
       {step === 1 && (
         <section className="mt-8 fade-in" aria-labelledby="ob-why">
           <h1 id="ob-why" className="font-serif text-[1.65rem] font-light leading-snug">What brought you here today?</h1>
-          <p className="mt-2 text-[13.5px] text-muted-foreground">There's no wrong door. One tap, or skip.</p>
+          <p className="mt-2 text-[13.5px] text-muted-foreground">There's no wrong door. One tap, or leave it blank.</p>
           <div className="mt-5 grid grid-cols-2 gap-2.5">
             {STRUGGLES.map((s) => {
               const on = struggle === s;
@@ -189,9 +206,11 @@ function Onboarding() {
               );
             })}
           </div>
+          {struggle && <p className="margin-note mt-4 fade-in">{STRUGGLE_ACK[struggle]}</p>}
           <Button className="qs-pill-cta mt-6 h-12 w-full border-0" disabled={!struggle} onClick={() => setStep(2)}>Continue</Button>
-          <button type="button" onClick={() => { setStruggle(""); setStep(2); }} className="mt-3 w-full text-center text-[13px] text-muted-foreground transition hover:text-foreground">
-            I'd rather not say
+          <button type="button" onClick={() => { setStruggle(""); setStep(2); }}
+            className="mx-auto mt-2 flex min-h-11 w-full items-center justify-center text-[13.5px] text-secondary-foreground transition hover:text-foreground">
+            leave this blank
           </button>
         </section>
       )}
@@ -200,9 +219,9 @@ function Onboarding() {
       {step === 2 && (
         <section className="mt-8 fade-in" aria-labelledby="ob-mood">
           {struggle && (
-            <div className="glass mb-5 flex items-start gap-3 rounded-2xl p-3.5">
+            <div className="mb-5 flex items-start gap-3">
               <CompanionCloud size={38} state="listening" glow={false} />
-              <p className="pt-1 text-[13px] leading-relaxed text-muted-foreground">{STRUGGLE_ACK[struggle]}</p>
+              <p className="margin-note pt-1">{STRUGGLE_ACK[struggle]}</p>
             </div>
           )}
           <h1 id="ob-mood" className="font-serif text-[1.65rem] font-light leading-snug">How are you arriving right now?</h1>
@@ -223,10 +242,11 @@ function Onboarding() {
               );
             })}
           </div>
-          {moodEntry && <p className="mt-4 font-serif text-[13.5px] italic text-muted-foreground fade-in">{moodEntry.ack}</p>}
+          {moodEntry && <p className="margin-note mt-4 fade-in">{moodEntry.ack}</p>}
           <Button className="qs-pill-cta mt-6 h-12 w-full border-0" disabled={mood == null} onClick={() => setStep(3)}>Continue</Button>
-          <button type="button" onClick={() => { setMood(null); setStep(3); }} className="mt-3 w-full text-center text-[13px] text-muted-foreground transition hover:text-foreground">
-            not sure right now
+          <button type="button" onClick={() => { setMood(null); setStep(3); }}
+            className="mx-auto mt-2 flex min-h-11 w-full items-center justify-center text-[13.5px] text-secondary-foreground transition hover:text-foreground">
+            leave this blank
           </button>
         </section>
       )}
@@ -250,9 +270,11 @@ function Onboarding() {
               );
             })}
           </div>
+          {need && <p className="margin-note mt-4 fade-in">{NEED_ACK[need]}</p>}
           <Button className="qs-pill-cta mt-6 h-12 w-full border-0" disabled={!need} onClick={() => setStep(4)}>Continue</Button>
-          <button type="button" onClick={() => { setNeed(""); setStep(4); }} className="mt-3 w-full text-center text-[13px] text-muted-foreground transition hover:text-foreground">
-            skip this
+          <button type="button" onClick={() => { setNeed(""); setStep(4); }}
+            className="mx-auto mt-2 flex min-h-11 w-full items-center justify-center text-[13.5px] text-secondary-foreground transition hover:text-foreground">
+            leave this blank
           </button>
         </section>
       )}
@@ -276,6 +298,7 @@ function Onboarding() {
               );
             })}
           </div>
+          {speakStyle && <p className="margin-note mt-4 fade-in">noted — {speakStyle.toLowerCase()}, then.</p>}
           <p className="qs-section-label mt-6">anything to avoid? <span className="normal-case tracking-normal">(optional)</span></p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {[...EXTRA_STYLES, ...AVOID_STYLES].map((s) => {
@@ -313,38 +336,43 @@ function Onboarding() {
         </section>
       )}
 
-      {/* 6 · Your sky begins — only what was actually shared becomes a star */}
+      {/* 6 · The first page, sealed — only what was actually shared is on it */}
       {step === 6 && (
-        <section className="flex flex-1 flex-col fade-in" aria-labelledby="ob-sky">
-          <div className="sky-panel relative mt-8 h-64" role="img" aria-label={stars.length ? `The start of your inner sky: ${stars.map((s) => s.label).join(", ")}` : "A quiet night sky, ready to begin"}>
-            {stars.map((s, i) => (
-              <div key={s.label} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${s.x}%`, top: `${s.y}%` }}>
-                <span className="mx-auto block h-2.5 w-2.5 rounded-full motion-safe:animate-[qs-twinkle_4s_ease-in-out_infinite]"
-                  style={{ background: "var(--dawn)", boxShadow: "0 0 12px 3px color-mix(in oklab, var(--dawn) 55%, transparent)", animationDelay: `${i * 0.8}s` }} />
-                <span className="mt-1.5 block whitespace-nowrap font-serif text-[10.5px] italic text-foreground/70">{s.label}</span>
-              </div>
-            ))}
-            {stars.length > 1 && (
-              <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                {stars.slice(1).map((s, i) => (
-                  <line key={s.label} x1={stars[i].x} y1={stars[i].y} x2={s.x} y2={s.y}
-                    stroke="oklch(1 0 0 / 0.22)" strokeWidth="1" strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
+        <section className="flex flex-1 flex-col fade-in" aria-labelledby="ob-page">
+          <div
+            className="relative mt-8 rounded-[4px] p-6 pb-16"
+            role="group"
+            aria-label={sheetLines.length ? `Your first page: ${sheetLines.join(" ")}` : "Your first page, left blank on purpose"}
+            style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)" }}
+          >
+            <p className="font-serif text-[12px] italic" style={{ color: inkFaint }}>the first page</p>
+            {sheetLines.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {sheetLines.map((l) => (
+                  <p key={l} className="font-reading text-[15px] leading-relaxed" style={{ color: "color-mix(in oklab, var(--ink) 85%, var(--paper))" }}>{l}</p>
                 ))}
-              </svg>
-            )}
-            {stars.length === 0 && (
-              <p className="absolute inset-0 flex items-center justify-center px-8 text-center font-serif text-[14px] italic text-foreground/60">
-                a quiet sky, ready when you are
+              </div>
+            ) : (
+              <p className="font-reading mt-3 text-[14.5px] italic" style={{ color: inkFaint }}>
+                left blank, on purpose. that's allowed here.
               </p>
             )}
+            {/* the letterpress seal */}
+            <span
+              aria-hidden
+              className="absolute bottom-4 right-5 -rotate-6 rounded-full border-2 px-3.5 py-2 font-serif text-[10px] font-semibold uppercase tracking-[0.28em]"
+              style={{ borderColor: "color-mix(in oklab, var(--ink) 38%, transparent)", color: "color-mix(in oklab, var(--ink) 58%, transparent)" }}
+            >
+              begun
+            </span>
           </div>
           <div className="mt-auto pt-8">
-            <h1 id="ob-sky" className="font-serif text-[1.7rem] font-light leading-snug">
-              {stars.length ? "Here's the start of your inner sky." : "Your sky is ready."}
+            <h1 id="ob-page" className="font-serif text-[1.7rem] font-light leading-snug">
+              {sheetLines.length ? "Your first page is written." : "Your book is ready."}
             </h1>
             <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-              {stars.length
-                ? "Everything you shared becomes a quiet star. It grows as you do — nothing more is assumed about you."
+              {sheetLines.length
+                ? "Only what you chose to share is on it — nothing more is assumed about you. The rest of the book is yours to fill."
                 : "You shared what you wanted to. The rest can come whenever you're ready."}
             </p>
             <Button className="qs-pill-cta mt-6 h-12 w-full border-0" disabled={saving} onClick={submit}>
@@ -352,6 +380,31 @@ function Onboarding() {
             </Button>
           </div>
         </section>
+      )}
+
+      {/* the page so far — pinned below while it's being written */}
+      {step >= 1 && step <= 5 && sheetLines.length > 0 && (
+        <div
+          className="mt-6 rounded-[3px] px-4 py-3"
+          role="status"
+          aria-label={`Your first page so far: ${sheetLines.join(" ")}`}
+          style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 8px 24px rgba(5, 4, 2, 0.4)" }}
+        >
+          <p className="font-serif text-[11px] italic" style={{ color: inkFaint }}>your first page, so far</p>
+          <div className="mt-1.5 space-y-1">
+            {sheetLines.map((l) => (
+              <p key={l} className="font-reading text-[13.5px] leading-relaxed" style={{ color: "color-mix(in oklab, var(--ink) 85%, var(--paper))" }}>{l}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* the whisper line — help is present on every step, quietly */}
+      {step < 6 && (
+        <p className="mt-6 border-t pt-4 text-center text-[11.5px] leading-relaxed text-muted-foreground" style={{ borderColor: "var(--border-subtle)" }}>
+          this space isn't for emergencies — in a hard moment, call{" "}
+          <a href="tel:14416" className="-my-3 inline-block px-1 py-3 underline underline-offset-2" style={{ color: "var(--rose)" }}>Tele-MANAS 14416</a>.
+        </p>
       )}
     </div>
   );

@@ -520,17 +520,6 @@
     transition: transform 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
   }
   .soft-arrow:hover { transform: translateY(-1px); box-shadow: 0 14px 30px -12px color-mix(in oklab, var(--primary) 70%, transparent); }
-  /* Landing CTA — gentle breathing glow */
-  @keyframes ctaGlow {
-    0%, 100% { box-shadow: 0 18px 38px -18px color-mix(in oklab, var(--primary) 70%, transparent); }
-    50%      { box-shadow: 0 22px 50px -16px color-mix(in oklab, var(--primary) 85%, transparent), 0 0 30px -8px color-mix(in oklab, var(--dawn) 30%, transparent); }
-  }
-  .cta-glow {
-    animation: ctaGlow 4s ease-in-out infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .cta-glow { animation: none; }
-  }
 
   .gradient-soft {
     background: linear-gradient(135deg,
