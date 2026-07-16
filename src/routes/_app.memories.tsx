@@ -14,7 +14,7 @@ import { listKeptLetters } from "@/lib/letters.functions";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Flame, Mail, Plus, Sparkles, Video, X, Image as ImageIcon, Music, Pencil, Search } from "lucide-react";
+import { Flame, Plus, Sparkles, Video, X, Image as ImageIcon, Music, Pencil, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/memories")({
   component: MemoriesPage,
@@ -217,13 +217,40 @@ function MemoriesPage() {
   const n = memories?.length;
   const invalidate = () => qc.invalidateQueries({ queryKey: ["memories"] });
 
+  // One diff over the rows powers both ends of a star's life: first light
+  // when a memory is kept, an ember sinking out when one is let go.
+  const prevRowsRef = useRef<Map<string, MemoryRow> | null>(null);
+  const [newbornId, setNewbornId] = useState<string | null>(null);
+  const [ghostStar, setGhostStar] = useState<{ x: number; y: number; size: number; tint: string } | null>(null);
+  useEffect(() => {
+    if (!memories) return;
+    const prev = prevRowsRef.current;
+    const next = new Map(memories.map((m) => [m.id, m] as const));
+    prevRowsRef.current = next;
+    if (prev === null) return; // first load / hydration — nothing arrives or leaves
+    const reduced =
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      document.body.classList.contains("motion-reduced");
+    if (reduced) return; // the star simply appears / is simply gone
+    const born = memories.filter((m) => !prev.has(m.id));
+    const gone = [...prev.values()].filter((m) => !next.has(m.id));
+    const timers: number[] = [];
+    if (born.length === 1) {
+      setNewbornId(born[0].id);
+      timers.push(window.setTimeout(() => setNewbornId(null), 1800));
+    }
+    if (gone.length === 1) {
+      const g = starFor(gone[0]);
+      setGhostStar({ x: g.x, y: g.y, size: g.size, tint: g.tint });
+      timers.push(window.setTimeout(() => setGhostStar(null), 1300));
+    }
+    return () => { for (const t of timers) clearTimeout(t); };
+  }, [memories]);
+
   return (
     <div className="motion-calm mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14 space-y-6">
       <div>
-        <p className="qs-section-label">
-          a sky of what stays{typeof n === "number" ? ` · ${n} star${n === 1 ? "" : "s"}` : ""}
-          {dominantFeeling ? ` · mostly ${dominantFeeling}` : ""}
-        </p>
+        <p className="qs-section-label">a sky of what stays</p>
         <h1 className="mt-3 font-serif font-light tracking-tight text-3xl sm:text-[2.4rem] leading-tight">Your night sky</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
           Every memory you keep becomes a star. The ones that matter most shine brightest. Tap one to step back inside it.
@@ -247,8 +274,18 @@ function MemoriesPage() {
         </div>
       ) : (
         <>
-          {/* ── THE SKY ─────────────────────────────────────────────── */}
-          <div className="sky-panel h-[380px]" role="group" aria-label="Your night sky — every star is a kept memory">
+          {/* ── THE SKY — held in the study's etched window frame ───── */}
+          <div>
+          <div className="study-window">
+          <div
+            className="sky-panel h-[380px]"
+            role="group"
+            aria-label={
+              typeof n === "number"
+                ? `Your night sky — ${n} kept ${n === 1 ? "memory" : "memories"}, every star is one${dominantFeeling ? `, mostly ${dominantFeeling}` : ""}`
+                : "Your night sky — every star is a kept memory"
+            }
+          >
             {/* ambient layers */}
             <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
               {/* milky way — a diagonal breath of light */}
@@ -291,8 +328,9 @@ function MemoriesPage() {
                 {BG_STARS.map((s, i) => (
                   <span
                     key={i}
-                    className="absolute rounded-full bg-white"
+                    className="absolute rounded-full"
                     style={{
+                      background: "var(--moth)",
                       left: `${s.left}%`,
                       top: `${s.top}%`,
                       width: s.size,
@@ -392,11 +430,11 @@ function MemoriesPage() {
               <div className="fade-in pointer-events-none absolute left-5 top-4 z-[7]">
                 <p
                   className="font-serif italic text-[26px] leading-none"
-                  style={{ color: "oklch(0.97 0.005 90 / 0.9)", textShadow: `0 0 20px ${activeTint}` }}
+                  style={{ color: "color-mix(in oklab, var(--moth) 92%, white)", textShadow: `0 0 20px ${activeTint}` }}
                 >
                   {activeFeeling}
                 </p>
-                <p className="mt-1.5 text-[9.5px] uppercase tracking-[0.24em]" style={{ color: "oklch(0.9 0.01 90 / 0.5)" }}>
+                <p className="mt-1.5 text-[9.5px] uppercase tracking-[0.24em]" style={{ color: "color-mix(in oklab, var(--moth) 74%, transparent)" }}>
                   constellation · {activeStars.length}
                 </p>
               </div>
@@ -424,6 +462,7 @@ function MemoriesPage() {
               const isSelected = s.memory.id === selectedId;
               const active = isSelected || s.memory.id === hoveredId;
               const bright = BRIGHT_FEELINGS.has(s.memory.feeling_tag ?? "");
+              const isNewborn = s.memory.id === newbornId;
               const label = s.memory.title
                 || (s.memory.story ?? "").split("\n")[0].slice(0, 40)
                 || "an untitled moment";
@@ -464,7 +503,7 @@ function MemoriesPage() {
                     {bright && (
                       <span
                         aria-hidden
-                        className="qs-spike"
+                        className={`qs-spike${isNewborn ? " qs-first-light-spike" : ""}`}
                         style={{
                           // @ts-expect-error css var
                           "--spike": s.tint,
@@ -476,10 +515,13 @@ function MemoriesPage() {
                     <span
                       aria-hidden
                       className="absolute inset-0 rounded-full"
+                      onAnimationEnd={isNewborn ? () => setNewbornId(null) : undefined}
                       style={{
                         background: `radial-gradient(circle at 38% 34%, oklch(1 0 0 / 0.98) 0%, ${s.tint} 58%, color-mix(in oklab, ${s.tint} 30%, transparent) 100%)`,
                         boxShadow: `0 0 ${Math.round(s.size * (active ? 2.4 : 1.7))}px ${active ? 2 : 1}px color-mix(in oklab, ${s.tint} 65%, transparent)`,
-                        animation: `qs-twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
+                        animation: isNewborn
+                          ? "qs-first-light 1.4s ease-out both"
+                          : `qs-twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
                         transition: "box-shadow 300ms ease",
                       }}
                     />
@@ -488,7 +530,7 @@ function MemoriesPage() {
                         aria-hidden
                         className="absolute -inset-1.5 rounded-full"
                         style={{
-                          boxShadow: "0 0 0 1px oklch(1 0 0 / 0.85)",
+                          boxShadow: "0 0 0 1px color-mix(in oklab, var(--moth) 88%, transparent)",
                           animation: "qs-sel-ring 2.4s ease-in-out infinite",
                         }}
                       />
@@ -498,11 +540,30 @@ function MemoriesPage() {
               );
             })}
 
+            {/* a star going out — the burn ritual's ghost, one flare then an
+                ember sinking toward the treeline */}
+            {ghostStar && (
+              <span
+                aria-hidden
+                className="qs-star-out pointer-events-none absolute z-[5] rounded-full"
+                style={{
+                  left: `${ghostStar.x}%`,
+                  top: `${ghostStar.y}%`,
+                  width: ghostStar.size,
+                  height: ghostStar.size,
+                  marginLeft: -ghostStar.size / 2,
+                  marginTop: -ghostStar.size / 2,
+                  background: `radial-gradient(circle at 38% 34%, oklch(1 0 0 / 0.98) 0%, ${ghostStar.tint} 58%, transparent 100%)`,
+                  boxShadow: `0 0 ${Math.round(ghostStar.size * 1.7)}px 1px color-mix(in oklab, ${ghostStar.tint} 65%, transparent)`,
+                }}
+              />
+            )}
+
             {/* an empty sky, still listening */}
             {!isLoading && stars.length === 0 && (
               <div className="pointer-events-none absolute inset-0 z-[6] flex flex-col items-center justify-center gap-4 px-8">
                 <span className="qs-seed-star" aria-hidden />
-                <p className="text-center font-serif italic text-sm leading-relaxed" style={{ color: "oklch(0.92 0.015 90 / 0.8)" }}>
+                <p className="text-center font-serif italic text-sm leading-relaxed" style={{ color: "color-mix(in oklab, var(--moth) 82%, transparent)" }}>
                   your sky is waiting for its first star.
                   <br />
                   keep a moment below, and watch it light up here.
@@ -510,16 +571,10 @@ function MemoriesPage() {
               </div>
             )}
 
-            {/* docked detail — step closer to one star */}
+            {/* the windowsill note — the star's details on a slip of paper
+                resting on the sill, not a pane of glass */}
             {selectedStar && (
-              <div
-                className="rise-in absolute inset-x-3 bottom-3 z-10 rounded-2xl border p-4"
-                style={{
-                  background: "oklch(0.17 0.025 220 / 0.78)",
-                  borderColor: "oklch(1 0 0 / 0.12)",
-                  backdropFilter: "blur(16px)",
-                }}
-              >
+              <div className="sill-note rise-in absolute inset-x-3 bottom-3 z-10 p-4">
                 <div className="flex items-center gap-3">
                   <span
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
@@ -536,11 +591,11 @@ function MemoriesPage() {
                     )}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] uppercase tracking-[0.18em]" style={{ color: "oklch(0.88 0.015 90 / 0.6)" }}>
+                    <p className="text-[10px] uppercase tracking-[0.18em]" style={{ color: "color-mix(in oklab, var(--ink) 80%, transparent)" }}>
                       {memoryDateLabel(selectedStar.memory)}
                       {selectedStar.memory.feeling_tag ? ` · ${selectedStar.memory.feeling_tag}` : ""}
                     </p>
-                    <p className="truncate font-serif text-[15px] leading-snug" style={{ color: "oklch(0.96 0.01 90)" }}>
+                    <p className="truncate font-serif text-[15px] leading-snug" style={{ color: "var(--ink)" }}>
                       {selectedStar.memory.title || "an untitled moment"}
                     </p>
                   </div>
@@ -556,13 +611,21 @@ function MemoriesPage() {
                     type="button"
                     aria-label="Close"
                     onClick={() => setSelectedId(null)}
-                    className="shrink-0 rounded-full p-1.5 transition hover:bg-white/10"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-[color-mix(in_oklab,var(--ink)_8%,transparent)]"
                   >
-                    <X className="h-4 w-4" strokeWidth={1.7} style={{ color: "oklch(0.9 0.01 90 / 0.7)" }} />
+                    <X className="h-4 w-4" strokeWidth={1.7} style={{ color: "color-mix(in oklab, var(--ink) 65%, transparent)" }} />
                   </button>
                 </div>
               </div>
             )}
+          </div>
+          </div>
+          {/* the engraving on the sill — the sky's facts, inscribed not headlined */}
+          {typeof n === "number" && n > 0 && (
+            <p className="study-sill-note" aria-hidden="true">
+              {n} star{n === 1 ? "" : "s"}{dominantFeeling ? ` · mostly ${dominantFeeling}` : ""}
+            </p>
+          )}
           </div>
 
           {/* wander — let the sky pick a memory to step back into */}
@@ -699,24 +762,6 @@ function MemoriesPage() {
             );
           })()}
 
-          {/* the moon cycle — letters kept from InnerMate */}
-          <button type="button" onClick={() => setTab("letters")} className="block w-full text-left">
-            <TactileCard tint="lavender" className="transition hover:-translate-y-0.5">
-              <div className="flex items-center gap-4">
-                <span
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: "color-mix(in oklab, var(--lavender) 20%, transparent)" }}
-                >
-                  <Mail className="h-[18px] w-[18px]" strokeWidth={1.6} style={{ color: "var(--lavender)" }} />
-                </span>
-                <div>
-                  <p className="font-serif text-lg leading-snug">InnerMate's weekly letters</p>
-                  <p className="mt-1 text-sm text-muted-foreground">gentle notes written back to you</p>
-                </div>
-              </div>
-            </TactileCard>
-          </button>
-
           <p className="pt-1 text-center font-serif italic text-sm text-muted-foreground">
             what you keep here, keeps shining.
           </p>
@@ -851,19 +896,12 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed px-5 py-4 text-sm font-medium transition hover:brightness-110"
-        style={{
-          borderColor: "color-mix(in oklab, var(--dawn) 42%, transparent)",
-          background: "color-mix(in oklab, var(--dawn) 7%, transparent)",
-          color: "var(--dawn)",
-        }}
-      >
-        <Plus className="h-4 w-4" strokeWidth={1.7} />
-        hang a new star
-      </button>
+      <div className="flex justify-center">
+        <button type="button" onClick={() => setOpen(true)} className="qs-pill-cta inline-flex items-center gap-2">
+          <Plus className="h-4 w-4" strokeWidth={1.9} />
+          hang a new star
+        </button>
+      </div>
     );
   }
 

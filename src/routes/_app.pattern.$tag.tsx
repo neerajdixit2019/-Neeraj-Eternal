@@ -109,9 +109,9 @@ function PatternDetail() {
         : "noted, but rarely — too soon to call it a pattern.";
   const timeMax = Math.max(1, ...Object.values(ev.times));
 
-  // Ink mixes for writing on the paper sheet.
-  const inkFaint = "color-mix(in oklab, var(--ink) 55%, var(--paper))";
-  const inkSoft = "color-mix(in oklab, var(--ink) 74%, var(--paper))";
+  // Ink mixes for writing on the paper sheet. Faint ink stays AA-readable.
+  const inkFaint = "color-mix(in oklab, var(--ink) 66%, var(--paper))";
+  const inkSoft = "color-mix(in oklab, var(--ink) 80%, var(--paper))";
   const inkHair = "color-mix(in oklab, var(--ink) 16%, transparent)";
 
   // "What you can do" — a real practice, chosen from the real evidence.

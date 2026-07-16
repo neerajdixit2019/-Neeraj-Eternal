@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getLetter, setLetterKept, deleteLetter } from "@/lib/letters.functions";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { WeekArc } from "@/components/WeekArc";
@@ -43,6 +42,18 @@ function LetterPage() {
   });
 
   const [working, setWorking] = useState(false);
+  const [confirmingLetGo, setConfirmingLetGo] = useState(false);
+  // The in-world confirm must not lose the keyboard: focus moves into it when
+  // it opens and returns to the trigger when it closes.
+  const letGoTriggerRef = useRef<HTMLButtonElement>(null);
+  const confirmYesRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirmingLetGo) confirmYesRef.current?.focus();
+  }, [confirmingLetGo]);
+  const cancelLetGo = () => {
+    setConfirmingLetGo(false);
+    requestAnimationFrame(() => letGoTriggerRef.current?.focus());
+  };
 
   if (isLoading) {
     return <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground">…</div>;
@@ -62,6 +73,12 @@ function LetterPage() {
 
   const paragraphs = letter.body.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
 
+  // Ink mixes for writing on the paper sheet. Faint ink stays AA-readable —
+  // pencil, not ghost.
+  const inkFaint = "color-mix(in oklab, var(--ink) 66%, var(--paper))";
+  const inkSoft = "color-mix(in oklab, var(--ink) 80%, var(--paper))";
+  const inkHair = "color-mix(in oklab, var(--ink) 14%, transparent)";
+
   const toggleKeep = async () => {
     setWorking(true);
     try {
@@ -73,7 +90,6 @@ function LetterPage() {
   };
 
   const letGo = async () => {
-    if (!confirm("Let this letter go? It will not be kept anywhere.")) return;
     setWorking(true);
     try {
       await delFn({ data: { id: letter.id } });
@@ -83,60 +99,114 @@ function LetterPage() {
   };
 
   return (
-    <div className="mx-auto max-w-xl px-6 py-12 sm:py-20">
+    <div className="mx-auto max-w-xl px-6 py-12 sm:py-16">
       <Link to="/home" className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3 w-3" /> Home
       </Link>
 
       <p className="qs-section-label mt-10">the moon cycle · a letter from your week</p>
-      <p className="mt-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-        Week of {dateStr}
-      </p>
-      <div className="mt-2 h-px w-12 bg-border/70" />
 
-      {letter.arc && letter.arc.some((v) => v != null) && (
-        <div className="mt-6 text-foreground/70">
-          <WeekArc days={letter.arc} className="-ml-1 w-full max-w-xs" label="How this week moved" />
-        </div>
-      )}
+      {/* THE LETTER — a full sheet of paper under the lamp: the drop-capped
+          Newsreader letter the whole direction was built to earn. */}
+      <div
+        className="mt-5 rounded-[4px] p-6 sm:p-9"
+        style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)" }}
+      >
+        {/* the week, drawn as a thin dawnline arc above the salutation */}
+        {letter.arc && letter.arc.some((v) => v != null) && (
+          <div className="mx-auto max-w-[260px]" style={{ color: "var(--dawnline)" }}>
+            <WeekArc days={letter.arc} height={48} className="w-full" label="How this week moved" />
+          </div>
+        )}
 
-      {letter.check_in_echo && (
-        <aside
-          aria-label="How your check-in shaped this letter"
-          className="mt-8 rounded-[20px] border border-border/40 bg-[color-mix(in_oklab,var(--amber)_22%,transparent)] px-5 py-4"
-        >
-          <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            From your check-in
+        <p className="mt-4 text-center font-serif text-[13px] italic" style={{ color: inkFaint }}>
+          week of {dateStr}
+        </p>
+
+        {letter.check_in_echo && (
+          <p
+            className="mx-auto mt-4 max-w-[46ch] text-center text-[12.5px] italic leading-relaxed"
+            style={{ color: inkFaint }}
+          >
+            from your check-in — “{letter.check_in_echo}”
           </p>
-          <p className="mt-1.5 font-serif text-[15px] italic leading-relaxed text-foreground/80">
-            {letter.check_in_echo}
-          </p>
-        </aside>
-      )}
+        )}
 
-      <article className="mt-10 space-y-6 font-serif text-[18px] leading-[1.85] text-foreground/90">
-        {paragraphs.map((para, i) => (
-          <p key={i} className={i === paragraphs.length - 1 ? "italic text-foreground/80" : undefined}>
-            {para}
-          </p>
-        ))}
-      </article>
+        <article className="font-reading mt-7 space-y-6 text-[17px] leading-[1.85]" style={{ color: inkSoft }}>
+          {paragraphs.map((para, i) => (
+            <p
+              key={i}
+              className={`${i === 0 ? "letter-dropcap " : ""}${i === paragraphs.length - 1 ? "italic" : ""}`.trim() || undefined}
+            >
+              {para}
+            </p>
+          ))}
+        </article>
 
-      <div className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-6">
+        <p className="mt-8 border-t pt-4 text-[11.5px] italic" style={{ borderColor: inkHair, color: inkFaint }}>
+          written from your week, read by no one else.
+        </p>
+      </div>
+
+      {/* the desk beneath the letter — keep is brass; letting go is a small clay
+          margin action with an in-world two-step, never a browser dialog. */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs text-muted-foreground">
-          {letter.kept ? "On your shelf." : "Not kept."}
+          {letter.kept ? "on your shelf." : "not kept."}
         </span>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-4">
           {!letter.kept && (
-            <Button variant="outline" className="rounded-full" disabled={working} onClick={toggleKeep}>
+            <button type="button" className="qs-pill-cta" disabled={working} onClick={toggleKeep}>
               Keep this letter
-            </Button>
+            </button>
           )}
-          <Button variant="outline" className="rounded-full text-destructive" disabled={working} onClick={letGo}>
-            Let it go
-          </Button>
+          <button
+            ref={letGoTriggerRef}
+            type="button"
+            disabled={working || confirmingLetGo}
+            aria-expanded={confirmingLetGo}
+            onClick={() => setConfirmingLetGo(true)}
+            className="inline-flex min-h-11 items-center text-[12.5px] underline-offset-4 transition hover:underline disabled:opacity-50"
+            style={{ color: "var(--rose)" }}
+          >
+            let it go
+          </button>
         </div>
       </div>
+
+      {confirmingLetGo && (
+        <div
+          className="fade-in mt-4 border-l-2 py-2 pl-4"
+          style={{ borderColor: "var(--clay)" }}
+          role="alertdialog"
+          aria-label="Confirm letting this letter go"
+          onKeyDown={(e) => { if (e.key === "Escape") cancelLetGo(); }}
+        >
+          <p className="text-[13.5px] leading-relaxed text-secondary-foreground">
+            let this letter go? it won't be kept anywhere — that's a true goodbye.
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-6">
+            <button
+              ref={confirmYesRef}
+              type="button"
+              disabled={working}
+              onClick={letGo}
+              className="inline-flex min-h-11 items-center text-[13px] font-medium underline-offset-4 transition hover:underline disabled:opacity-60"
+              style={{ color: "var(--rose)" }}
+            >
+              {working ? "letting go…" : "yes, let it go"}
+            </button>
+            <button
+              type="button"
+              disabled={working}
+              onClick={cancelLetGo}
+              className="inline-flex min-h-11 items-center text-[13px] text-muted-foreground transition hover:text-foreground"
+            >
+              keep it after all
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
