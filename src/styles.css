@@ -344,7 +344,9 @@
   body.tod-morning  { background-color: color-mix(in oklab, var(--dawn)  6%, var(--background)); }
   body.tod-afternoon{ background-color: color-mix(in oklab, var(--mint)  5%, var(--background)); }
   body.tod-evening  { background-color: color-mix(in oklab, var(--rose)  6%, var(--background)); }
-  body.tod-night    { background-color: var(--background); }
+  /* At night the lamp burns lower — the deep wall saves OLED batteries and
+     only ever RAISES text contrast. */
+  body.tod-night    { background-color: var(--background-deep); }
 
   @media (prefers-reduced-motion: no-preference) {
     body.animate-background {

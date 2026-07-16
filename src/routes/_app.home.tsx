@@ -8,6 +8,7 @@ import { FALLBACK_QUESTIONS, fallbackRead, type ArrivalQuestion, type ArrivalOpt
 import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions";
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import { roomFor, GROWTH_NOTE, type Room, type RoomMood } from "@/lib/room-state";
+import { radioArrowNav } from "@/lib/a11y";
 import {
   Heart, PenLine, Mail, Clock, ArrowRight, MessageCircle, HeartHandshake,
   Wind, X, AlertTriangle, Settings, Shield, Sparkles, Lightbulb,
@@ -722,9 +723,11 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
                 key={o.score}
                 type="button"
                 onClick={() => pick(o.score)}
+                onKeyDown={radioArrowNav}
                 role="radio"
                 aria-checked={on}
                 aria-label={o.word}
+                tabIndex={on || (selected == null && o.score === MOOD_ORBS[0].score) ? 0 : -1}
                 className="group flex min-h-[44px] flex-col items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-lg py-1"
               >
                 <span

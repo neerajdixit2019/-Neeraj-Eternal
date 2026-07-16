@@ -144,8 +144,10 @@ function Insights() {
           {(["constellation", "timeline"] as const).map((v) => (
             <button
               key={v}
+              id={`insight-tab-${v}`}
               role="tab"
               aria-selected={view === v}
+              aria-controls="insight-view"
               onClick={() => setView(v)}
               className="rounded-full px-4 py-2 text-[13.5px] capitalize transition"
               style={view === v
@@ -170,6 +172,7 @@ function Insights() {
       </div>
 
       {/* THE WINDOW — the sky sits directly under its reading, framed. */}
+      <div id="insight-view" role="tabpanel" aria-labelledby={`insight-tab-${view}`}>
       {isLoading ? (
         <div className="study-window mt-6">
           <div className="sky-panel flex h-[280px] items-center justify-center">
@@ -191,6 +194,7 @@ function Insights() {
       ) : (
         <TimelineView periodMoods={periodMoods} visibleTags={visibleStats.map((s) => s.label)} filterTag={timelineTag} setFilterTag={setTimelineTag} />
       )}
+      </div>
 
       {/* NOTES ON THE SILL — everything below the window, one ruled column */}
       <p className="qs-section-label mt-10">notes on the sill</p>

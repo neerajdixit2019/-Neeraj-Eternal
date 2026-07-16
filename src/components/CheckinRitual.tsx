@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { logMood } from "@/lib/data.functions";
+import { radioArrowNav } from "@/lib/a11y";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowRight, MessageCircle, PenLine } from "lucide-react";
@@ -117,7 +118,9 @@ export function CheckinRitual() {
                 role="radio"
                 aria-checked={on}
                 aria-label={o.word}
+                tabIndex={on || (mood == null && o.score === ORBS[0].score) ? 0 : -1}
                 onClick={() => setMood(o.score)}
+                onKeyDown={radioArrowNav}
                 className="flex flex-1 items-center justify-center rounded-full py-1 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               >
                 <span className={`qs-orb ${on ? "qs-orb--selected" : ""}`} />

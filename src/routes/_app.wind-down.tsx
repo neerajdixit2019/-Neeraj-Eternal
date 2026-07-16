@@ -60,7 +60,7 @@ function WindDown() {
         style={{
           background:
             "radial-gradient(120% 80% at 50% 112%, color-mix(in oklab, var(--dawnline) 14%, transparent) 0%, transparent 55%)," +
-            "linear-gradient(185deg, oklch(0.145 0.028 268) 10%, oklch(0.16 0.03 274) 60%, oklch(0.185 0.028 280) 100%)",
+            "linear-gradient(185deg, var(--background-deep) 10%, oklch(0.155 0.03 274) 60%, oklch(0.18 0.028 280) 100%)",
         }}
       />
       <Link to="/home" className="absolute right-5 top-5 text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground">
