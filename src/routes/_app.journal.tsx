@@ -5,8 +5,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { listJournal, saveJournal, deleteJournal } from "@/lib/data.functions";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Feather, Shuffle } from "lucide-react";
+import { Trash2, Feather, Shuffle, Mic } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
+import { useDictation, DICTATION_LANGUAGES } from "@/hooks/use-dictation";
 import { track } from "@/lib/analytics";
 
 export const Route = createFileRoute("/_app/journal")({
@@ -145,7 +146,9 @@ function Journal() {
   const [savingNow, setSavingNow] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const currentIdRef = useRef<string | null>(null);
-  useEffect(() => { currentIdRef.current = editing?.id ?? null; }, [editing?.id]);
+  // Only track while an editor is open — the id must survive the close so the
+  // flush below updates the same row instead of writing a duplicate.
+  useEffect(() => { if (editing) currentIdRef.current = editing.id; }, [editing]);
 
   useEffect(() => {
     if (!editing) return;
@@ -157,6 +160,7 @@ function Journal() {
     const t = setTimeout(async () => {
       try {
         setSavingNow(true);
+        savingNowRef.current = true;
         const res = await save({ data: {
           id: currentIdRef.current,
           title: editing.title || undefined,
@@ -165,6 +169,7 @@ function Journal() {
           entry_type: editing.mode.key,
         }}) as { id?: string } | undefined;
         if (res?.id && !currentIdRef.current) currentIdRef.current = res.id;
+        savedSnapRef.current = editing.title + "\n" + editing.body;
         setSavedAt(Date.now());
         setSaveFailed(false);
         track("journal_entry_autosaved");
@@ -174,12 +179,69 @@ function Journal() {
         // the next keystroke's debounce as before.
         setSaveFailed(true);
       }
-      finally { setSavingNow(false); }
+      finally { setSavingNow(false); savingNowRef.current = false; }
     }, 1200);
     return () => clearTimeout(t);
   }, [editing, save, qc]);
 
+  // THE FLUSH — closing the page must never lose the last 1.2 seconds of
+  // writing (typed or spoken): the debounce dies with the editor, so whatever
+  // it hadn't kept yet is saved here, against the same row.
+  const lastEditingRef = useRef<typeof editing>(null);
+  const savedSnapRef = useRef<string>("");
+  const savingNowRef = useRef(false);
+  useEffect(() => { if (editing) lastEditingRef.current = editing; }, [editing]);
+  useEffect(() => {
+    if (editing) return;
+    const snap = lastEditingRef.current;
+    lastEditingRef.current = null;
+    if (!snap) return;
+    const titleIsSeed = snap.mode.key !== "free" && snap.title.trim() === snap.mode.label;
+    if (!snap.body.trim() && (titleIsSeed || !snap.title.trim())) return;
+    if (savedSnapRef.current === snap.title + "\n" + snap.body) return; // already kept
+    if (savingNowRef.current) return; // an in-flight save is carrying this content
+    void save({ data: {
+      id: currentIdRef.current,
+      title: snap.title || undefined,
+      body: snap.body,
+      emotion_tags: [],
+      entry_type: snap.mode.key,
+    }})
+      .then(() => {
+        savedSnapRef.current = snap.title + "\n" + snap.body;
+        qc.invalidateQueries({ queryKey: ["journal"] });
+      })
+      .catch(() => { /* the vault still shows the last version that kept */ });
+  }, [editing, save, qc]);
+
   const savedLabel = savingNow ? "keeping…" : savedAt ? "kept · a moment ago" : "nothing kept yet";
+
+  // Voice writing — spoken phrases land in the body exactly as typed ones do,
+  // so the same autosave (and every save/privacy contract) carries them.
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const dictation = useDictation((text) => {
+    const node = bodyRef.current;
+    if (node && document.activeElement === node) {
+      // Someone is hand-editing mid-body while speaking: append through the
+      // DOM so their caret stays put (a controlled-value swap would fling it
+      // to the end), then sync state from the node.
+      const glue = !node.value ? "" : /\s$/.test(node.value) ? "" : " ";
+      node.setRangeText(glue + text, node.value.length, node.value.length, "preserve");
+      const next = node.value;
+      setEditing((e) => (e ? { ...e, body: next } : e));
+      return;
+    }
+    setEditing((e) => {
+      if (!e) return e;
+      const glue = !e.body ? "" : /\s$/.test(e.body) ? "" : " ";
+      return { ...e, body: e.body + glue + text };
+    });
+  });
+  // Leaving the page always puts the pen down.
+  const dictationStop = dictation.stop;
+  useEffect(() => {
+    if (!editing) dictationStop();
+  }, [editing, dictationStop]);
 
   // Month-grouped timeline. MUST live above the editor's early return —
   // hooks after a conditional return break React's hook ordering the
@@ -198,7 +260,20 @@ function Journal() {
   if (editing) return (
     <div className="motion-calm mx-auto max-w-2xl px-5 py-8 sm:px-8">
       <div className="flex items-center justify-between">
-        <button onClick={() => setEditing(null)} className="text-sm text-muted-foreground">← back to the vault</button>
+        <button
+          onClick={() => {
+            // Mid-listening, give the recognizer a beat to flush the last
+            // phrase (it arrives as one final onresult) before the page closes;
+            // the close-flush effect then keeps whatever landed.
+            if (dictation.listening) {
+              dictation.stop();
+              setTimeout(() => setEditing(null), 350);
+            } else {
+              setEditing(null);
+            }
+          }}
+          className="text-sm text-muted-foreground"
+        >← back to the vault</button>
         <span className="margin-note italic">{savedLabel}</span>
       </div>
       {saveFailed && (
@@ -230,12 +305,74 @@ function Journal() {
           onChange={e => setEditing({ ...editing, title: e.target.value })}
         />
         <Textarea
+          ref={bodyRef}
           aria-label="Journal entry body"
           className="font-reading mt-2 min-h-[420px] rounded-md border-transparent bg-transparent text-[17px] leading-[1.75] text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
           placeholder={editing.mode.placeholder}
           value={editing.body}
           onChange={e => setEditing({ ...editing, body: e.target.value })}
         />
+
+        {/* VOICE WRITING — speak onto the page. The words you're still saying
+            ghost in as pencil; finished phrases set as ink above. */}
+        {dictation.supported && (
+          <div className="mt-1 border-t pt-3" style={{ borderColor: "color-mix(in oklab, var(--ink) 12%, transparent)" }}>
+            {dictation.interim && (
+              <p aria-hidden className="font-reading mb-2 text-[15px] italic leading-relaxed" style={{ color: "color-mix(in oklab, var(--ink) 55%, var(--paper))" }}>
+                {dictation.interim}…
+              </p>
+            )}
+            {dictation.error && (
+              <p className="mb-2 text-[12.5px]" role="status" style={{ color: "var(--clay)" }}>{dictation.error}</p>
+            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={dictation.toggle}
+                aria-pressed={dictation.listening}
+                aria-label={dictation.listening ? "Stop voice writing" : "Start voice writing"}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium transition hover:brightness-95"
+                style={dictation.listening
+                  ? { borderColor: "color-mix(in oklab, var(--deodar) 55%, transparent)", background: "color-mix(in oklab, var(--deodar) 14%, var(--paper))", color: "color-mix(in oklab, var(--deodar) 70%, var(--ink))" }
+                  : { borderColor: "color-mix(in oklab, var(--ink) 30%, transparent)", color: "color-mix(in oklab, var(--ink) 80%, var(--paper))" }}
+              >
+                {dictation.listening ? (
+                  <>
+                    <span className="relative flex h-2 w-2" aria-hidden>
+                      <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full opacity-60" style={{ background: "var(--deodar)" }} />
+                      <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: "var(--deodar)" }} />
+                    </span>
+                    listening — tap to stop
+                  </>
+                ) : (
+                  <>
+                    <Mic className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    speak onto the page
+                  </>
+                )}
+              </button>
+              <label className="inline-flex min-h-11 items-center gap-1.5 text-[12px]" style={{ color: "color-mix(in oklab, var(--ink) 70%, var(--paper))" }}>
+                <span className="sr-only">Voice language</span>
+                <select
+                  value={dictation.lang}
+                  onChange={(e) => dictation.setLang(e.target.value)}
+                  disabled={dictation.listening}
+                  aria-label="Voice language"
+                  className="rounded-md border bg-transparent px-2 py-1.5 text-[12px] outline-none disabled:opacity-50"
+                  style={{ borderColor: "color-mix(in oklab, var(--ink) 22%, transparent)", color: "inherit" }}
+                >
+                  {DICTATION_LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>{l.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="mt-2 text-[11px] italic leading-relaxed" style={{ color: "color-mix(in oklab, var(--ink) 66%, var(--paper))" }}>
+              voice writing uses your browser's speech service — spoken words may pass through your
+              device's provider while you speak. the page itself stays yours alone.
+            </p>
+          </div>
+        )}
       </div>
       <div className="glass mt-4 rounded-2xl px-4 py-4">
         <p className="qs-section-label">a question for tonight</p>
