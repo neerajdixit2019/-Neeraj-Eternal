@@ -24,6 +24,9 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# Public-by-design client config (Supabase URL + anon key) — the publish
+# pipeline builds without a dev .env and must still inline these.
+!.env.production
 .claude/
 .vercel/
 

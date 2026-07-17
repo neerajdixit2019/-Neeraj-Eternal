@@ -80,6 +80,13 @@ deploy_project → verify a marker string in the live CSS/JS bundles.
 
 - **Never overwrite Lovable's `package.json`/`package-lock.json` wholesale** —
   their platform deps live there; apply script changes surgically.
+- **`.env.production` is tracked ON PURPOSE** — it holds only the public-by-
+  design client values (Supabase URL + publishable/anon key, which ship in
+  the bundle anyway; RLS is the boundary). Lovable's publish pipeline builds
+  WITHOUT a dev `.env`, and without these the published client throws
+  "Missing Supabase environment variable(s)" and login dies. Never add a
+  secret to it. Verify fix: `mv .env away → npm run build → grep dist for
+  supabase.co → restore`.
 - **`bunfig.toml` and `bun.lock` ARE tracked and DO ride in every sync zip** —
   so the repo's `bunfig.toml` must keep every `@lovable.dev/*` package in
   `minimumReleaseAgeExcludes`. When it didn't, Lovable's publish build failed
