@@ -80,6 +80,13 @@ deploy_project → verify a marker string in the live CSS/JS bundles.
 
 - **Never overwrite Lovable's `package.json`/`package-lock.json` wholesale** —
   their platform deps live there; apply script changes surgically.
+- **`bunfig.toml` and `bun.lock` ARE tracked and DO ride in every sync zip** —
+  so the repo's `bunfig.toml` must keep every `@lovable.dev/*` package in
+  `minimumReleaseAgeExcludes`. When it didn't, Lovable's publish build failed
+  `bun install`, shipped without the injected `VITE_SUPABASE_*` env, and the
+  live login crashed with "Missing Supabase environment variable(s)" while
+  the landing page still looked fine. After ANY deploy, verify `/login`
+  renders (not just bundle markers).
 - Lovable's tsc may show 1 error in their platform file
   `src/routes/[.]lovable.oauth.consent.tsx` — expected, not ours.
 - Publishes can stall 30–60 min; the user's editor **Publish → Update** button
