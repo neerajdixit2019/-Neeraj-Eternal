@@ -396,16 +396,95 @@
   /* THE LAMP WARMING UP — loading placeholders gain warmth, never spin.
      Static under reduced motion; content replaces them in place. */
   .lamp-skeleton {
+    position: relative;
     border-radius: 6px;
     background: color-mix(in oklab, var(--card) 80%, var(--background));
+    overflow: hidden;
+  }
+  /* the warmth is an opacity pulse on an overlay — compositor-only, never a
+     background-color repaint loop (budget-Android rule) */
+  .lamp-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: color-mix(in oklab, var(--lamp) 9%, transparent);
+    opacity: 0;
   }
   @media (prefers-reduced-motion: no-preference) {
-    .lamp-skeleton {
+    .lamp-skeleton::after {
       animation: lampWarm 1.8s ease-in-out infinite;
     }
     @keyframes lampWarm {
-      0%, 100% { background: color-mix(in oklab, var(--card) 80%, var(--background)); }
-      50%      { background: color-mix(in oklab, var(--lamp) 7%, var(--card)); }
+      0%, 100% { opacity: 0; }
+      50%      { opacity: 1; }
+    }
+  }
+
+  /* THE MOTION CONSTITUTION — tokens for every new transition. Calibrated to
+     the calm end of Material's ranges: micro-feedback 90ms, state changes
+     150ms, standard 220ms, hard ceiling 250ms for any UI transition. Ambient
+     loops live in seconds and are governed separately (body.animate-background,
+     reduced-motion). transform/opacity only — never width/height/top/left/
+     box-shadow/filter in a loop. No easing with a control point above 1
+     (springs/overshoot are banned house-wide). */
+  :root {
+    --qs-dur-instant: 90ms;
+    --qs-dur-fast: 150ms;
+    --qs-dur-base: 220ms;
+    --qs-dur-slow: 250ms;
+    --qs-ease-out: cubic-bezier(0, 0, 0, 1);
+    --qs-ease-soft: cubic-bezier(0.25, 0, 0, 1);
+    --qs-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --qs-ease-sine: cubic-bezier(0.37, 0, 0.63, 1); /* breathing */
+    --qs-motion-scale: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --qs-dur-instant: 0ms;
+      --qs-dur-fast: 0ms;
+      --qs-dur-base: 0ms;
+      --qs-dur-slow: 0ms;
+    }
+  }
+
+  /* THE BREATH PACER — the evidence-based ring (4s in / 6s out by default:
+     longer exhale is the parasympathetic lever; no holds in panic). Scale
+     and opacity only; sinusoidal; phase durations come from CSS variables
+     so patterns swap without new keyframes. Reduced motion keeps a gentler
+     amplitude because the motion IS the function (WCAG essential-motion) —
+     the text count beside it always carries the exercise on its own. */
+  .qs-pacer {
+    width: 120px;
+    height: 120px;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 50% 42%,
+      color-mix(in oklab, var(--dawnline) 55%, transparent) 0%,
+      color-mix(in oklab, var(--dawnline) 28%, transparent) 60%,
+      transparent 78%);
+    box-shadow: 0 0 34px 6px color-mix(in oklab, var(--dawnline) 18%, transparent);
+    animation: qs-pace calc(var(--qs-pace-in, 4s) + var(--qs-pace-out, 6s)) var(--qs-ease-sine) infinite;
+  }
+  .qs-pacer--aura {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in oklab, var(--dawnline) 30%, transparent);
+    animation: qs-pace calc(var(--qs-pace-in, 4s) + var(--qs-pace-out, 6s)) var(--qs-ease-sine) infinite;
+    animation-delay: 0.4s;
+  }
+  @keyframes qs-pace {
+    0%   { transform: scale(1);     opacity: 0.7; }
+    40%  { transform: scale(1.667); opacity: 1; }   /* 4s of a 10s cycle */
+    100% { transform: scale(1);     opacity: 0.7; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .qs-pacer, .qs-pacer--aura {
+      animation-name: qs-pace-gentle;
+    }
+    @keyframes qs-pace-gentle {
+      0%   { transform: scale(1);   opacity: 0.75; }
+      40%  { transform: scale(1.3); opacity: 0.95; }
+      100% { transform: scale(1);   opacity: 0.75; }
     }
   }
 

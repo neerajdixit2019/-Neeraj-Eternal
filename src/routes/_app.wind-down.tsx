@@ -1,4 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { BreathPacer } from "@/components/BreathPacer";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { saveWindDown } from "@/lib/memories.functions";
@@ -20,6 +23,7 @@ export const Route = createFileRoute("/_app/wind-down")({
 type Phase = "breath" | "write" | "rest";
 
 function WindDown() {
+  const lang = useLang();
   const [phase, setPhase] = useState<Phase>("breath");
   const [line, setLine] = useState("");
   const [saving, setSaving] = useState(false);
@@ -73,9 +77,8 @@ function WindDown() {
 
       {phase === "breath" && (
         <div className="flex flex-col items-center">
-          <div className="winddown-breath" aria-hidden />
-          <p className="mt-10 font-serif text-xl text-foreground/80">Breathe in… and out.</p>
-          <p className="mt-2 text-sm text-muted-foreground">Four in, six out. A few rounds is enough.</p>
+          <BreathPacer />
+          <p className="mt-4 text-sm text-muted-foreground">{tx(lang, "Four in, six out. A few rounds is enough.")}</p>
           <button
             onClick={() => setPhase("write")}
             className="mt-10 text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground"

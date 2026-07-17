@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useLang } from "@/lib/i18n";
+import { BreathPacer } from "@/components/BreathPacer";
 import { tx } from "@/lib/i18n-strings";
 import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -144,6 +145,7 @@ function SOS() {
             </p>
             <div className="mt-4 space-y-2 text-[15px]">
               <p><strong>India — Tele-MANAS:</strong> <a href="tel:14416" className="underline underline-offset-2">14416</a> · <a href="tel:18008914416" className="underline underline-offset-2">1-800-891-4416</a></p>
+              <p><strong>KIRAN (India):</strong> <a href="tel:18005990019" className="underline underline-offset-2">1800-599-0019</a></p>
               <p><strong>iCall (India):</strong> <a href="tel:+919152987821" className="underline underline-offset-2">+91 9152987821</a></p>
               <p><strong>International:</strong> <a href="https://findahelpline.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">findahelpline.com</a></p>
             </div>
@@ -237,6 +239,7 @@ function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe";
       <p className="relative mt-3 font-serif text-[19px] font-light">{tx(lang, "Sixty seconds of breath")}</p>
       {phase === "breathe" ? (
         <>
+          <BreathPacer className="relative mt-4" />
           {/* the numeral goes secondary — the light is the timer. The live
               region speaks only at milestones, never every second. */}
           <p className="relative mt-5 text-[15px] tabular-nums text-secondary-foreground" aria-hidden="true">{count}s</p>
@@ -251,7 +254,7 @@ function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe";
       ) : (
         <button type="button" className="qs-pill-cta relative mt-6" onClick={onBegin}>{tx(lang, "Begin")}</button>
       )}
-      <p className="relative mt-4 text-[14px] text-secondary-foreground">{tx(lang, "In for 4, hold 4, out for 6. Slowly.")}</p>
+      <p className="relative mt-4 text-[14px] text-secondary-foreground">{tx(lang, "Four in, six out. A few rounds is enough.")}</p>
     </div>
   );
 }

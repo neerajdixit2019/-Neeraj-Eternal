@@ -187,6 +187,12 @@ const HI_TEXT: Record<string, string> = {
   "This page burns itself — nothing here is saved, sent, or seen.":
     "यह पन्ना ख़ुद जल जाता है — यहाँ कुछ भी सहेजा, भेजा या देखा नहीं जाता।",
   "In for 4, hold 4, out for 6. Slowly.": "4 गिनती अंदर, 4 रोकें, 6 में बाहर। धीरे-धीरे।",
+  "Breathe in": "साँस अंदर",
+  "Breathe out": "साँस बाहर",
+  "in": "अंदर",
+  "out": "बाहर",
+  "Breathe in… and out.": "साँस अंदर… और बाहर।",
+  "Four in, six out. A few rounds is enough.": "4 गिनती अंदर, 6 बाहर। कुछ ही बार काफ़ी है।",
   "Begin": "शुरू करें",
 
   /* journal */

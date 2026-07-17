@@ -17,6 +17,7 @@ export type CrisisResource = {
 const RESOURCES: Record<string, CrisisResource[]> = {
   IN: [
     { name: "Tele-MANAS", phone: "14416", note: "free mental-health helpline, 24/7" },
+    { name: "KIRAN", phone: "18005990019", note: "free mental-health helpline, 24/7, 13 languages" },
     { name: "Emergency", phone: "112" },
   ],
 };
