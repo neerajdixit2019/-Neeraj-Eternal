@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Feather, Shuffle, Mic } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useDictation, DICTATION_LANGUAGES } from "@/hooks/use-dictation";
+import { useLang, useT } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { track } from "@/lib/analytics";
 
 export const Route = createFileRoute("/_app/journal")({
@@ -111,6 +113,8 @@ function monthKey(d: Date) {
 }
 
 function Journal() {
+  const lang = useLang();
+  const t = useT();
   const qc = useQueryClient();
   const list = useServerFn(listJournal);
   const save = useServerFn(saveJournal);
@@ -214,7 +218,7 @@ function Journal() {
       .catch(() => { /* the vault still shows the last version that kept */ });
   }, [editing, save, qc]);
 
-  const savedLabel = savingNow ? "keeping…" : savedAt ? "kept · a moment ago" : "nothing kept yet";
+  const savedLabel = savingNow ? tx(lang, "keeping…") : savedAt ? tx(lang, "kept · a moment ago") : tx(lang, "nothing kept yet");
 
   // Voice writing — spoken phrases land in the body exactly as typed ones do,
   // so the same autosave (and every save/privacy contract) carries them.
@@ -273,12 +277,12 @@ function Journal() {
             }
           }}
           className="text-sm text-muted-foreground"
-        >← back to the vault</button>
+        >{tx(lang, "← back to the vault")}</button>
         <span className="margin-note italic">{savedLabel}</span>
       </div>
       {saveFailed && (
         <p className="margin-note margin-note--error mt-3" role="status">
-          this page didn't keep — trying again as you write.
+          {tx(lang, "this page didn't keep — trying again as you write.")}
         </p>
       )}
       {/* THE PAGE — the app's one paper surface: ink on warm paper, the only
@@ -295,12 +299,12 @@ function Journal() {
           {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </p>
         {editing.mode.key !== "free" && (
-          <p className="mt-1 font-serif italic text-[13px]" style={{ color: "color-mix(in oklab, var(--ink) 66%, var(--paper))" }}>{editing.mode.whisper}</p>
+          <p className="mt-1 font-serif italic text-[13px]" style={{ color: "color-mix(in oklab, var(--ink) 66%, var(--paper))" }}>{tx(lang, editing.mode.whisper)}</p>
         )}
         <Input
           aria-label="Journal entry title"
           className="mt-3 h-12 rounded-md border-transparent bg-transparent font-serif text-xl text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
-          placeholder="a title, if you'd like…"
+          placeholder={tx(lang, "a title, if you'd like…")}
           value={editing.title}
           onChange={e => setEditing({ ...editing, title: e.target.value })}
         />
@@ -308,7 +312,7 @@ function Journal() {
           ref={bodyRef}
           aria-label="Journal entry body"
           className="font-reading mt-2 min-h-[420px] rounded-md border-transparent bg-transparent text-[17px] leading-[1.75] text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
-          placeholder={editing.mode.placeholder}
+          placeholder={tx(lang, editing.mode.placeholder)}
           value={editing.body}
           onChange={e => setEditing({ ...editing, body: e.target.value })}
         />
@@ -342,12 +346,12 @@ function Journal() {
                       <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full opacity-60" style={{ background: "var(--deodar)" }} />
                       <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: "var(--deodar)" }} />
                     </span>
-                    listening — tap to stop
+                    {t("voice.listening")}
                   </>
                 ) : (
                   <>
                     <Mic className="h-3.5 w-3.5" strokeWidth={1.8} />
-                    speak onto the page
+                    {t("voice.start")}
                   </>
                 )}
               </button>
@@ -368,21 +372,20 @@ function Journal() {
               </label>
             </div>
             <p className="mt-2 text-[11px] italic leading-relaxed" style={{ color: "color-mix(in oklab, var(--ink) 66%, var(--paper))" }}>
-              voice writing uses your browser's speech service — spoken words may pass through your
-              device's provider while you speak. the page itself stays yours alone.
+              {t("voice.disclosure")}
             </p>
           </div>
         )}
       </div>
       <div className="glass mt-4 rounded-2xl px-4 py-4">
-        <p className="qs-section-label">a question for tonight</p>
-        <p className="mt-2 font-serif italic text-[15px] leading-relaxed">{PROMPTS[promptIndex]}</p>
+        <p className="qs-section-label">{tx(lang, "a question for tonight")}</p>
+        <p className="mt-2 font-serif italic text-[15px] leading-relaxed">{tx(lang, PROMPTS[promptIndex])}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button className="qs-chip inline-flex items-center gap-1.5" onClick={shufflePrompt}>
-            <Shuffle className="h-3.5 w-3.5" strokeWidth={1.7} /> another question
+            <Shuffle className="h-3.5 w-3.5" strokeWidth={1.7} /> {tx(lang, "another question")}
           </button>
           <button className="qs-chip inline-flex items-center gap-1.5" onClick={writeFromPrompt}>
-            <Feather className="h-3.5 w-3.5" strokeWidth={1.7} /> write from this
+            <Feather className="h-3.5 w-3.5" strokeWidth={1.7} /> {tx(lang, "write from this")}
           </button>
         </div>
       </div>
@@ -401,7 +404,7 @@ function Journal() {
           }}
           className="inline-flex items-center rounded-full border border-border px-4 py-2 text-sm transition hover:border-primary/30 hover:bg-card/50"
         >
-          reflect with InnerMate
+          {tx(lang, "reflect with InnerMate")}
         </Link>
       </div>
     </div>
@@ -413,10 +416,10 @@ function Journal() {
       <span aria-hidden className="qs-firefly" style={{ top: "6%", left: "82%", pointerEvents: "none" }} />
       <span aria-hidden className="qs-firefly" style={{ top: "22%", left: "6%", pointerEvents: "none" }} />
 
-      <p className="qs-section-label">your private vault</p>
-      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight sm:text-[2.4rem]">Journal</h1>
+      <p className="qs-section-label">{tx(lang, "your private vault")}</p>
+      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight sm:text-[2.4rem]">{tx(lang, "Journal")}</h1>
       <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-muted-foreground">
-        yours alone. keeps itself as you write. let any page go, anytime.
+        {tx(lang, "yours alone. keeps itself as you write. let any page go, anytime.")}
       </p>
 
       {/* TONIGHT'S PAGE — already waiting under the lamp. One tap begins. */}
@@ -435,25 +438,25 @@ function Journal() {
             {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
           </p>
           <p className="font-reading mt-2 text-[17px]" style={{ color: "color-mix(in oklab, var(--ink) 72%, var(--paper))" }}>
-            tonight's page is waiting…
+            {tx(lang, "tonight's page is waiting…")}
           </p>
           <p className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "color-mix(in oklab, var(--ember) 55%, var(--ink))" }}>
-            <Feather className="h-3.5 w-3.5" strokeWidth={1.7} /> begin writing
+            <Feather className="h-3.5 w-3.5" strokeWidth={1.7} /> {tx(lang, "begin writing")}
           </p>
         </button>
       </div>
 
       {/* the shapes, demoted to a line of ink whispers */}
       <p className="mt-5 text-[13px] leading-[1.9] text-muted-foreground">
-        or begin with a shape:{" "}
+        {tx(lang, "or begin with a shape:")}{" "}
         {MODES.filter(m => m.key !== "free").map((m, i, arr) => (
           <span key={m.key}>
             <button
               onClick={() => start(m)}
               className="underline decoration-transparent underline-offset-4 transition hover:decoration-current hover:text-foreground"
-              title={m.whisper}
+              title={tx(lang, m.whisper)}
             >
-              {m.label.toLowerCase()}
+              {lang === "hi" ? tx(lang, m.label) : m.label.toLowerCase()}
             </button>
             {i < arr.length - 1 ? " · " : ""}
           </span>

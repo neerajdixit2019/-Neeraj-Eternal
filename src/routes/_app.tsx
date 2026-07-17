@@ -8,6 +8,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile, listMoods } from "@/lib/data.functions";
 import { roomFor, type RoomMood } from "@/lib/room-state";
+import { useT } from "@/lib/i18n";
+import type { StringKey } from "@/lib/i18n-strings";
 import { CompanionCloud } from "@/components/CompanionCloud";
 
 export const Route = createFileRoute("/_app")({ component: AppLayout });
@@ -15,26 +17,27 @@ export const Route = createFileRoute("/_app")({ component: AppLayout });
 // Desktop margin — the study's table of contents. Captions reveal on
 // hover/focus so the margin stays quiet.
 const nav = [
-  { to: "/home", label: "today", icon: Home, desc: "how you're arriving" },
-  { to: "/companion", label: "innermate", icon: MessageCircle, desc: "the companion" },
-  { to: "/journal", label: "journal", icon: BookHeart, desc: "your private vault" },
-  { to: "/insights", label: "insights", icon: Sparkles, desc: "check-in & your patterns" },
-  { to: "/heal", label: "tools", icon: HeartHandshake, desc: "practices & gentle paths" },
-  { to: "/memories", label: "memories", icon: Star, desc: "what you've kept" },
-  { to: "/you", label: "you", icon: User, desc: "your week & controls" },
+  { to: "/home", k: "today", icon: Home },
+  { to: "/companion", k: "companion", icon: MessageCircle },
+  { to: "/journal", k: "journal", icon: BookHeart },
+  { to: "/insights", k: "insights", icon: Sparkles },
+  { to: "/heal", k: "tools", icon: HeartHandshake },
+  { to: "/memories", k: "memories", icon: Star },
+  { to: "/you", k: "you", icon: User },
 ] as const;
 
 // Mobile — five real slots. The fifth is STEADY: a permanent clay door to
 // help, opening the half-sheet below. Memories stays one tap away via You.
 const mobileNav = [
-  { to: "/home", label: "Today", icon: Home },
-  { to: "/companion", label: "InnerMate", icon: MessageCircle },
-  { to: "/journal", label: "Journal", icon: BookHeart },
-  { to: "/you", label: "You", icon: User },
+  { to: "/home", k: "today", icon: Home },
+  { to: "/companion", k: "companion", icon: MessageCircle },
+  { to: "/journal", k: "journal", icon: BookHeart },
+  { to: "/you", k: "you", icon: User },
 ] as const;
 
 /** The Steady half-sheet — one calm door to every kind of help. */
 function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const firstRef = useRef<HTMLAnchorElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -75,12 +78,12 @@ function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) 
       >
         <div className="mx-auto max-w-md">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] uppercase tracking-[0.2em]" style={{ color: "var(--clay)" }}>steady</p>
+            <p className="text-[11px] uppercase tracking-[0.2em]" style={{ color: "var(--clay)" }}>{t("steady.label")}</p>
             <button type="button" onClick={onClose} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
               <X className="h-4 w-4" strokeWidth={1.8} />
             </button>
           </div>
-          <p className="mt-1 font-serif text-[19px] font-light leading-snug">Whatever is happening, there's a door here.</p>
+          <p className="mt-1 font-serif text-[19px] font-light leading-snug">{t("steady.title")}</p>
           <div className="mt-4 space-y-2.5">
             <Link
               ref={firstRef}
@@ -91,8 +94,8 @@ function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) 
             >
               <LifeBuoy className="h-5 w-5 shrink-0" strokeWidth={1.7} style={{ color: "var(--clay)" }} />
               <span>
-                <span className="block text-[15px] font-semibold text-foreground">I'm not safe right now</span>
-                <span className="block text-[12.5px] text-muted-foreground">the steady room — breath, numbers, people</span>
+                <span className="block text-[15px] font-semibold text-foreground">{t("steady.unsafe")}</span>
+                <span className="block text-[12.5px] text-muted-foreground">{t("steady.unsafe.desc")}</span>
               </span>
             </Link>
             <a
@@ -103,8 +106,8 @@ function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) 
             >
               <Phone className="h-5 w-5 shrink-0" strokeWidth={1.7} style={{ color: "var(--clay)" }} />
               <span>
-                <span className="block text-[15px] font-semibold text-foreground">Call Tele-MANAS · 14416</span>
-                <span className="block text-[12.5px] text-muted-foreground">free, 24×7, in your language</span>
+                <span className="block text-[15px] font-semibold text-foreground">{t("steady.call")}</span>
+                <span className="block text-[12.5px] text-muted-foreground">{t("steady.call.desc")}</span>
               </span>
             </a>
             <Link
@@ -115,8 +118,8 @@ function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) 
             >
               <Hand className="h-5 w-5 shrink-0" strokeWidth={1.7} style={{ color: "var(--lamp)" }} />
               <span>
-                <span className="block text-[15px] font-semibold text-foreground">Pause an impulse</span>
-                <span className="block text-[12.5px] text-muted-foreground">before the text, the call, the decision</span>
+                <span className="block text-[15px] font-semibold text-foreground">{t("steady.pause")}</span>
+                <span className="block text-[12.5px] text-muted-foreground">{t("steady.pause.desc")}</span>
               </span>
             </Link>
             <Link
@@ -127,13 +130,13 @@ function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) 
             >
               <Wind className="h-5 w-5 shrink-0" strokeWidth={1.7} style={{ color: "var(--dawnline)" }} />
               <span>
-                <span className="block text-[15px] font-semibold text-foreground">Ground me gently</span>
-                <span className="block text-[12.5px] text-muted-foreground">breathing & grounding practices</span>
+                <span className="block text-[15px] font-semibold text-foreground">{t("steady.ground")}</span>
+                <span className="block text-[12.5px] text-muted-foreground">{t("steady.ground.desc")}</span>
               </span>
             </Link>
           </div>
           <p className="mt-4 text-center text-[11.5px] leading-relaxed text-muted-foreground">
-            InnerMate is a companion, not an emergency service.
+            {t("steady.footer")}
           </p>
         </div>
       </div>
@@ -143,6 +146,7 @@ function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) 
 
 function AppLayout() {
   const navigate = useNavigate();
+  const t = useT();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [ready, setReady] = useState(false);
   const [devPreview, setDevPreview] = useState(false);
@@ -252,11 +256,11 @@ function AppLayout() {
                 <span className="flex items-center gap-3">
                   <n.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2 : 1.6} style={{ color: active ? "var(--foreground)" : "var(--muted-foreground)" }} />
                   <span className="text-[14px] lowercase tracking-[0.02em]" style={{ color: active ? "var(--foreground)" : "var(--muted-foreground)", fontWeight: active ? 600 : 400 }}>
-                    {n.label}
+                    {t(("nav." + n.k) as StringKey)}
                   </span>
                 </span>
                 <span className="ml-7 mt-0.5 hidden text-[11px] leading-snug text-muted-foreground/80 group-hover:block group-focus-visible:block">
-                  {n.desc}
+                  {t(("nav." + n.k + ".desc") as StringKey)}
                 </span>
               </Link>
             );
@@ -268,7 +272,7 @@ function AppLayout() {
             className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition hover:brightness-110"
             style={{ color: "var(--clay)" }}
           >
-            <LifeBuoy className="h-4 w-4" strokeWidth={1.7} />steady
+            <LifeBuoy className="h-4 w-4" strokeWidth={1.7} />{t("steady.label")}
           </Link>
           <Link to="/settings" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-muted-foreground transition hover:text-foreground">
             <Settings className="h-4 w-4" strokeWidth={1.6} />sanctuary
@@ -332,7 +336,7 @@ function AppLayout() {
                 <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center transition-transform duration-200 ease-out group-active:scale-95">
                   <n.icon className="h-[20px] w-[20px]" strokeWidth={active ? 2 : 1.6} aria-hidden="true" focusable="false" />
                 </span>
-                <span className={`leading-none tracking-tight transition-opacity duration-200 ${active ? "opacity-100" : "opacity-70"}`}>{n.label}</span>
+                <span className={`leading-none tracking-tight transition-opacity duration-200 ${active ? "opacity-100" : "opacity-70"}`}>{t(("nav." + n.k) as StringKey)}</span>
                 {/* the nib-mark under the active page */}
                 <span
                   aria-hidden="true"
@@ -353,7 +357,7 @@ function AppLayout() {
             <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center transition-transform duration-200 group-active:scale-95">
               <LifeBuoy className="h-[20px] w-[20px]" strokeWidth={1.8} aria-hidden="true" focusable="false" />
             </span>
-            <span className="leading-none tracking-tight">Steady</span>
+            <span className="leading-none tracking-tight">{t("nav.steady")}</span>
             <span aria-hidden="true" className="h-[2px] w-4 opacity-0" />
           </button>
         </nav>

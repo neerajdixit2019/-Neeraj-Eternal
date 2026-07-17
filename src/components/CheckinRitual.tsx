@@ -11,6 +11,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { logMood } from "@/lib/data.functions";
 import { radioArrowNav } from "@/lib/a11y";
+import { useLang, tagLabel } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowRight, MessageCircle, PenLine } from "lucide-react";
@@ -34,6 +36,7 @@ const ORBS: { score: number; word: string; whisper: string }[] = [
 ];
 
 export function CheckinRitual() {
+  const lang = useLang();
   const qc = useQueryClient();
   const log = useServerFn(logMood);
   const [mood, setMood] = useState<number | null>(null);
@@ -75,25 +78,25 @@ export function CheckinRitual() {
         <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_45%,color-mix(in_oklab,var(--dawn)_38%,transparent),transparent_72%)] blur-md" />
         <span className="qs-orb qs-orb--selected relative" style={{ width: "4rem", height: "4rem" }} />
       </div>
-      <span className="qs-section-label">saved softly</span>
-      <h2 className="mt-3 font-serif text-[1.6rem] font-light leading-snug tracking-tight">Noted gently.</h2>
+      <span className="qs-section-label">{tx(lang, "saved softly")}</span>
+      <h2 className="mt-3 font-serif text-[1.6rem] font-light leading-snug tracking-tight">{tx(lang, "Noted gently.")}</h2>
       <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-muted-foreground">
-        It's in your sky now — the patterns below already know.
+        {tx(lang, "It's in your sky now — the patterns below already know.")}
       </p>
       <div className="mt-7 flex w-full max-w-xs flex-col gap-3">
         <Link to="/companion" className="qs-pill-cta w-full">
           <MessageCircle className="h-4 w-4" strokeWidth={1.7} />
-          talk about this with InnerMate
+          {tx(lang, "talk about this with InnerMate")}
         </Link>
         <Link
           to="/journal"
           className="glass inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-[13.5px] text-muted-foreground transition hover:text-foreground"
         >
           <PenLine className="h-3.5 w-3.5" strokeWidth={1.7} />
-          want to say more about this?
+          {tx(lang, "want to say more about this?")}
         </Link>
         <button type="button" onClick={reset} className="mt-1 text-[13px] text-muted-foreground transition hover:text-foreground">
-          check in again
+          {tx(lang, "check in again")}
         </button>
       </div>
     </div>
@@ -103,7 +106,7 @@ export function CheckinRitual() {
     <div>
       {/* Mood orbs — heaviest → lightest, same track as Home */}
       <section aria-labelledby="mood-h" className="tactile p-6 sm:p-7">
-        <h2 id="mood-h" className="qs-section-label">your inner weather, right now</h2>
+        <h2 id="mood-h" className="qs-section-label">{tx(lang, "your inner weather, right now")}</h2>
         <div
           role="radiogroup"
           aria-label="Choose the mood that fits closest"
@@ -117,7 +120,7 @@ export function CheckinRitual() {
                 type="button"
                 role="radio"
                 aria-checked={on}
-                aria-label={o.word}
+                aria-label={tx(lang, o.word)}
                 tabIndex={on || (mood == null && o.score === ORBS[0].score) ? 0 : -1}
                 onClick={() => setMood(o.score)}
                 onKeyDown={radioArrowNav}
@@ -129,21 +132,21 @@ export function CheckinRitual() {
           })}
         </div>
         <div className="mt-2 flex justify-between px-1 text-[11px] text-muted-foreground">
-          <span>heavy</span>
-          <span>light</span>
+          <span>{tx(lang, "heavy")}</span>
+          <span>{tx(lang, "light")}</span>
         </div>
         {chosen && (
           <div className="mt-4 border-t border-white/10 pt-4 text-center fade-in">
-            <p className="text-[13px] font-medium text-foreground">{chosen.word}</p>
-            <p className="mt-1 font-serif text-[13.5px] italic text-muted-foreground">{chosen.whisper}</p>
+            <p className="text-[13px] font-medium text-foreground">{tx(lang, chosen.word)}</p>
+            <p className="mt-1 font-serif text-[13.5px] italic text-muted-foreground">{tx(lang, chosen.whisper)}</p>
           </div>
         )}
       </section>
 
       {/* Emotions */}
       <section aria-labelledby="emo-h" className="mt-7">
-        <h3 id="emo-h" className="font-serif text-[16px] font-light text-foreground">What emotions are here?</h3>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">Pick any. They can hold hands.</p>
+        <h3 id="emo-h" className="font-serif text-[16px] font-light text-foreground">{tx(lang, "What emotions are here?")}</h3>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">{tx(lang, "Pick any. They can hold hands.")}</p>
         <div className="mt-3.5 flex flex-wrap gap-2">
           {EMOTIONS.map(t => {
             const on = emotions.includes(t);
@@ -155,7 +158,7 @@ export function CheckinRitual() {
                 onClick={() => toggle(emotions, setEmotions, t)}
                 className={`qs-chip ${on ? "qs-chip--active" : ""}`}
               >
-                {t}
+                {tagLabel(t, lang)}
               </button>
             );
           })}
@@ -164,8 +167,8 @@ export function CheckinRitual() {
 
       {/* Triggers */}
       <section aria-labelledby="trig-h" className="mt-7">
-        <h3 id="trig-h" className="font-serif text-[16px] font-light text-foreground">What set it off, if anything?</h3>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">Optional. Skip if nothing fits.</p>
+        <h3 id="trig-h" className="font-serif text-[16px] font-light text-foreground">{tx(lang, "What set it off, if anything?")}</h3>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">{tx(lang, "Optional. Skip if nothing fits.")}</p>
         <div className="mt-3.5 flex flex-wrap gap-2">
           {TRIGGERS.map(t => {
             const on = triggers.includes(t);
@@ -177,7 +180,7 @@ export function CheckinRitual() {
                 onClick={() => toggle(triggers, setTriggers, t)}
                 className={`qs-chip ${on ? "qs-chip--active" : ""}`}
               >
-                {t}
+                {tagLabel(t, lang)}
               </button>
             );
           })}
@@ -185,12 +188,12 @@ export function CheckinRitual() {
       </section>
 
       <section className="mt-7">
-        <label htmlFor="checkin-note" className="font-serif text-[16px] font-light text-foreground">A line, if there's one</label>
+        <label htmlFor="checkin-note" className="font-serif text-[16px] font-light text-foreground">{tx(lang, "A line, if there's one")}</label>
         <Textarea
           id="checkin-note"
           aria-label="Optional note about today"
           className="mt-3 min-h-24 rounded-2xl border-border/60 bg-card/50 text-[14.5px] leading-relaxed placeholder:text-muted-foreground"
-          placeholder="Whatever's here. Or leave it empty."
+          placeholder={tx(lang, "Whatever's here. Or leave it empty.")}
           value={note}
           onChange={e => setNote(e.target.value)}
         />
@@ -202,12 +205,12 @@ export function CheckinRitual() {
         disabled={mood === null || saving}
         className="qs-pill-cta mt-8 w-full"
       >
-        Save this moment
+        {tx(lang, "Save this moment")}
         <ArrowRight className="h-4 w-4" strokeWidth={1.7} />
       </button>
       {mood === null && (
         <p className="mt-3 text-center font-serif text-[12.5px] italic text-muted-foreground/80">
-          choose an orb above, and this will wake up.
+          {tx(lang, "choose an orb above, and this will wake up.")}
         </p>
       )}
     </div>

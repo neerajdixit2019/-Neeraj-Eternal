@@ -9,6 +9,8 @@ import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions"
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import { roomFor, GROWTH_NOTE, type Room, type RoomMood } from "@/lib/room-state";
 import { radioArrowNav } from "@/lib/a11y";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import {
   Heart, PenLine, Mail, Clock, ArrowRight, MessageCircle, HeartHandshake,
   Wind, X, AlertTriangle, Settings, Shield, Sparkles, Lightbulb,
@@ -106,6 +108,7 @@ const FEELING_CHIPS: { label: string; seed: string; tint: string }[] = [
 ];
 
 function Home() {
+  const lang = useLang();
   const profile = useServerFn(getProfile);
   const moods = useServerFn(listMoods);
   const journal = useServerFn(listJournal);
@@ -155,7 +158,7 @@ function Home() {
               color: "color-mix(in oklab, var(--rose) 85%, var(--foreground))",
             }}
           >
-            <AlertTriangle className="h-3 w-3" /> I'm not safe
+            <AlertTriangle className="h-3 w-3" /> {tx(lang, "I'm not safe")}
           </Link>
           <Link
             to="/settings"
@@ -172,27 +175,27 @@ function Home() {
         <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "4%", left: "76%" }} />
         <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "48%", left: "91%", animationDelay: "-4.5s" }} />
         <span aria-hidden="true" className="qs-firefly pointer-events-none" style={{ top: "78%", left: "58%", animationDelay: "-9s" }} />
-        <p className="qs-section-label">today's inner sky</p>
+        <p className="qs-section-label">{tx(lang, "today's inner sky")}</p>
         <h1 className="mt-3 font-serif text-[2.05rem] font-light leading-[1.08] tracking-tight sm:text-[2.5rem]">
           <span className={room === "growth" ? "growth-underline" : undefined}>
             {hour == null
-              ? <>Welcome{firstName ? `, ${firstName}` : ""}.</>
-              : hour < 5 ? <>Still up{firstName ? `, ${firstName}` : ""}?</>
-              : hour < 12 ? <>Good morning{firstName ? `, ${firstName}` : ""}.</>
-              : hour < 17 ? <>Good afternoon{firstName ? `, ${firstName}` : ""}.</>
-              : hour < 21 ? <>Good evening{firstName ? `, ${firstName}` : ""}.</>
-              : <>Winding down{firstName ? `, ${firstName}` : ""}?</>}
+              ? <>{tx(lang, "Welcome")}{firstName ? `, ${firstName}` : ""}.</>
+              : hour < 5 ? <>{tx(lang, "Still up")}{firstName ? `, ${firstName}` : ""}?</>
+              : hour < 12 ? <>{tx(lang, "Good morning")}{firstName ? `, ${firstName}` : ""}.</>
+              : hour < 17 ? <>{tx(lang, "Good afternoon")}{firstName ? `, ${firstName}` : ""}.</>
+              : hour < 21 ? <>{tx(lang, "Good evening")}{firstName ? `, ${firstName}` : ""}.</>
+              : <>{tx(lang, "Winding down")}{firstName ? `, ${firstName}` : ""}?</>}
           </span>
         </h1>
         <p className="mt-2 font-serif text-[17px] font-light text-foreground/85">
-          How are you arriving today?
+          {tx(lang, "How are you arriving today?")}
         </p>
         <p className="mt-2 max-w-[38ch] text-[13.5px] leading-relaxed text-muted-foreground">
           {room === "loneliness" && hour != null
-            ? (hour >= 21 || hour < 5 ? "still here, this late, with you." : "here with you — not going anywhere.")
-            : (skyLine ?? "A quiet place, ready when you are.")}
+            ? (hour >= 21 || hour < 5 ? tx(lang, "still here, this late, with you.") : tx(lang, "here with you — not going anywhere."))
+            : tx(lang, skyLine ?? "A quiet place, ready when you are.")}
         </p>
-        {room === "growth" && <p className="margin-note mt-3">{GROWTH_NOTE}</p>}
+        {room === "growth" && <p className="margin-note mt-3">{tx(lang, GROWTH_NOTE)}</p>}
       </div>
 
       {/* 3 · Emotional weather */}
@@ -601,6 +604,7 @@ const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
   Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), ms))]);
 
 function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
+  const lang = useLang();
   const qc = useQueryClient();
   const logFn = useServerFn(logMood);
   const annotateFn = useServerFn(annotateMood);
@@ -705,7 +709,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
 
   return (
     <div className="mt-7 rise-in">
-      <p className="qs-section-label">how are you arriving today?</p>
+      <p className="qs-section-label">{tx(lang, "how are you arriving today?")}</p>
       {/* THE LAMP-DIAL — five stops on one brass hairline, heavy to bright.
           Same 5-point logMood contract, same AI follow-up questions. */}
       <div className="relative mt-5" role="radiogroup" aria-label="How are you arriving today">
@@ -726,7 +730,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
                 onKeyDown={radioArrowNav}
                 role="radio"
                 aria-checked={on}
-                aria-label={o.word}
+                aria-label={tx(lang, o.word)}
                 tabIndex={on || (selected == null && o.score === MOOD_ORBS[0].score) ? 0 : -1}
                 className="group flex min-h-[44px] flex-col items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-lg py-1"
               >
@@ -739,7 +743,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
                   <Icon className="h-4 w-4" strokeWidth={1.7} style={{ color: on ? "var(--lamp)" : "var(--text-secondary)" }} />
                 </span>
                 <span className="text-[10.5px] leading-none" style={{ color: on ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: on ? 600 : 400 }}>
-                  {o.word}
+                  {tx(lang, o.word)}
                 </span>
               </button>
             );
@@ -755,8 +759,8 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
             <MessageCircle className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <p className="font-serif text-[17px] leading-tight">{chosen.word}</p>
-            <p className="mt-0.5 font-serif text-[13px] italic leading-snug text-muted-foreground">{chosen.weather}</p>
+            <p className="font-serif text-[17px] leading-tight">{tx(lang, chosen.word)}</p>
+            <p className="mt-0.5 font-serif text-[13px] italic leading-snug text-muted-foreground">{tx(lang, chosen.weather)}</p>
           </div>
         </div>
       )}

@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Phone, Wind, Shield, MessageSquareOff, HeartPulse, Copy, ArrowRight } from "lucide-react";
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/_app/sos")({
 type Flow = "choose" | "unsafe" | "impulse" | "body";
 
 function SOS() {
+  const lang = useLang();
   const [flow, setFlow] = useState<Flow>("choose");
   const [phase, setPhase] = useState<"idle" | "breathe">("idle");
   const [count, setCount] = useState(60);
@@ -52,12 +55,12 @@ function SOS() {
         style={{ background: "radial-gradient(34rem 16rem at 50% 0%, color-mix(in oklab, var(--lamp) 9%, transparent), transparent 70%)" }}
       />
 
-      <p className="qs-section-label relative">the steady room</p>
+      <p className="qs-section-label relative">{tx(lang, "the steady room")}</p>
       <h1 className="relative mt-3 font-serif text-[28px] font-light leading-tight tracking-tight sm:text-3xl">
-        Let's pause everything else.
+        {tx(lang, "Let's pause everything else.")}
       </h1>
       <p className="relative mt-3 text-[16px] leading-relaxed text-secondary-foreground">
-        You don't have to solve your whole life tonight. One thing at a time.
+        {tx(lang, "You don't have to solve your whole life tonight. One thing at a time.")}
       </p>
 
       {/* THE DOOR — a human voice, dominant and unmissable */}
@@ -71,8 +74,8 @@ function SOS() {
       >
         <Phone className="h-6 w-6 shrink-0" strokeWidth={1.8} style={{ color: "var(--clay)" }} />
         <span>
-          <span className="block text-[17px] font-semibold text-foreground">Call Tele-MANAS · 14416</span>
-          <span className="block text-[13.5px] text-secondary-foreground">free, confidential, 24×7, in your language — a real person</span>
+          <span className="block text-[17px] font-semibold text-foreground">{tx(lang, "Call Tele-MANAS · 14416")}</span>
+          <span className="block text-[13.5px] text-secondary-foreground">{tx(lang, "free, confidential, 24×7, in your language — a real person")}</span>
         </span>
       </a>
 
@@ -84,7 +87,7 @@ function SOS() {
           style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
         >
           <Phone className="h-4.5 h-[18px] w-[18px] shrink-0 text-muted-foreground" strokeWidth={1.7} />
-          <span className="text-[16px] text-foreground/90">Call someone I trust</span>
+          <span className="text-[16px] text-foreground/90">{tx(lang, "Call someone I trust")}</span>
         </button>
         <button
           onClick={() => { setFlow("body"); setCount(60); setPhase("breathe"); }}
@@ -92,7 +95,7 @@ function SOS() {
           style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
         >
           <Wind className="h-[18px] w-[18px] shrink-0" strokeWidth={1.7} style={{ color: "var(--dawnline)" }} />
-          <span className="text-[16px] text-foreground/90">Sixty seconds of breath</span>
+          <span className="text-[16px] text-foreground/90">{tx(lang, "Sixty seconds of breath")}</span>
         </button>
         {!heldSafe ? (
           <button
@@ -101,7 +104,7 @@ function SOS() {
             style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
           >
             <HeartPulse className="h-[18px] w-[18px] shrink-0" strokeWidth={1.7} style={{ color: "var(--mint)" }} />
-            <span className="text-[16px] text-foreground/90">I am safe right now</span>
+            <span className="text-[16px] text-foreground/90">{tx(lang, "I am safe right now")}</span>
           </button>
         ) : (
           /* The room exhales — a held sentence, not a toast. */
@@ -113,11 +116,10 @@ function SOS() {
             }}
           >
             <p className="font-serif text-[18px] font-light leading-relaxed text-foreground">
-              Good. You're here. That's enough right now.
+              {tx(lang, "Good. You're here. That's enough right now.")}
             </p>
             <p className="mt-2 text-[14px] leading-relaxed text-secondary-foreground">
-              This room stays open as long as you need it. When you're ready, the rest of the app is
-              exactly where you left it.
+              {tx(lang, "This room stays open as long as you need it. When you're ready, the rest of the app is exactly where you left it.")}
             </p>
           </div>
         )}
@@ -125,9 +127,9 @@ function SOS() {
 
       {/* The three flows — quiet doors, one open at a time */}
       <div className="relative mt-8 space-y-2">
-        <FlowRow active={flow === "unsafe"} icon={<HeartPulse className="h-[18px] w-[18px]" strokeWidth={1.7} />} label="I feel unsafe with myself" onClick={() => setFlow("unsafe")} tint="var(--clay)" />
-        <FlowRow active={flow === "impulse"} icon={<MessageSquareOff className="h-[18px] w-[18px]" strokeWidth={1.7} />} label="I might contact someone impulsively" onClick={() => setFlow("impulse")} tint="var(--lamp)" />
-        <FlowRow active={flow === "body"} icon={<Wind className="h-[18px] w-[18px]" strokeWidth={1.7} />} label="I need to calm my body" onClick={() => setFlow("body")} tint="var(--dawnline)" />
+        <FlowRow active={flow === "unsafe"} icon={<HeartPulse className="h-[18px] w-[18px]" strokeWidth={1.7} />} label={tx(lang, "I feel unsafe with myself")} onClick={() => setFlow("unsafe")} tint="var(--clay)" />
+        <FlowRow active={flow === "impulse"} icon={<MessageSquareOff className="h-[18px] w-[18px]" strokeWidth={1.7} />} label={tx(lang, "I might contact someone impulsively")} onClick={() => setFlow("impulse")} tint="var(--lamp)" />
+        <FlowRow active={flow === "body"} icon={<Wind className="h-[18px] w-[18px]" strokeWidth={1.7} />} label={tx(lang, "I need to calm my body")} onClick={() => setFlow("body")} tint="var(--dawnline)" />
       </div>
 
       {flow === "unsafe" && (
@@ -136,10 +138,9 @@ function SOS() {
             className="rounded-lg border p-6"
             style={{ borderColor: "color-mix(in oklab, var(--clay) 40%, transparent)", background: "color-mix(in oklab, var(--clay) 8%, transparent)" }}
           >
-            <h2 className="flex items-center gap-2 font-serif text-[20px] font-light"><Phone className="h-5 w-5" style={{ color: "var(--clay)" }} />Please talk to a person, not an app.</h2>
+            <h2 className="flex items-center gap-2 font-serif text-[20px] font-light"><Phone className="h-5 w-5" style={{ color: "var(--clay)" }} />{tx(lang, "Please talk to a person, not an app.")}</h2>
             <p className="mt-2 text-[15px] leading-relaxed text-foreground/90">
-              If there is any chance of harm to yourself or someone else, the kindest thing right now is a
-              human voice. These lines are free, confidential, and answer 24/7.
+              {tx(lang, "If there is any chance of harm to yourself or someone else, the kindest thing right now is a human voice. These lines are free, confidential, and answer 24/7.")}
             </p>
             <div className="mt-4 space-y-2 text-[15px]">
               <p><strong>India — Tele-MANAS:</strong> <a href="tel:14416" className="underline underline-offset-2">14416</a> · <a href="tel:18008914416" className="underline underline-offset-2">1-800-891-4416</a></p>
@@ -162,20 +163,20 @@ function SOS() {
               <Shield className="h-4 w-4" strokeWidth={1.7} style={{ color: "var(--lamp)" }} />
             </span>
             <span>
-              <span className="block font-serif text-[19px] font-light leading-snug">Open the Urge Shield</span>
+              <span className="block font-serif text-[19px] font-light leading-snug">{tx(lang, "Open the Urge Shield")}</span>
               <span className="mt-1 block text-[14px] leading-relaxed text-secondary-foreground">
-                Ten minutes with yourself before you check or message. No streaks, no shame.
+                {tx(lang, "Ten minutes with yourself before you check or message. No streaks, no shame.")}
               </span>
               <span className="mt-2 inline-flex items-center gap-1 text-[13px] text-muted-foreground">
-                begin the pause <ArrowRight className="h-3 w-3" />
+                {tx(lang, "begin the pause")} <ArrowRight className="h-3 w-3" />
               </span>
             </span>
           </Link>
 
           <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 60%, transparent)" }}>
-            <h2 className="font-serif text-[19px] font-light">Write it here instead.</h2>
+            <h2 className="font-serif text-[19px] font-light">{tx(lang, "Write it here instead.")}</h2>
             <p className="mt-1.5 text-[14px] text-secondary-foreground">
-              This page burns itself — nothing here is saved, sent, or seen.
+              {tx(lang, "This page burns itself — nothing here is saved, sent, or seen.")}
             </p>
             <Textarea
               aria-label="Write what you'd rather not send"
@@ -214,6 +215,7 @@ function SOS() {
  *  and re-warming across the full 60 seconds. Under reduced motion the light
  *  holds still and a dawnline fill bar carries the time instead. */
 function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe"; count: number; onBegin: () => void }) {
+  const lang = useLang();
   const progress = (60 - count) / 60; // 0 → 1
   // The room dims toward the middle of the minute and re-warms toward the end.
   const dim = phase === "breathe" ? Math.sin(progress * Math.PI) * 0.5 : 0;
@@ -232,7 +234,7 @@ function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe";
         }}
       />
       <Wind className="relative mx-auto h-7 w-7" strokeWidth={1.6} style={{ color: "var(--dawnline)" }} />
-      <p className="relative mt-3 font-serif text-[19px] font-light">Sixty seconds of breath</p>
+      <p className="relative mt-3 font-serif text-[19px] font-light">{tx(lang, "Sixty seconds of breath")}</p>
       {phase === "breathe" ? (
         <>
           {/* the numeral goes secondary — the light is the timer. The live
@@ -247,9 +249,9 @@ function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe";
           </div>
         </>
       ) : (
-        <button type="button" className="qs-pill-cta relative mt-6" onClick={onBegin}>Begin</button>
+        <button type="button" className="qs-pill-cta relative mt-6" onClick={onBegin}>{tx(lang, "Begin")}</button>
       )}
-      <p className="relative mt-4 text-[14px] text-secondary-foreground">In for 4, hold 4, out for 6. Slowly.</p>
+      <p className="relative mt-4 text-[14px] text-secondary-foreground">{tx(lang, "In for 4, hold 4, out for 6. Slowly.")}</p>
     </div>
   );
 }

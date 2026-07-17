@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
+import { useLang, useT, setLang } from "@/lib/i18n";
 import { Eye, EyeOff, LifeBuoy, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TactileCard } from "@/components/TactileCard";
@@ -82,6 +83,7 @@ function Settings() {
       </nav>
 
       <SectionGroup id="feel" label="how it feels here">
+        <LanguageSection />
         <BackgroundAnimationSection />
         <ToneSection />
       </SectionGroup>
@@ -175,6 +177,37 @@ function InsightSourcesSection() {
       </div>
       <p className="mt-4 text-[12px] italic leading-relaxed text-muted-foreground">
         every pattern on Insights shows "why am I seeing this?" — and any pattern can be set aside there.
+      </p>
+    </TactileCard>
+  );
+}
+
+function LanguageSection() {
+  const t = useT();
+  const lang = useLang();
+  return (
+    <TactileCard>
+      <p className="qs-section-label">{t("lang.section")}</p>
+      <h2 className="mt-2 font-serif text-xl">{t("lang.title")}</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{t("lang.body")}</p>
+      <div className="mt-4 flex gap-2" role="group" aria-label="Display language">
+        {(["en", "hi"] as const).map((l) => (
+          <button
+            key={l}
+            type="button"
+            aria-pressed={lang === l}
+            onClick={() => setLang(l)}
+            className="inline-flex min-h-11 items-center rounded-full border px-4 text-[14px] transition"
+            style={lang === l
+              ? { background: "var(--surface-selected)", borderColor: "var(--border-active)", color: "var(--text-primary)", fontWeight: 600 }
+              : { background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
+          >
+            {t(l === "en" ? "lang.en" : "lang.hi")}
+          </button>
+        ))}
+      </div>
+      <p className="mt-3 text-[12px] italic leading-relaxed text-muted-foreground">
+        InnerMate already answers in the language you write to it — हिन्दी, Hinglish, or English.
       </p>
     </TactileCard>
   );
