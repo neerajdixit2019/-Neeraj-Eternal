@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { PerfDebugPanel } from "@/components/PerfDebugPanel";
 import { Toaster } from "@/components/ui/sonner";
+import { initOfflineSanctuary } from "@/lib/offline";
 
 function NotFoundComponent() {
   return (
@@ -75,6 +76,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#0e121e" },
       { title: "My Quiet Space — A private space to feel, write, and heal" },
       { name: "description", content: "Write, breathe, understand your feelings, and heal one quiet step at a time. Private journal, mood check-in, healing paths, and a gentle AI reflection companion." },
       { property: "og:type", content: "website" },
@@ -86,6 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preload", as: "image", href: "/night-mountains.jpg", type: "image/jpeg" },
       // Fonts are bundled via @fontsource (see router.tsx) — no requests to
       // Google leave the app. Privacy-first, and faster on first paint.
@@ -134,6 +137,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    initOfflineSanctuary(router);
+  }, [router]);
 
   useEffect(() => {
     const apply = () => {

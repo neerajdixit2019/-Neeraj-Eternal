@@ -148,6 +148,10 @@ function AppLayout() {
   const navigate = useNavigate();
   const t = useT();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  // The steady room answers before any gate: it carries no personal data,
+  // and someone arriving in crisis — offline, signed out, whatever — must
+  // never wait on an auth roundtrip or be bounced away from it.
+  const isSanctuary = path === "/sos";
   const [ready, setReady] = useState(false);
   const [devPreview, setDevPreview] = useState(false);
   const [steadyOpen, setSteadyOpen] = useState(false);
@@ -204,8 +208,12 @@ function AppLayout() {
       return;
     }
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { navigate({ to: "/login" }); return; }
-      const { data: p } = await supabase.from("profiles").select("onboarding_completed").eq("id", data.session.user.id).maybeSingle();
+      if (!data.session) { if (!isSanctuary) navigate({ to: "/login" }); return; }
+      const { data: p, error } = await supabase.from("profiles").select("onboarding_completed").eq("id", data.session.user.id).maybeSingle();
+      // A failed fetch (offline, flaky network) means "unknown", never
+      // "not onboarded" — nobody gets dumped into onboarding by a dead
+      // connection, and the offline sanctuary stays reachable.
+      if (error) { setReady(true); return; }
       if (!p?.onboarding_completed) { navigate({ to: "/onboarding" }); return; }
       setReady(true);
     });
@@ -214,15 +222,18 @@ function AppLayout() {
         setReady(false);
         await queryClient.cancelQueries();
         queryClient.clear();
-        navigate({ to: "/login", replace: true });
+        // Never pull someone out of the steady room — signed out or not,
+        // the crisis surface stays under their feet.
+        if (!isSanctuary) navigate({ to: "/login", replace: true });
       }
     });
     return () => sub.subscription.unsubscribe();
-  }, [navigate, queryClient]);
+  }, [navigate, queryClient, isSanctuary]);
 
   // The lamp being lit — never a bare ellipsis, least of all for someone
-  // arriving in distress.
-  if (!ready) {
+  // arriving in distress. The sanctuary skips even this: it renders on the
+  // server too, so its cached page is the real room, not a spinner.
+  if (!ready && !isSanctuary) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4">
         <CompanionCloud size={72} state="calm" />

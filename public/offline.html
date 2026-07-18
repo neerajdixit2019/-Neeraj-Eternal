@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0e121e" />
+<title>My Quiet Space — the lamp is still lit</title>
+<style>
+  /* Self-contained on purpose: no fonts, no images, no requests. The one
+     thing allowed to move is the breath — and it gentles itself when the
+     reader asks for reduced motion. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0e121e;
+    color: #e9e4d8;
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.55;
+    padding: 28px 20px;
+  }
+  main { max-width: 26rem; width: 100%; text-align: center; }
+  .lamp-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #e2a14e; margin: 0 auto 18px;
+    box-shadow: 0 0 18px 4px rgba(226, 161, 78, 0.35);
+  }
+  h1 { font-size: 1.55rem; font-weight: 400; letter-spacing: 0.01em; }
+  .hi { display: block; font-size: 0.92em; opacity: 0.85; margin-top: 2px; }
+  p.sub { margin-top: 10px; font-size: 0.95rem; color: #b8b2a4; }
+
+  .pacer { margin: 34px auto 10px; width: 120px; height: 120px; position: relative; }
+  .pacer-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1.5px solid rgba(226, 161, 78, 0.85);
+    background: radial-gradient(circle, rgba(226,161,78,0.10) 0%, rgba(226,161,78,0.02) 70%);
+    animation: lamp-breath 10s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+    transform: scale(0.6);
+  }
+  @keyframes lamp-breath {
+    0%   { transform: scale(0.6); }
+    40%  { transform: scale(1); }    /* in for 4 */
+    100% { transform: scale(0.6); }  /* out for 6 */
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pacer-ring { animation: lamp-breath-gentle 10s cubic-bezier(0.37, 0, 0.63, 1) infinite; }
+    @keyframes lamp-breath-gentle {
+      0%   { transform: scale(0.82); }
+      40%  { transform: scale(0.94); }
+      100% { transform: scale(0.82); }
+    }
+  }
+  .pacer-label { font-size: 0.85rem; color: #b8b2a4; letter-spacing: 0.06em; }
+
+  .calls {
+    margin-top: 34px; padding: 18px 16px;
+    background: #f3ecdb; color: #2a2620; border-radius: 4px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    text-align: left;
+  }
+  .calls p.note { font-size: 0.85rem; font-style: italic; color: #57503f; }
+  .calls a {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 12px 4px; min-height: 44px; text-decoration: none;
+    color: #2a2620; border-top: 1px solid rgba(42, 38, 32, 0.15); margin-top: 8px;
+  }
+  .calls a:first-of-type { margin-top: 10px; }
+  .calls a .num { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .foot { margin-top: 30px; font-size: 0.85rem; font-style: italic; color: #8f8a7c; }
+  .again {
+    display: inline-block; margin-top: 14px; padding: 10px 22px; min-height: 44px;
+    color: #e9e4d8; border: 1px solid rgba(233, 228, 216, 0.35);
+    border-radius: 999px; text-decoration: none; font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="lamp-dot" aria-hidden="true"></div>
+  <h1>
+    The lamp is still lit.
+    <span class="hi" lang="hi">दीया अब भी जल रहा है।</span>
+  </h1>
+  <p class="sub">
+    No connection right now — this small room works without one.
+    <span class="hi" lang="hi">इंटरनेट अभी नहीं है — पर यह छोटा-सा कमरा उसके बिना भी खुला है।</span>
+  </p>
+
+  <div class="pacer" aria-hidden="true"><div class="pacer-ring"></div></div>
+  <p class="pacer-label">breathe with the circle · in 4 · out 6<span class="hi" lang="hi">घेरे के साथ साँस लें · अंदर 4 · बाहर 6</span></p>
+
+  <div class="calls">
+    <p class="note">
+      Phone calls need no internet. These are free, 24/7.
+      <span class="hi" lang="hi">फ़ोन कॉल के लिए इंटरनेट ज़रूरी नहीं। ये मुफ़्त हैं, 24/7।</span>
+    </p>
+    <a href="tel:14416"><span>Tele-MANAS</span><span class="num">14416</span></a>
+    <a href="tel:18005990019"><span>KIRAN</span><span class="num">1800-599-0019</span></a>
+    <a href="tel:112"><span>Emergency · <span lang="hi">आपातकाल</span></span><span class="num">112</span></a>
+  </div>
+
+  <p class="foot">
+    When the connection returns, your study will be waiting.
+    <span class="hi" lang="hi">इंटरनेट लौटते ही आपका कमरा फिर खुल जाएगा।</span>
+  </p>
+  <a class="again" href="/">try again · <span lang="hi">फिर से देखें</span></a>
+</main>
+</body>
+</html>

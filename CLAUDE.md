@@ -8,7 +8,7 @@ Start/Router + Supabase (RLS) + Tailwind v4 + Lovable AI gateway.
 
 ```
 npx tsc --noEmit          # expect 0 errors
-npm run test:companion    # node:test suites, expect 215 pass
+npm run test:companion    # node:test suites, expect 228 pass
 npm run build             # production build must succeed
 ```
 
@@ -23,6 +23,13 @@ Tests are plain `node --test` files under `src/lib/__tests__/` — NOT vitest.
 - **Server functions**: preserve zod shapes, react-query keys, mood scores
   2/4/6/8/10, `is_ai_readable` filters, stream frames (meta/phase/token/mode/
   done — mode includes "safety"), `risk_label` semantics.
+- **Offline sanctuary**: `public/sw.js` is hand-rolled (no build plugin — never
+  add a PWA dependency). It touches only same-origin GETs; page navigations are
+  network-first and only `PAGE_ALLOWLIST` pages (personal-data-free: /, /login,
+  /sos, /offline.html) are ever cached — authed rooms must never enter
+  CacheStorage. `public/offline.html` is static; its crisis numbers are bound
+  to `crisis-resources.ts` by `offline-sanctuary.test.ts` — change either side
+  and the gate fails together.
 - **`src/integrations/**` is auto-generated — never edit.**
 - SSR: browser APIs only inside effects/handlers; all render-path randomness is
   seeded/deterministic (FNV-1a hashes, fixed seeds). `Math.random()` is legal
