@@ -136,6 +136,30 @@ export const listJournal = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+/**
+ * Everything the trusted letter may draw from, fetched for one whole window.
+ * listMoods/listJournal cap at the newest rows, which would silently hide
+ * older in-window pages from the pick list — a consent gap — and understate
+ * the letter's check-in counts.
+ */
+export const listLetterWindow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({
+    days: z.union([z.literal(14), z.literal(30), z.literal(90)]),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const since = new Date(Date.now() - data.days * 86400000).toISOString();
+    const [{ data: moods }, { data: journal }] = await Promise.all([
+      context.supabase.from("mood_logs")
+        .select("created_at,mood_score,emotion_tags,trigger_tags")
+        .gte("created_at", since).order("created_at", { ascending: false }),
+      context.supabase.from("journal_entries")
+        .select("id,title,body,created_at")
+        .gte("created_at", since).order("created_at", { ascending: false }),
+    ]);
+    return { moods: moods ?? [], journal: journal ?? [] };
+  });
+
 export const saveJournal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({

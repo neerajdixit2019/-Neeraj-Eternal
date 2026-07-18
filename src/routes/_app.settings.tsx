@@ -384,6 +384,13 @@ function VaultSection() {
         >
           Delete my data
         </Button>
+        <Link
+          to="/trusted-letter"
+          className="inline-flex min-h-11 items-center rounded-full border px-4 text-[13px] transition hover:brightness-110"
+          style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
+        >
+          a letter for someone you trust →
+        </Link>
         <p className="w-full text-xs text-muted-foreground italic">
           Delete removes everything you created — journals, moods, AI chats, memories, letters, reflections, paths.
           A minimal audit trail (consent, rights requests, safety events) is retained as legally required.

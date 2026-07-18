@@ -121,6 +121,12 @@ function YouPage() {
       <p className="qs-section-label mt-9">the keeping of this place</p>
       <div className="mt-2">
         <TocRow
+          to="/trusted-letter"
+          icon={Mail}
+          title="a letter for someone you trust"
+          line="a consent-first summary you download and hand over yourself"
+        />
+        <TocRow
           to="/privacy"
           icon={Shield}
           title="privacy & safety"
@@ -142,7 +148,7 @@ function YouPage() {
 }
 
 function TocRow({ to, icon: Icon, title, line }: {
-  to: "/journal" | "/insights" | "/heal" | "/memories" | "/home" | "/privacy" | "/settings";
+  to: "/journal" | "/insights" | "/heal" | "/memories" | "/home" | "/privacy" | "/settings" | "/trusted-letter";
   icon: typeof Shield; title: string; line: string;
 }) {
   return (

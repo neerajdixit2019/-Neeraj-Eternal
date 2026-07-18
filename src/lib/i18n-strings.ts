@@ -187,6 +187,46 @@ const HI_TEXT: Record<string, string> = {
   "This page burns itself — nothing here is saved, sent, or seen.":
     "यह पन्ना ख़ुद जल जाता है — यहाँ कुछ भी सहेजा, भेजा या देखा नहीं जाता।",
   "In for 4, hold 4, out for 6. Slowly.": "4 गिनती अंदर, 4 रोकें, 6 में बाहर। धीरे-धीरे।",
+  /* the trusted letter */
+  "back to you": "आप पर वापस",
+  "the keeping of this place": "इस जगह की देखभाल",
+  "A letter you hand over yourself.": "एक ख़त, जो आप ख़ुद सौंपते हैं।",
+  "For a therapist, a parent, someone who asked how you've really been. You choose every piece that goes in. The app sends nothing and keeps no copy — the letter downloads to your device, and handing it over is yours to do.":
+    "किसी थेरेपिस्ट, माता-पिता, या उस इंसान के लिए जिसने पूछा कि आप सच में कैसे हैं। इसमें क्या जाएगा, हर टुकड़ा आप चुनते हैं। app कुछ नहीं भेजता और कोई कॉपी नहीं रखता — ख़त आपके डिवाइस पर उतरता है, और उसे सौंपना आपके हाथ में है।",
+  "Who is it for?": "यह किसके लिए है?",
+  "Optional — a name makes it a letter, not a report.": "वैकल्पिक — एक नाम इसे रिपोर्ट नहीं, ख़त बना देता है।",
+  "Dr. Mehta, Maa, a friend…": "डॉ. मेहता, माँ, कोई दोस्त…",
+  "Which stretch of time?": "कौन-सा दौर?",
+  "the last two weeks": "पिछले दो हफ़्ते",
+  "the last month": "पिछला महीना",
+  "the last three months": "पिछले तीन महीने",
+  "What may go in?": "इसमें क्या जा सकता है?",
+  "Everything starts unticked. Only what you choose leaves this page.": "सब कुछ बिना टिक के शुरू होता है। सिर्फ़ वही बाहर जाता है जो आप चुनें।",
+  "How my days have felt": "मेरे दिन कैसे रहे",
+  "check-ins in this window — count, average, the feelings you named most, and what they tended to arrive with. No clinical scores.":
+    "चेक-इन इस दौर में — गिनती, औसत, सबसे ज़्यादा नामे गए एहसास, और वे किन मौक़ों के साथ आए। कोई क्लिनिकल स्कोर नहीं।",
+  "The name it carries": "इस पर आपका नाम",
+  "Prefilled from your name here, so nothing goes in unseen. Change it, or clear it to leave the letter unsigned.":
+    "यह आपके यहाँ के नाम से पहले से भरा है, ताकि कुछ भी अनदेखा न जाए। चाहें तो बदल दें, या ख़ाली छोड़ दें — ख़त बिना नाम के रहेगा।",
+  "left empty, the letter stays unsigned": "ख़ाली छोड़ने पर ख़त बिना नाम के रहेगा",
+  "Patterns I've noticed": "जो पैटर्न मैंने देखे",
+  "The handful of feelings and situations that came up most — as observations to talk about, never verdicts.":
+    "जो एहसास और हालात सबसे ज़्यादा आए — बातचीत के लिए अवलोकन, फ़ैसले नहीं।",
+  "Journal pages, picked one by one": "जर्नल के पन्ने, एक-एक करके चुने हुए",
+  "Your journal stays private by default. Tick only the pages you want this person to read.":
+    "आपका जर्नल पहले से निजी है। सिर्फ़ वही पन्ने टिक करें जो आप इस इंसान को पढ़ाना चाहें।",
+  "no pages in this stretch of time.": "इस दौर में कोई पन्ना नहीं।",
+  "chosen": "चुने गए",
+  "A note in your own words": "आपके अपने शब्दों में एक बात",
+  "Optional — it opens the letter. What do you want them to understand?": "वैकल्पिक — ख़त इसी से खुलता है। आप क्या समझाना चाहते हैं?",
+  "I've been wanting to tell you…": "एक बात जो कहनी थी…",
+  "never in this letter": "इस ख़त में कभी नहीं",
+  "Your conversations with InnerMate. Your memories. Anything you didn't tick. The letter also says, on its own cover, that every piece was chosen by you.":
+    "InnerMate से आपकी बातचीत। आपकी यादें। जो भी आपने टिक नहीं किया। ख़त अपने ही कवर पर यह भी कहता है कि हर टुकड़ा आपने चुना है।",
+  "Hindi in the PDF is legible but not yet perfectly typeset — a matra may sit slightly off. Worth a glance before you hand it over.": "PDF में हिन्दी पढ़ी जा सकती है, पर अभी टाइपसेटिंग पूरी सटीक नहीं — कोई मात्रा थोड़ी खिसकी दिख सकती है। सौंपने से पहले एक नज़र डाल लेना अच्छा रहेगा।",
+  "prepare the letter": "ख़त तैयार करें",
+  "preparing…": "तैयार हो रहा है…",
+  "choose at least one piece above, and this will wake up.": "ऊपर कम से कम एक टुकड़ा चुनें, और यह जाग उठेगा।",
   "Breathe in": "साँस अंदर",
   "Breathe out": "साँस बाहर",
   "in": "अंदर",

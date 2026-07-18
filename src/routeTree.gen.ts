@@ -19,6 +19,7 @@ import { Route as ApiCompanionRouteImport } from './routes/api/companion'
 import { Route as AppYouRouteImport } from './routes/_app.you'
 import { Route as AppWindDownRouteImport } from './routes/_app.wind-down'
 import { Route as AppUrgeShieldRouteImport } from './routes/_app.urge-shield'
+import { Route as AppTrustedLetterRouteImport } from './routes/_app.trusted-letter'
 import { Route as AppSosRouteImport } from './routes/_app.sos'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppReflectRouteImport } from './routes/_app.reflect'
@@ -81,6 +82,11 @@ const AppWindDownRoute = AppWindDownRouteImport.update({
 const AppUrgeShieldRoute = AppUrgeShieldRouteImport.update({
   id: '/urge-shield',
   path: '/urge-shield',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrustedLetterRoute = AppTrustedLetterRouteImport.update({
+  id: '/trusted-letter',
+  path: '/trusted-letter',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSosRoute = AppSosRouteImport.update({
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/reflect': typeof AppReflectRoute
   '/settings': typeof AppSettingsRoute
   '/sos': typeof AppSosRoute
+  '/trusted-letter': typeof AppTrustedLetterRoute
   '/urge-shield': typeof AppUrgeShieldRoute
   '/wind-down': typeof AppWindDownRoute
   '/you': typeof AppYouRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/reflect': typeof AppReflectRoute
   '/settings': typeof AppSettingsRoute
   '/sos': typeof AppSosRoute
+  '/trusted-letter': typeof AppTrustedLetterRoute
   '/urge-shield': typeof AppUrgeShieldRoute
   '/wind-down': typeof AppWindDownRoute
   '/you': typeof AppYouRoute
@@ -223,6 +231,7 @@ export interface FileRoutesById {
   '/_app/reflect': typeof AppReflectRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/sos': typeof AppSosRoute
+  '/_app/trusted-letter': typeof AppTrustedLetterRoute
   '/_app/urge-shield': typeof AppUrgeShieldRoute
   '/_app/wind-down': typeof AppWindDownRoute
   '/_app/you': typeof AppYouRoute
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/reflect'
     | '/settings'
     | '/sos'
+    | '/trusted-letter'
     | '/urge-shield'
     | '/wind-down'
     | '/you'
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/reflect'
     | '/settings'
     | '/sos'
+    | '/trusted-letter'
     | '/urge-shield'
     | '/wind-down'
     | '/you'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/_app/reflect'
     | '/_app/settings'
     | '/_app/sos'
+    | '/_app/trusted-letter'
     | '/_app/urge-shield'
     | '/_app/wind-down'
     | '/_app/you'
@@ -390,6 +402,13 @@ declare module '@tanstack/react-router' {
       path: '/urge-shield'
       fullPath: '/urge-shield'
       preLoaderRoute: typeof AppUrgeShieldRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/trusted-letter': {
+      id: '/_app/trusted-letter'
+      path: '/trusted-letter'
+      fullPath: '/trusted-letter'
+      preLoaderRoute: typeof AppTrustedLetterRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sos': {
@@ -516,6 +535,7 @@ interface AppRouteChildren {
   AppReflectRoute: typeof AppReflectRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppSosRoute: typeof AppSosRoute
+  AppTrustedLetterRoute: typeof AppTrustedLetterRoute
   AppUrgeShieldRoute: typeof AppUrgeShieldRoute
   AppWindDownRoute: typeof AppWindDownRoute
   AppYouRoute: typeof AppYouRoute
@@ -535,6 +555,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReflectRoute: AppReflectRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppSosRoute: AppSosRoute,
+  AppTrustedLetterRoute: AppTrustedLetterRoute,
   AppUrgeShieldRoute: AppUrgeShieldRoute,
   AppWindDownRoute: AppWindDownRoute,
   AppYouRoute: AppYouRoute,
