@@ -238,7 +238,9 @@ const HI_TEXT: Record<string, string> = {
   "never in this letter": "इस ख़त में कभी नहीं",
   "Your conversations with InnerMate. Your memories. Anything you didn't tick. The letter also says, on its own cover, that every piece was chosen by you.":
     "InnerMate से आपकी बातचीत। आपकी यादें। जो भी आपने टिक नहीं किया। ख़त अपने ही कवर पर यह भी कहता है कि हर टुकड़ा आपने चुना है।",
-  "Hindi in the PDF is legible but not yet perfectly typeset — a matra may sit slightly off. Worth a glance before you hand it over.": "PDF में हिन्दी पढ़ी जा सकती है, पर अभी टाइपसेटिंग पूरी तरह सटीक नहीं — कोई मात्रा थोड़ी खिसकी दिख सकती है। सौंपने से पहले एक नज़र डाल लेना अच्छा रहेगा।",
+  "Hindi in the downloaded PDF is legible but not perfectly typeset — a matra may sit slightly off. For flawless Hindi, print the fair copy: your browser typesets it, and the print dialog can save it as a PDF too.":
+    "डाउनलोड वाली PDF में हिन्दी पढ़ी जा सकती है, पर टाइपसेटिंग पूरी तरह सटीक नहीं — कोई मात्रा थोड़ी खिसकी दिख सकती है। बिल्कुल सही हिन्दी के लिए पक्की कॉपी छापें: उसे आपका ब्राउज़र टाइपसेट करता है, और प्रिंट डायलॉग से PDF भी सहेजी जा सकती है।",
+  "print the fair copy": "पक्की कॉपी छापें",
   "prepare the letter": "ख़त तैयार करें",
   "preparing…": "तैयार हो रहा है…",
   "choose at least one piece above, and this will wake up.": "ऊपर कम से कम एक टुकड़ा चुनें, और यह जाग उठेगा।",

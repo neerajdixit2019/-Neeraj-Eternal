@@ -1,14 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listLetterWindow, getProfile } from "@/lib/data.functions";
-import { buildTrustedLetterPdf, type TrustedMoodOverview } from "@/lib/trusted-letter";
+import { buildTrustedLetterPdf, type TrustedLetterInput, type TrustedMoodOverview } from "@/lib/trusted-letter";
+import { FairCopySheet } from "@/components/FairCopySheet";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, FileDown } from "lucide-react";
+import { ArrowLeft, FileDown, Printer } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
 
@@ -71,6 +72,7 @@ function TrustedLetter() {
   const [personalNote, setPersonalNote] = useState("");
   const [signedAs, setSignedAs] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
+  const [printInput, setPrintInput] = useState<TrustedLetterInput | null>(null);
 
   const windowDef = WINDOWS.find((w) => w.key === windowKey)!;
   const { data: win } = useQuery({
@@ -113,41 +115,71 @@ function TrustedLetter() {
     signedValue + forName + personalNote + chosenInWindow.map((j) => `${j.title ?? ""}${j.body ?? ""}`).join(""),
   );
 
+  // One composition for both renderings: the downloaded PDF and the
+  // browser-typeset fair copy carry exactly the same chosen pieces.
+  const composeInput = (): TrustedLetterInput => {
+    const scored = windowMoods.filter((m) => typeof m.mood_score === "number");
+    const overview: TrustedMoodOverview | null = includeMood
+      ? {
+          count: windowMoods.length,
+          avg: scored.length
+            ? scored.reduce((a, m) => a + (m.mood_score as number), 0) / scored.length
+            : null,
+          topEmotions: topCounts(windowMoods, "emotion_tags", 4),
+          topTriggers: topCounts(windowMoods, "trigger_tags", 4),
+        }
+      : null;
+    const patterns = includePatterns
+      ? [...topCounts(windowMoods, "emotion_tags", 3), ...topCounts(windowMoods, "trigger_tags", 3)]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([label, count]) => ({ label, count }))
+      : null;
+    const entries = chosenInWindow
+      .slice()
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .map((j) => ({ created_at: j.created_at, title: j.title, body: (j.body ?? "").trim() }));
+    return {
+      preparedBy: signedValue.trim() || null,
+      forName,
+      windowLabel: windowDef.label,
+      personalNote,
+      moodOverview: overview,
+      patterns: patterns && patterns.length ? patterns : null,
+      journalEntries: entries,
+    };
+  };
+
+  // The fair copy: mount the print sheet, open the print dialog once the
+  // commit has landed, and unmount when the dialog closes. A timer, not
+  // rAF: rAF is throttled to zero in hidden documents and would strand
+  // the sheet; print rendering only needs the DOM committed, not painted.
+  useEffect(() => {
+    if (!printInput) return;
+    // afterprint is the clean signal, but some mobile browsers skip it when
+    // the dialog is cancelled — regaining focus is the belt-and-braces so
+    // the print button can never wedge disabled. Both just clear the sheet.
+    const done = () => setPrintInput(null);
+    window.addEventListener("afterprint", done);
+    window.addEventListener("focus", done);
+    const t = window.setTimeout(() => window.print(), 50);
+    return () => {
+      window.removeEventListener("afterprint", done);
+      window.removeEventListener("focus", done);
+      window.clearTimeout(t);
+    };
+  }, [printInput]);
+
+  const printFairCopy = () => {
+    if (!anythingChosen || printInput) return;
+    setPrintInput(composeInput());
+  };
+
   const prepare = () => {
     if (!anythingChosen || preparing) return;
     setPreparing(true);
     try {
-      const scored = windowMoods.filter((m) => typeof m.mood_score === "number");
-      const overview: TrustedMoodOverview | null = includeMood
-        ? {
-            count: windowMoods.length,
-            avg: scored.length
-              ? scored.reduce((a, m) => a + (m.mood_score as number), 0) / scored.length
-              : null,
-            topEmotions: topCounts(windowMoods, "emotion_tags", 4),
-            topTriggers: topCounts(windowMoods, "trigger_tags", 4),
-          }
-        : null;
-      const patterns = includePatterns
-        ? [...topCounts(windowMoods, "emotion_tags", 3), ...topCounts(windowMoods, "trigger_tags", 3)]
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([label, count]) => ({ label, count }))
-        : null;
-      const entries = chosenInWindow
-        .slice()
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        .map((j) => ({ created_at: j.created_at, title: j.title, body: (j.body ?? "").trim() }));
-
-      const blob = buildTrustedLetterPdf({
-        preparedBy: signedValue.trim() || null,
-        forName,
-        windowLabel: windowDef.label,
-        personalNote,
-        moodOverview: overview,
-        patterns: patterns && patterns.length ? patterns : null,
-        journalEntries: entries,
-      });
+      const blob = buildTrustedLetterPdf(composeInput());
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const stamp = new Date().toISOString().slice(0, 10);
@@ -330,11 +362,22 @@ function TrustedLetter() {
         {!anythingChosen && (
           <p className="text-[12px] italic text-muted-foreground">{tx(lang, "choose at least one piece above, and this will wake up.")}</p>
         )}
+        <button
+          type="button"
+          onClick={printFairCopy}
+          disabled={!anythingChosen || !!printInput}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border px-5 py-2 text-[13.5px] transition hover:brightness-110 disabled:opacity-50"
+          style={{ borderColor: "var(--border-subtle)" }}
+        >
+          <Printer className="h-4 w-4" strokeWidth={1.7} />
+          {tx(lang, "print the fair copy")}
+        </button>
         {hasHindiContent && (
           <p className="max-w-md text-[12px] italic leading-relaxed text-muted-foreground">
-            {tx(lang, "Hindi in the PDF is legible but not yet perfectly typeset — a matra may sit slightly off. Worth a glance before you hand it over.")}
+            {tx(lang, "Hindi in the downloaded PDF is legible but not perfectly typeset — a matra may sit slightly off. For flawless Hindi, print the fair copy: your browser typesets it, and the print dialog can save it as a PDF too.")}
           </p>
         )}
+        {printInput && <FairCopySheet input={printInput} />}
       </div>
     </div>
   );

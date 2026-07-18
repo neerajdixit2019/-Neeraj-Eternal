@@ -1,8 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   buildTrustedLetterPdf,
   letterHasDevanagari,
+  LETTER_COVER_EYEBROW,
+  LETTER_COVER_TITLE,
+  LETTER_NOTHING_UNTICKED,
+  LETTER_CLOSING,
   type TrustedLetterInput,
 } from "../trusted-letter.ts";
 
@@ -78,6 +83,16 @@ describe("letterHasDevanagari", () => {
   it("sees Devanagari in the signature", () => {
     assert.equal(letterHasDevanagari({ ...base, preparedBy: "नीरज" }), true);
   });
+
+  it("sees Devanagari in a mood-overview label", () => {
+    assert.equal(
+      letterHasDevanagari({
+        ...base,
+        moodOverview: { count: 1, avg: null, topEmotions: [["उदास", 1]], topTriggers: [] },
+      }),
+      true,
+    );
+  });
 });
 
 describe("buildTrustedLetterPdf", () => {
@@ -109,5 +124,41 @@ describe("buildTrustedLetterPdf", () => {
   it("survives a missing display name", async () => {
     const buf = await pdfBytes({ ...base, preparedBy: null });
     assert.equal(buf.subarray(0, 5).toString(), "%PDF-");
+  });
+});
+
+describe("the fair copy stays the same letter", () => {
+  const sheet = readFileSync("src/components/FairCopySheet.tsx", "utf-8");
+  const route = readFileSync("src/routes/_app.trusted-letter.tsx", "utf-8");
+  const css = readFileSync("src/styles.css", "utf-8");
+
+  it("both renderings draw their fixed copy from the shared constants", () => {
+    for (const name of ["LETTER_COVER_EYEBROW", "LETTER_COVER_TITLE", "LETTER_NOTHING_UNTICKED", "LETTER_CLOSING", "LETTER_SECTIONS", "LETTER_DISCLAIMERS"]) {
+      assert.ok(sheet.includes(name), `fair copy must use ${name}`);
+    }
+    // the constants themselves keep their promises
+    assert.match(LETTER_COVER_EYEBROW, /Shared by choice/);
+    assert.match(LETTER_COVER_TITLE, /A letter about how I've been/);
+    assert.match(LETTER_NOTHING_UNTICKED, /nothing unticked/);
+    assert.match(LETTER_CLOSING, /keeps no copy/);
+  });
+
+  it("printing the fair copy cannot blank other pages of the app", () => {
+    assert.ok(sheet.includes("fair-copy-printing"), "sheet must set the body guard class");
+    assert.ok(css.includes("body.fair-copy-printing > *:not(.fair-copy-sheet)"), "print hiding must be guarded by the body class");
+  });
+
+  it("preserves the personal note's line breaks, as the PDF does", () => {
+    // jsPDF's splitTextToSize keeps newlines; the fair copy must match with
+    // pre-wrap, or the letter's most personal section drifts between renderings.
+    assert.match(css, /\.fc-own-words\s*\{[^}]*white-space:\s*pre-wrap/, "personal note needs pre-wrap");
+    assert.match(css, /\.fc-body\s*\{[^}]*white-space:\s*pre-wrap/, "journal bodies need pre-wrap");
+  });
+
+  it("the route composes one input for both renderings", () => {
+    assert.ok(route.includes("composeInput"), "shared composition must exist");
+    assert.ok(route.includes("buildTrustedLetterPdf(composeInput())"), "download must use it");
+    assert.ok(route.includes("setPrintInput(composeInput())"), "print must use it");
+    assert.ok(route.includes("afterprint"), "the sheet must unmount after the dialog");
   });
 });

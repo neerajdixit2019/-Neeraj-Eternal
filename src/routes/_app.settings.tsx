@@ -488,6 +488,10 @@ function VaultSection() {
           <Button variant="outline" className="rounded-full" onClick={downloadPdf} disabled={pdfLoading}>
             {pdfLoading ? "Preparing PDF…" : "Download letters & check-ins (PDF)"}
           </Button>
+          <p className="mt-2 text-xs italic leading-relaxed text-muted-foreground">
+            Hindi in this PDF is legible but not perfectly typeset — a matra may sit
+            slightly off.
+          </p>
         </div>
         <Button variant="outline" className="rounded-full" onClick={download} disabled={exporting}>
           {exporting ? "Exporting…" : "Export my data (JSON)"}

@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { NOTO_DEVANAGARI_B64 } from "./noto-devanagari.ts";
+import { anyDevanagari, devanagariFontFor } from "./pdf-devanagari.ts";
 
 /**
  * The letter you hand someone — a consent-first export a user composes for a
@@ -46,37 +46,43 @@ function formatDate(iso: string | null) {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 }
 
-const DEVANAGARI = /[ऀ-ॿ]/;
+/* Copy shared verbatim between this PDF and the browser-typeset fair copy
+ * (FairCopySheet) — one source, so the two renderings can never drift. */
+export const LETTER_COVER_EYEBROW = "Shared by choice — prepared and handed over by its author";
+export const LETTER_COVER_TITLE = "A letter about how I've been";
+export const LETTER_NOTHING_UNTICKED =
+  "Everything here was chosen piece by piece. Nothing else from the app is included — no private conversations, no memories, nothing unticked.";
+export const LETTER_CLOSING =
+  "This letter was prepared inside My Quiet Space by its author. The app keeps no copy of it and sends nothing on anyone's behalf. Sharing can stop at any time.";
+export const LETTER_SECTIONS = {
+  ownWords: "In my own words",
+  days: "How my days have felt",
+  patterns: "Patterns I've noticed",
+  pages: "Pages I chose to share",
+} as const;
+export const LETTER_DISCLAIMERS = {
+  moods: "These are self-reported moments, not a clinical measure.",
+  patterns: "Observations from my own check-ins — things worth talking about, not verdicts.",
+} as const;
 
-/** Does any user-provided text in this letter contain Devanagari? */
+/** Does any user-provided text in this letter contain Devanagari? Covers
+ * every printed string — including the mood overview's emotion/trigger
+ * labels, so the font is embedded even if those are the only Hindi. */
 export function letterHasDevanagari(input: TrustedLetterInput): boolean {
-  const texts = [
-    input.preparedBy ?? "", input.forName, input.personalNote,
-    ...input.journalEntries.flatMap((e) => [e.title ?? "", e.body]),
+  const m = input.moodOverview;
+  return anyDevanagari([
+    input.preparedBy, input.forName, input.personalNote,
+    ...input.journalEntries.flatMap((e) => [e.title, e.body]),
     ...(input.patterns ?? []).map((p) => p.label),
-  ];
-  return texts.some((t) => DEVANAGARI.test(t));
+    ...(m ? [...m.topEmotions, ...m.topTriggers].map(([label]) => label) : []),
+  ]);
 }
 
 export function buildTrustedLetterPdf(input: TrustedLetterInput): Blob {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   let y = MARGIN;
 
-  // Hindi support: jsPDF's built-in fonts carry no Devanagari glyphs, so a
-  // subset Noto Sans Devanagari rides along whenever the letter needs it.
-  const needsDevanagari = letterHasDevanagari(input);
-  if (needsDevanagari) {
-    doc.addFileToVFS("NotoDevanagari.ttf", NOTO_DEVANAGARI_B64);
-    doc.addFont("NotoDevanagari.ttf", "NotoDevanagari", "normal");
-  }
-  const fontFor = (text: string, style: "normal" | "italic" | "bold") => {
-    if (needsDevanagari && DEVANAGARI.test(text)) {
-      // the subset has one weight; Devanagari lines always use it
-      doc.setFont("NotoDevanagari", "normal");
-    } else {
-      doc.setFont("times", style);
-    }
-  };
+  const fontFor = devanagariFontFor(doc, letterHasDevanagari(input));
 
   const ensureSpace = (need: number) => {
     if (y + need > PAGE_H - MARGIN) {
@@ -117,13 +123,13 @@ export function buildTrustedLetterPdf(input: TrustedLetterInput): Blob {
   doc.setFont("times", "italic");
   doc.setFontSize(10);
   doc.setTextColor(120, 120, 130);
-  doc.text("Shared by choice — prepared and handed over by its author", MARGIN, y);
+  doc.text(LETTER_COVER_EYEBROW, MARGIN, y);
   y += 28;
 
   doc.setFont("times", "bold");
   doc.setFontSize(26);
   doc.setTextColor(30, 30, 40);
-  doc.text("A letter about how I've been", MARGIN, y);
+  doc.text(LETTER_COVER_TITLE, MARGIN, y);
   y += 30;
 
   if (input.forName.trim()) {
@@ -144,21 +150,18 @@ export function buildTrustedLetterPdf(input: TrustedLetterInput): Blob {
     contents.push(`${input.journalEntries.length} journal page${input.journalEntries.length === 1 ? "" : "s"} I chose to share`);
   }
   writeBlock(`Inside: ${contents.join(" · ")}.`, { size: 11, color: [70, 70, 85], gap: 10 });
-  writeBlock(
-    "Everything here was chosen piece by piece. Nothing else from the app is included — no private conversations, no memories, nothing unticked.",
-    { size: 10, font: "italic", color: [110, 110, 125], gap: 0 },
-  );
+  writeBlock(LETTER_NOTHING_UNTICKED, { size: 10, font: "italic", color: [110, 110, 125], gap: 0 });
 
   /* ── A note in my own words ── */
   if (input.personalNote.trim()) {
-    heading("In my own words");
+    heading(LETTER_SECTIONS.ownWords);
     writeBlock(input.personalNote.trim(), { size: 12, font: "italic", color: [50, 50, 65], gap: 10 });
   }
 
   /* ── Mood overview ── */
   if (input.moodOverview) {
     const m = input.moodOverview;
-    heading("How my days have felt");
+    heading(LETTER_SECTIONS.days);
     writeBlock(
       `${m.count} check-in${m.count === 1 ? "" : "s"} in this period${m.avg != null ? ` · average mood ${m.avg.toFixed(1)} / 10` : ""}.`,
       { size: 11, gap: 6 },
@@ -169,18 +172,16 @@ export function buildTrustedLetterPdf(input: TrustedLetterInput): Blob {
     if (m.topTriggers.length) {
       writeBlock(`What they tended to arrive with: ${m.topTriggers.map(([t, n]) => `${t} (${n}×)`).join(", ")}.`, { size: 11, gap: 6 });
     }
-    writeBlock("These are self-reported moments, not a clinical measure.", { size: 9.5, font: "italic", color: [120, 120, 130], gap: 4 });
+    writeBlock(LETTER_DISCLAIMERS.moods, { size: 9.5, font: "italic", color: [120, 120, 130], gap: 4 });
   }
 
   /* ── Patterns ── */
   if (input.patterns && input.patterns.length) {
-    heading("Patterns I've noticed");
+    heading(LETTER_SECTIONS.patterns);
     for (const p of input.patterns) {
       writeBlock(`•  ${p.label} — appeared ${p.count} time${p.count === 1 ? "" : "s"}`, { size: 11, gap: 2 });
     }
-    writeBlock("Observations from my own check-ins — things worth talking about, not verdicts.", {
-      size: 9.5, font: "italic", color: [120, 120, 130], gap: 4,
-    });
+    writeBlock(LETTER_DISCLAIMERS.patterns, { size: 9.5, font: "italic", color: [120, 120, 130], gap: 4 });
   }
 
   /* ── Chosen journal pages ── */
@@ -190,7 +191,7 @@ export function buildTrustedLetterPdf(input: TrustedLetterInput): Blob {
     doc.setFont("times", "bold");
     doc.setFontSize(18);
     doc.setTextColor(30, 30, 40);
-    doc.text("Pages I chose to share", MARGIN, y);
+    doc.text(LETTER_SECTIONS.pages, MARGIN, y);
     y += 26;
     for (const e of input.journalEntries) {
       ensureSpace(60);
@@ -205,10 +206,7 @@ export function buildTrustedLetterPdf(input: TrustedLetterInput): Blob {
   /* ── Closing ── */
   ensureSpace(60);
   y += 8;
-  writeBlock(
-    "This letter was prepared inside My Quiet Space and downloaded by its author. The app keeps no copy of it and sends nothing on anyone's behalf. Sharing can stop at any time.",
-    { size: 9.5, font: "italic", color: [120, 120, 130], gap: 0 },
-  );
+  writeBlock(LETTER_CLOSING, { size: 9.5, font: "italic", color: [120, 120, 130], gap: 0 });
 
   return doc.output("blob");
 }

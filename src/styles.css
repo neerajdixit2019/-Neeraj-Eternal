@@ -1120,3 +1120,49 @@
     .winddown-breath { animation: none; transform: scale(0.9); }
   }
 }
+
+/* ── THE FAIR COPY — the letter, typeset by the browser for print ──────
+   Hidden on screen; while a FairCopySheet is mounted it adds
+   body.fair-copy-printing, and printing then shows ONLY the sheet.
+   Printing any other page of the app is unaffected (the guard class). */
+.fair-copy-sheet { display: none; }
+
+@media print {
+  body.fair-copy-printing > *:not(.fair-copy-sheet) { display: none !important; }
+  body.fair-copy-printing { background: #fff !important; }
+  body.fair-copy-printing .fair-copy-sheet {
+    display: block;
+    color: #23201b;
+    font-family: "Newsreader Variable", Georgia, "Times New Roman", serif;
+    font-size: 11.5pt;
+    line-height: 1.55;
+    max-width: 100%;
+  }
+  .fair-copy-sheet .fc-eyebrow { font-style: italic; font-size: 9pt; color: #6d675c; }
+  .fair-copy-sheet .fc-title {
+    font-family: "Fraunces Variable", Georgia, serif;
+    font-size: 24pt; font-weight: 500; margin: 6pt 0 10pt;
+  }
+  .fair-copy-sheet .fc-for { font-style: italic; font-size: 12.5pt; margin-bottom: 2pt; }
+  .fair-copy-sheet .fc-by { font-style: italic; font-size: 10.5pt; color: #57503f; }
+  .fair-copy-sheet .fc-meta { font-size: 9pt; color: #6d675c; margin: 4pt 0 8pt; }
+  .fair-copy-sheet .fc-inside { font-size: 10.5pt; color: #45403a; }
+  .fair-copy-sheet .fc-note { font-style: italic; font-size: 9pt; color: #6d675c; margin-top: 4pt; }
+  .fair-copy-sheet section { margin-top: 16pt; }
+  .fair-copy-sheet h2 {
+    font-family: "Fraunces Variable", Georgia, serif;
+    font-size: 14pt; font-weight: 600; margin-bottom: 6pt;
+    break-after: avoid;
+  }
+  .fair-copy-sheet h3 { font-size: 12pt; font-weight: 600; margin: 2pt 0 4pt; break-after: avoid; }
+  .fair-copy-sheet p, .fair-copy-sheet li { orphans: 3; widows: 3; }
+  .fair-copy-sheet ul { padding-left: 14pt; }
+  .fair-copy-sheet .fc-own-words { font-style: italic; font-size: 12pt; white-space: pre-wrap; }
+  .fair-copy-sheet .fc-pages { break-before: page; }
+  .fair-copy-sheet .fc-pages article { margin-top: 12pt; break-inside: avoid-page; }
+  .fair-copy-sheet .fc-body { white-space: pre-wrap; }
+  .fair-copy-sheet .fc-closing {
+    margin-top: 20pt; font-style: italic; font-size: 9pt; color: #6d675c;
+  }
+  @page { margin: 18mm; }
+}

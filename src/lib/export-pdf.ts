@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { anyDevanagari, devanagariFontFor } from "./pdf-devanagari.ts";
 
 type Letter = {
   week_start: string;
@@ -80,6 +81,17 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   let y = MARGIN;
 
+  // Hindi check-in notes, Hinglish letters, a Devanagari name or tagline —
+  // all legible now (with the same shaping caveat the letter page discloses).
+  const fontFor = devanagariFontFor(
+    doc,
+    anyDevanagari([
+      archive.display_name, cover.tagline,
+      ...archive.letters.flatMap((l) => [l.body, l.ritual, l.check_in_echo, l.tone]),
+      ...archive.check_ins.flatMap((c) => [c.note, ...(c.emotion_tags ?? []), ...(c.trigger_tags ?? [])]),
+    ]),
+  );
+
   const ensureSpace = (need: number) => {
     if (y + need > PAGE_H - MARGIN) {
       doc.addPage();
@@ -89,7 +101,7 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
 
   const writeBlock = (text: string, opts: { size?: number; font?: "normal" | "italic" | "bold"; color?: [number, number, number]; gap?: number } = {}) => {
     const size = opts.size ?? 11;
-    doc.setFont("times", opts.font ?? "normal");
+    fontFor(text, opts.font ?? "normal");
     doc.setFontSize(size);
     doc.setTextColor(...(opts.color ?? [40, 40, 50] as [number, number, number]));
     const lines = doc.splitTextToSize(text, CONTENT_W) as string[];
