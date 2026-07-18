@@ -4,6 +4,7 @@ import { exportMyData, deleteMyData, getProfile, setCompanionTone, setBackground
 import { setWeeklyLetterPrefs, getPrivateArchive } from "@/lib/letters.functions";
 import { listInsightSourceSettings, setInsightSourceEnabled } from "@/lib/insights.functions";
 import { buildPrivateArchivePdf } from "@/lib/export-pdf";
+import { crisisResourcesFor, formatCrisisPhone } from "@/lib/crisis-resources";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -239,12 +240,16 @@ function SignOutCard() {
 
 function SafetySection() {
   // Crisis support itself lives as the steady line under the page title —
-  // this chapter keeps the honest boundary statement.
+  // this chapter keeps the honest boundary statement. The numbers render
+  // from the crisis-resources config, never typed here by hand.
+  const helplines = crisisResourcesFor("IN")
+    .map((r) => `${r.name} ${formatCrisisPhone(r.phone)}${r.altPhone ? ` / ${formatCrisisPhone(r.altPhone)}` : ""}`)
+    .join(" · ");
   return (
     <TactileCard>
       <h2 className="font-serif text-xl">What this space is, and isn't</h2>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-        My Quiet Space is for self-reflection and emotional wellness. It is not therapy, medical advice, or emergency support. If you feel at risk, contact emergency services or a crisis helpline — India: Tele-MANAS 14416 / 1-800-891-4416.
+        My Quiet Space is for self-reflection and emotional wellness. It is not therapy, medical advice, or emergency support. If you feel at risk, contact emergency services or a crisis helpline — India: {helplines}.
       </p>
     </TactileCard>
   );

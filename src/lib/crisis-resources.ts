@@ -11,16 +11,40 @@
 export type CrisisResource = {
   name: string;
   phone: string;
+  /** Alternate dial string for the same service (e.g. a toll-free long form). */
+  altPhone?: string;
   note?: string;
 };
 
 const RESOURCES: Record<string, CrisisResource[]> = {
   IN: [
-    { name: "Tele-MANAS", phone: "14416", note: "free mental-health helpline, 24/7" },
+    { name: "Tele-MANAS", phone: "14416", altPhone: "18008914416", note: "free mental-health helpline, 24/7" },
     { name: "KIRAN", phone: "18005990019", note: "free mental-health helpline, 24/7, 13 languages" },
     { name: "Emergency", phone: "112" },
   ],
 };
+
+/**
+ * Verified lines shown only in the SOS room's fuller directory — not in
+ * L3 replies or the offline page, which stay short and dialable from
+ * memory. Still config-only: no route may carry a number absent here.
+ */
+const DIRECTORY_EXTRAS: Record<string, CrisisResource[]> = {
+  IN: [{ name: "iCall", phone: "+919152987821", note: "TISS counselling line" }],
+};
+
+/** Every verified number for a region: core resources plus directory extras. */
+export function crisisDirectoryFor(region?: string): CrisisResource[] {
+  const r = region ?? crisisRegion();
+  return [...(RESOURCES[r] ?? []), ...(DIRECTORY_EXTRAS[r] ?? [])];
+}
+
+/** Human-readable dial string: toll-free long forms get grouped, short codes stay bare. */
+export function formatCrisisPhone(phone: string): string {
+  return /^1800\d{7}$/.test(phone)
+    ? `${phone.slice(0, 1)}-${phone.slice(1, 4)}-${phone.slice(4, 7)}-${phone.slice(7)}`
+    : phone;
+}
 
 /** Region the app is configured for. Overridable via env for other markets. */
 export function crisisRegion(): string {
