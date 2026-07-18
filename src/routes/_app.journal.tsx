@@ -311,7 +311,7 @@ function Journal() {
         <Textarea
           ref={bodyRef}
           aria-label="Journal entry body"
-          className="font-reading mt-2 min-h-[420px] rounded-md border-transparent bg-transparent text-[17px] leading-[1.75] text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
+          className="font-reading reading-text [--reading-px:17px] mt-2 min-h-[420px] rounded-md border-transparent bg-transparent leading-[1.75] text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
           placeholder={tx(lang, editing.mode.placeholder)}
           value={editing.body}
           onChange={e => setEditing({ ...editing, body: e.target.value })}

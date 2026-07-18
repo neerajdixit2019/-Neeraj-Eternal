@@ -262,7 +262,7 @@ function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe";
 function GroundingList() {
   return (
     <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 55%, transparent)" }}>
-      <h3 className="font-serif text-[18px] font-light">5-4-3-2-1 grounding</h3>
+      <h2 className="font-serif text-[18px] font-light">5-4-3-2-1 grounding</h2>
       <ul className="mt-3 space-y-2 text-[15px] leading-relaxed text-foreground/90">
         <li><strong>5</strong> things you can see</li>
         <li><strong>4</strong> things you can feel</li>

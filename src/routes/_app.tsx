@@ -307,6 +307,8 @@ function AppLayout() {
     {/* inert while covered: the study behind the gate leaves the tab
         order, find-in-page, and the screen-reader tree entirely */}
     <div className="min-h-screen md:flex" inert={covered || undefined}>
+      {/* the first tab-stop on every page — skip the margin, reach the words */}
+      <a href="#main-content" className="qs-skip-link">{t("skip.toContent")}</a>
       {/* THE MARGIN — the study's table of contents */}
       <aside className="hidden md:flex md:w-[220px] md:flex-col md:border-r md:px-4 md:py-6" style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}>
         <Link to="/home" className="px-3 font-serif text-[15px] font-black uppercase tracking-[0.18em]" style={{ color: "var(--foreground)" }}>
@@ -386,7 +388,7 @@ function AppLayout() {
           dev preview — nothing saves · tap to exit
         </button>
       )}
-      <main className={`flex-1 ${path.startsWith("/companion") ? "" : "pb-24"} md:pb-0`}>
+      <main id="main-content" tabIndex={-1} className={`flex-1 outline-none ${path.startsWith("/companion") ? "" : "pb-24"} md:pb-0`}>
         <Outlet />
       </main>
 

@@ -27,14 +27,27 @@ function readLang(): Lang {
   }
 }
 
+/** Reflect the language onto <html lang> so screen readers pronounce the
+ * page in the right tongue. A no-op on the server. */
+export function applyDocLang(lang: Lang) {
+  if (typeof document !== "undefined") document.documentElement.lang = lang;
+}
+
 export function setLang(lang: Lang) {
   try { window.localStorage.setItem(KEY, lang); } catch { /* noop */ }
+  applyDocLang(lang);
   listeners.forEach((l) => l());
+}
+
+/** Read the stored language and reflect it onto the document. Call once on
+ * mount so a Hindi reader's page is announced as Hindi from the start. */
+export function syncDocLang() {
+  applyDocLang(readLang());
 }
 
 function subscribe(cb: () => void) {
   listeners.add(cb);
-  const onStorage = (e: StorageEvent) => { if (e.key === KEY) cb(); };
+  const onStorage = (e: StorageEvent) => { if (e.key === KEY) { applyDocLang(readLang()); cb(); } };
   window.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(cb);

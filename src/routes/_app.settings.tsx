@@ -13,7 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { latchEnabled, setPin, clearPin } from "@/lib/latch";
+import { useReadingSize, setReadingSize, type ReadingSize } from "@/lib/reading-prefs";
+import { radioArrowNav } from "@/lib/a11y";
 import { useLang, useT, setLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { Eye, EyeOff, LifeBuoy, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TactileCard } from "@/components/TactileCard";
@@ -86,6 +89,7 @@ function Settings() {
 
       <SectionGroup id="feel" label="how it feels here">
         <LanguageSection />
+        <ReadingSection />
         <BackgroundAnimationSection />
         <ToneSection />
       </SectionGroup>
@@ -222,6 +226,55 @@ function SectionGroup({ id, label, children }: { id?: string; label: string; chi
       <p className="qs-section-label">{label}</p>
       {children}
     </section>
+  );
+}
+
+const READING_OPTIONS: { size: ReadingSize; label: string }[] = [
+  { size: "cosy", label: "Cosy" },
+  { size: "roomy", label: "Roomy" },
+  { size: "large", label: "Large" },
+];
+
+function ReadingSection() {
+  const lang = useLang();
+  const size = useReadingSize();
+  return (
+    <TactileCard>
+      <h2 className="font-serif text-xl">{tx(lang, "Reading comfort")}</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        {tx(lang, "Sizes the words you sit with — your journal, letters, and InnerMate — without changing the rest of the room. Your browser's zoom still works too.")}
+      </p>
+      <div
+        role="radiogroup"
+        aria-label={tx(lang, "your reading size")}
+        className="mt-4 flex flex-wrap gap-2"
+      >
+        {READING_OPTIONS.map((o) => {
+          const active = size === o.size;
+          return (
+            <button
+              key={o.size}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              tabIndex={active ? 0 : -1}
+              onKeyDown={radioArrowNav}
+              onClick={() => setReadingSize(o.size)}
+              className={`qs-chip min-h-11 ${active ? "qs-chip--active" : ""}`}
+            >
+              {tx(lang, o.label)}
+            </button>
+          );
+        })}
+      </div>
+      {/* a living sample, set at the chosen size */}
+      <p
+        className="font-reading reading-text mt-4 border-t pt-4 leading-relaxed text-foreground/85"
+        style={{ ["--reading-px" as string]: "17px", borderColor: "var(--border-subtle)" }}
+      >
+        {tx(lang, "The quick brown fox reads on.")}
+      </p>
+    </TactileCard>
   );
 }
 
@@ -845,6 +898,7 @@ function InnerMapSection() {
         <button
           role="switch"
           aria-checked={readable}
+          aria-label="Let InnerMate read your inner map"
           onClick={toggle}
           className={`relative mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition ${readable ? "border-primary/40 bg-primary/70" : "border-border/60 bg-muted"}`}
         >
@@ -973,6 +1027,7 @@ function SundayLetterSection() {
         </div>
         <button
           role="switch" aria-checked={enabled}
+          aria-label="Receive a weekly letter"
           onClick={() => flip({ weekly_letter_enabled: !enabled })}
           className={`relative mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition ${enabled ? "border-primary/40 bg-primary/70" : "border-border/60 bg-muted"}`}
         >
@@ -990,6 +1045,7 @@ function SundayLetterSection() {
           </div>
           <button
             role="switch" aria-checked={usesMemories}
+            aria-label="Let the weekly letter reference one shareable memory"
             onClick={() => flip({ weekly_letter_uses_memories: !usesMemories })}
             className={`relative mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition ${usesMemories ? "border-primary/40 bg-primary/70" : "border-border/60 bg-muted"}`}
           >

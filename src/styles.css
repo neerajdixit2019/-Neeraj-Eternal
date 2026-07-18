@@ -393,6 +393,44 @@
   .font-serif { font-family: var(--font-serif); }
   .font-reading { font-family: var(--font-reading); }
 
+  /* THE READING ROOM — long-form prose surfaces (journal, letters, InnerMate)
+     scale with the reader's chosen comfort. Each surface keeps its designed
+     base size via --reading-px and multiplies by the app-wide --reading-scale
+     (1 by default; the reading store sets it on <html>). UI chrome never
+     scales — comfort is for the words you sit with, not the whole room. */
+  .reading-text {
+    font-size: calc(var(--reading-px, 1rem) * var(--reading-scale, 1));
+  }
+
+  /* Skip to the reading — off-screen until focused by keyboard/AT, then it
+     lands as a brass tab-stop at the top-left. The first stop on every
+     authed page, so no one has to tab through the whole margin to reach
+     the words. */
+  .qs-skip-link {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 100;
+    transform: translateY(-150%);
+    padding: 0.6rem 1rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 8px;
+    background: var(--lamp);
+    color: var(--nightwall, #0e121e);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 8px 24px rgba(10, 8, 4, 0.5);
+  }
+  .qs-skip-link:focus-visible,
+  .qs-skip-link:focus {
+    transform: translateY(0);
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+  }
+
   /* THE LAMP WARMING UP — loading placeholders gain warmth, never spin.
      Static under reduced motion; content replaces them in place. */
   .lamp-skeleton {

@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { PerfDebugPanel } from "@/components/PerfDebugPanel";
 import { Toaster } from "@/components/ui/sonner";
 import { initOfflineSanctuary } from "@/lib/offline";
+import { syncReadingSize } from "@/lib/reading-prefs";
+import { syncDocLang } from "@/lib/i18n";
 
 function NotFoundComponent() {
   return (
@@ -117,6 +119,19 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        {/* Before first paint: reflect the reader's saved size and language
+            onto <html>, so a large-text or Hindi reader never sees a flash of
+            the defaults. Mirrors reading-prefs/i18n; kept tiny and dependency-
+            free because it runs inline. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var d=document.documentElement,r=localStorage.getItem('mqs-reading');" +
+              "if(r==='roomy'||r==='large'){d.dataset.reading=r;" +
+              "d.style.setProperty('--reading-scale',r==='large'?'1.3':'1.15');}" +
+              "if(localStorage.getItem('mqs-lang')==='hi')d.lang='hi';}catch(e){}",
+          }}
+        />
       </head>
       <body>
         <div className="app-bg" aria-hidden="true">
@@ -141,6 +156,8 @@ function RootComponent() {
 
   useEffect(() => {
     initOfflineSanctuary(router);
+    syncReadingSize();
+    syncDocLang();
   }, [router]);
 
   useEffect(() => {

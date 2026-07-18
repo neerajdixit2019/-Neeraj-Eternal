@@ -137,7 +137,7 @@ const SUPPORT_MODES: { label: string; hint: string; seed: string }[] = [
 // words arrive as small deodar-inked slips. The conversation reads like
 // correspondence across a desk.
 const ASSISTANT_BUBBLE =
-  "rounded-none border-0 bg-transparent px-1 py-1 shadow-none font-reading text-[16.5px] leading-[1.7] text-foreground/95";
+  "rounded-none border-0 bg-transparent px-1 py-1 shadow-none font-reading reading-text [--reading-px:16.5px] leading-[1.7] text-foreground/95";
 const USER_BUBBLE =
   "group-[.is-user]:rounded-[12px_12px_4px_12px] group-[.is-user]:bg-[color-mix(in_oklab,var(--deodar)_30%,var(--card))] group-[.is-user]:text-foreground group-[.is-user]:border group-[.is-user]:border-[color-mix(in_oklab,var(--deodar)_35%,transparent)]";
 

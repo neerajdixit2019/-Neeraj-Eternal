@@ -132,7 +132,7 @@ function LetterPage() {
           </p>
         )}
 
-        <article className="font-reading mt-7 space-y-6 text-[17px] leading-[1.85]" style={{ color: inkSoft }}>
+        <article className="font-reading reading-text [--reading-px:17px] mt-7 space-y-6 leading-[1.85]" style={{ color: inkSoft }}>
           {paragraphs.map((para, i) => (
             <p
               key={i}

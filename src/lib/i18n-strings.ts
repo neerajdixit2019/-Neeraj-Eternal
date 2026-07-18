@@ -24,6 +24,7 @@ export const STRINGS = {
     "nav.memories": "memories",
     "nav.you": "you",
     "nav.steady": "Steady",
+    "skip.toContent": "Skip to content",
     "nav.today.desc": "how you're arriving",
     "nav.companion.desc": "the companion",
     "nav.journal.desc": "your private vault",
@@ -61,6 +62,7 @@ export const STRINGS = {
     "nav.memories": "यादें",
     "nav.you": "आप",
     "nav.steady": "स्टेडी",
+    "skip.toContent": "मुख्य हिस्से पर जाएँ",
     "nav.today.desc": "आप किस हाल में हैं",
     "nav.companion.desc": "आपका साथी",
     "nav.journal.desc": "आपकी निजी तिजोरी",
@@ -224,6 +226,15 @@ const HI_TEXT: Record<string, string> = {
   "Prefilled from your name here, so nothing goes in unseen. Change it, or clear it to leave the letter unsigned.":
     "यह यहाँ रखे आपके नाम से पहले से भरा है, ताकि इसमें कुछ भी आपके देखे बिना न जाए। चाहें तो बदल दें; ख़ाली छोड़ दें तो ख़त बिना नाम के रहेगा।",
   "left empty, the letter stays unsigned": "ख़ाली छोड़ने पर ख़त बिना नाम के रहेगा",
+  "Reading comfort": "पढ़ने का आराम",
+  "the reading room": "पढ़ने का कमरा",
+  "Sizes the words you sit with — your journal, letters, and InnerMate — without changing the rest of the room. Your browser's zoom still works too.":
+    "जिन शब्दों के साथ आप बैठते हैं — आपका जर्नल, ख़त, और InnerMate — उनका आकार बदलता है, बाक़ी कमरे को छुए बिना। ब्राउज़र का ज़ूम भी वैसे ही चलता है।",
+  "Cosy": "आरामदेह",
+  "Roomy": "खुला",
+  "Large": "बड़ा",
+  "The quick brown fox reads on.": "आज मन थोड़ा हल्का लग रहा है।",
+  "your reading size": "आपके पढ़ने का आकार",
   "Patterns I've noticed": "जो पैटर्न मैंने देखे",
   "The handful of feelings and situations that came up most — as observations to talk about, never verdicts.":
     "जो एहसास और हालात सबसे ज़्यादा आए — बात करने की चीज़ें, फ़ैसले नहीं।",
