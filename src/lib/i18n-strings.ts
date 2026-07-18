@@ -206,6 +206,21 @@ const HI_TEXT: Record<string, string> = {
   "check-ins in this window — count, average, the feelings you named most, and what they tended to arrive with. No clinical scores.":
     "इस दौर के चेक-इन — गिनती, औसत, जिन एहसासों का नाम आपने सबसे ज़्यादा लिया, और वे अक्सर किन हालात के साथ आए। कोई क्लिनिकल स्कोर नहीं।",
   "The name it carries": "इस पर आपका नाम",
+  "The latch": "कुंडी",
+  "the latch": "कुंडी",
+  "This room is latched.": "इस कमरे की कुंडी लगी है।",
+  "Your four-digit key opens it. It keeps glances out on this device — your words are already protected by your account.":
+    "आपकी चार अंकों की चाबी इसे खोलती है। यह इस डिवाइस पर निगाहों से बचाती है — आपकी बातें आपके अकाउंट से पहले ही सुरक्षित हैं।",
+  "Your four-digit key": "आपकी चार अंकों की चाबी",
+  "Not that one. Take your time — this door never locks for good.":
+    "यह वाली नहीं। आराम से — यह दरवाज़ा कभी हमेशा के लिए बंद नहीं होता।",
+  "a moment…": "बस एक पल…",
+  "Need steadying first? The steady room is never latched.":
+    "पहले थोड़ा सँभलना है? थमने के कमरे में कभी कुंडी नहीं लगती।",
+  "Couldn't sign out just now — maybe offline. The latch stays on.":
+    "अभी साइन आउट नहीं हो पाया — शायद इंटरनेट नहीं है। कुंडी लगी रहेगी।",
+  "Can't get in? Sign out — signing back in removes the latch.":
+    "अंदर नहीं आ पा रहे? साइन आउट करें — दोबारा साइन इन करते ही कुंडी हट जाती है।",
   "Prefilled from your name here, so nothing goes in unseen. Change it, or clear it to leave the letter unsigned.":
     "यह यहाँ रखे आपके नाम से पहले से भरा है, ताकि इसमें कुछ भी आपके देखे बिना न जाए। चाहें तो बदल दें; ख़ाली छोड़ दें तो ख़त बिना नाम के रहेगा।",
   "left empty, the letter stays unsigned": "ख़ाली छोड़ने पर ख़त बिना नाम के रहेगा",

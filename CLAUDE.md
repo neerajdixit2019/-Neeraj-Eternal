@@ -8,7 +8,7 @@ Start/Router + Supabase (RLS) + Tailwind v4 + Lovable AI gateway.
 
 ```
 npx tsc --noEmit          # expect 0 errors
-npm run test:companion    # node:test suites, expect 228 pass
+npm run test:companion    # node:test suites, expect 250 pass
 npm run build             # production build must succeed
 ```
 
@@ -30,6 +30,11 @@ Tests are plain `node --test` files under `src/lib/__tests__/` — NOT vitest.
   CacheStorage. `public/offline.html` is static; its crisis numbers are bound
   to `crisis-resources.ts` by `offline-sanctuary.test.ts` — change either side
   and the gate fails together.
+- **The latch** (`src/lib/latch.ts` + `LatchGate`): device-local glance
+  protection, honestly framed (not encryption). Safety invariants pinned by
+  `latch.test.ts`: /sos is NEVER latched or veiled; attempt pacing is capped
+  (slows guessing, never locks out); sign-out clears the latch (the account is
+  the real lock); the PIN never leaves the device (salted iterated hash only).
 - **`src/integrations/**` is auto-generated — never edit.**
 - SSR: browser APIs only inside effects/handlers; all render-path randomness is
   seeded/deterministic (FNV-1a hashes, fixed seeds). `Math.random()` is legal

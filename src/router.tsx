@@ -9,6 +9,7 @@ import { QueryCache, MutationCache, QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { supabase } from "@/integrations/supabase/client";
+import { clearPin } from "@/lib/latch";
 
 let redirecting = false;
 function handleUnauthorized(error: unknown) {
@@ -21,7 +22,10 @@ function handleUnauthorized(error: unknown) {
   if (redirecting) return;
   if (window.location.pathname === "/login") return;
   redirecting = true;
-  // Best-effort sign-out, then redirect with a clear reason.
+  // The session is already dead server-side: the latch goes with it so the
+  // next sign-in never inherits a stale key. Then best-effort sign-out and
+  // redirect with a clear reason.
+  clearPin();
   void supabase.auth.signOut().finally(() => {
     window.location.replace("/login?reason=session-expired");
   });

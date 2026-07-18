@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
+import { latchEnabled, setPin, clearPin } from "@/lib/latch";
 import { useLang, useT, setLang } from "@/lib/i18n";
 import { Eye, EyeOff, LifeBuoy, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -103,6 +104,7 @@ function Settings() {
 
       <SectionGroup id="vault" label="your vault, your rules">
         <VaultSection />
+        <LatchSection />
       </SectionGroup>
 
       <SectionGroup id="account" label="account">
@@ -220,6 +222,117 @@ function SectionGroup({ id, label, children }: { id?: string; label: string; chi
       <p className="qs-section-label">{label}</p>
       {children}
     </section>
+  );
+}
+
+function LatchSection() {
+  const [armed, setArmed] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [pin1, setPin1] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setArmed(latchEnabled()); }, []);
+
+  const digits = (v: string) => v.replace(/\D/g, "").slice(0, 4);
+
+  const arm = async () => {
+    if (pin1.length !== 4 || pin1 !== pin2 || busy) return;
+    setBusy(true);
+    try {
+      await setPin(pin1);
+      setArmed(true); setEditing(false); setPin1(""); setPin2("");
+      toast.success("The latch is on for this device.");
+    } catch {
+      toast.error("Could not set the latch on this device.");
+    } finally { setBusy(false); }
+  };
+
+  // Removal asks for no key: an open session already proves it's you, and
+  // the latch's own promise is "forgetting it costs a sign-in, nothing
+  // more" — friction here would land only on the forgetful.
+  const disarm = () => {
+    try {
+      clearPin();
+      setArmed(false); setRemoving(false);
+      toast.success("The latch is off.");
+    } catch {
+      toast.error("Could not take the latch off — try once more.");
+    }
+  };
+
+  const pinInput = (id: string, value: string, set: (v: string) => void, label: string) => (
+    <div>
+      <Label htmlFor={id} className="text-[12.5px] text-muted-foreground">{label}</Label>
+      <Input
+        id={id} type="password" inputMode="numeric" autoComplete="off" maxLength={4}
+        value={value} onChange={(e) => set(digits(e.target.value))}
+        className="mt-1.5 h-11 w-28 rounded-xl text-center font-serif text-lg tracking-[0.4em]"
+      />
+    </div>
+  );
+
+  return (
+    <TactileCard>
+      <h2 className="font-serif text-xl">The latch</h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        A four-digit key for this device only. It keeps glances out when a phone is
+        held or borrowed — it is not encryption, and your account keeps protecting
+        your words either way. Pick four digits you don't use anywhere else — not
+        your phone or UPI PIN. If the app stays hidden for more than about a minute
+        and a half it asks for the key again; quicker switches back don't. The
+        steady room is never latched. Forget the key? Signing out and back in
+        removes it.
+      </p>
+      {!armed && !editing && (
+        <div className="mt-4">
+          <Button variant="outline" className="min-h-11 rounded-full" onClick={() => setEditing(true)}>
+            Set a key
+          </Button>
+        </div>
+      )}
+      {editing && (
+        <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap gap-4">
+            {pinInput("latch-new", pin1, setPin1, "Four digits")}
+            {pinInput("latch-again", pin2, setPin2, "Once more")}
+          </div>
+          {pin2.length === 4 && pin1 !== pin2 && (
+            <p className="text-[12.5px] italic text-muted-foreground">Those two don't match yet.</p>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" className="min-h-11 rounded-full" disabled={pin1.length !== 4 || pin1 !== pin2 || busy} onClick={() => void arm()}>
+              {armed ? "Change the key" : "Latch this device"}
+            </Button>
+            <Button variant="ghost" className="min-h-11 rounded-full" onClick={() => { setEditing(false); setPin1(""); setPin2(""); }}>
+              Never mind
+            </Button>
+          </div>
+        </div>
+      )}
+      {armed && !editing && !removing && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button variant="outline" className="min-h-11 rounded-full" onClick={() => setEditing(true)}>Change the key</Button>
+          <Button variant="ghost" className="min-h-11 rounded-full" onClick={() => setRemoving(true)}>Take the latch off</Button>
+        </div>
+      )}
+      {removing && (
+        <div className="mt-4 space-y-3">
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            The latch comes off this device — no key needed here, since being signed
+            in already proves it's you. Your account keeps protecting everything.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" className="min-h-11 rounded-full" onClick={disarm}>
+              Take it off
+            </Button>
+            <Button variant="ghost" className="min-h-11 rounded-full" onClick={() => setRemoving(false)}>
+              Keep it
+            </Button>
+          </div>
+        </div>
+      )}
+    </TactileCard>
   );
 }
 

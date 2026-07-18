@@ -1,6 +1,9 @@
 import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { flushSync } from "react-dom";
+import { LatchGate, Veil } from "@/components/LatchGate";
+import { latchEnabled, noteHidden, readHiddenAt, clearHidden, shouldRelatch, clearPin } from "@/lib/latch";
 import { Home, BookHeart, HeartHandshake, MessageCircle, LifeBuoy, Settings, Eye, EyeOff, Sparkles, Star, User, Phone, Hand, Wind, X } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +16,11 @@ import type { StringKey } from "@/lib/i18n-strings";
 import { CompanionCloud } from "@/components/CompanionCloud";
 
 export const Route = createFileRoute("/_app")({ component: AppLayout });
+
+// useLayoutEffect on the client so the latch gate paints before any content
+// does on a cold open — a glance must not win the first frame. Plain
+// useEffect on the server, where neither runs.
+const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 // Desktop margin — the study's table of contents. Captions reveal on
 // hover/focus so the margin stays quiet.
@@ -153,6 +161,46 @@ function AppLayout() {
   // never wait on an auth roundtrip or be bounced away from it.
   const isSanctuary = path === "/sos";
   const [ready, setReady] = useState(false);
+
+  // THE LATCH — optional glance protection for a held phone. Locked on cold
+  // open when armed; the veil drops when the app is hidden or loses focus
+  // (best-effort against app-switcher snapshots — the platform can't
+  // guarantee the race); hidden past the grace window relatches.
+  // The sanctuary is exempt from all of it (render guards below).
+  const [latchLocked, setLatchLocked] = useState(false);
+  const [veiled, setVeiled] = useState(false);
+  useClientLayoutEffect(() => {
+    if (latchEnabled()) setLatchLocked(true);
+  }, []);
+  useEffect(() => {
+    const cover = () => {
+      if (!latchEnabled()) return;
+      noteHidden(Date.now());
+      // flushSync so the veil is in the DOM before the browser's next
+      // paint opportunity — the last one a switcher snapshot might use.
+      flushSync(() => setVeiled(true));
+    };
+    const uncover = () => {
+      if (!latchEnabled()) return;
+      if (shouldRelatch(readHiddenAt(), Date.now())) setLatchLocked(true);
+      clearHidden();
+      setVeiled(false);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") cover();
+      else uncover();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", cover);
+    window.addEventListener("blur", cover);
+    window.addEventListener("focus", uncover);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", cover);
+      window.removeEventListener("blur", cover);
+      window.removeEventListener("focus", uncover);
+    };
+  }, []);
   const [devPreview, setDevPreview] = useState(false);
   const [steadyOpen, setSteadyOpen] = useState(false);
   const { enabled: privacy, toggle } = usePrivacyMode();
@@ -219,6 +267,10 @@ function AppLayout() {
     });
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
       if (!session) {
+        // Every way a session ends — settings sign-out, expiry, revocation —
+        // takes the latch with it: the latch belongs to the account holder,
+        // and the next person to sign in must never inherit a stranger's key.
+        clearPin();
         setReady(false);
         await queryClient.cancelQueries();
         queryClient.clear();
@@ -242,8 +294,19 @@ function AppLayout() {
     );
   }
 
+  const covered = (latchLocked || veiled) && !isSanctuary;
+
   return (
-    <div className="min-h-screen md:flex">
+    <>
+      {/* THE LATCH — never over the sanctuary */}
+      {latchLocked && !isSanctuary && (
+        <LatchGate onOpen={() => { setLatchLocked(false); clearHidden(); }} />
+      )}
+      {veiled && !latchLocked && !isSanctuary && <Veil />}
+
+    {/* inert while covered: the study behind the gate leaves the tab
+        order, find-in-page, and the screen-reader tree entirely */}
+    <div className="min-h-screen md:flex" inert={covered || undefined}>
       {/* THE MARGIN — the study's table of contents */}
       <aside className="hidden md:flex md:w-[220px] md:flex-col md:border-r md:px-4 md:py-6" style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}>
         <Link to="/home" className="px-3 font-serif text-[15px] font-black uppercase tracking-[0.18em]" style={{ color: "var(--foreground)" }}>
@@ -376,5 +439,6 @@ function AppLayout() {
 
       <SteadySheet open={steadyOpen} onClose={() => setSteadyOpen(false)} />
     </div>
+    </>
   );
 }
