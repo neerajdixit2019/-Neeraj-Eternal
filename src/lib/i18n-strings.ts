@@ -208,6 +208,13 @@ const HI_TEXT: Record<string, string> = {
   "check-ins in this window — count, average, the feelings you named most, and what they tended to arrive with. No clinical scores.":
     "इस दौर के चेक-इन — गिनती, औसत, जिन एहसासों का नाम आपने सबसे ज़्यादा लिया, और वे अक्सर किन हालात के साथ आए। कोई क्लिनिकल स्कोर नहीं।",
   "The name it carries": "इस पर आपका नाम",
+  "Good to have you back.": "आपका फिर आना अच्छा लगा।",
+  "It's been a little while — and that's okay.": "थोड़ा वक़्त बीत गया — और यह ठीक है।",
+  "The page waited. There's nothing to catch up on; start wherever feels easy.":
+    "पन्ना इंतज़ार करता रहा। कुछ भी पूरा करने को बाक़ी नहीं; जहाँ आसान लगे वहीं से शुरू करें।",
+  "It's been a while — welcome back.": "काफ़ी वक़्त हो गया — फिर से स्वागत है।",
+  "This is still your quiet place, just as you left it. No backlog, no catching up. One slow breath is enough to begin.":
+    "यह अब भी आपकी शांत जगह है, ठीक वैसी ही जैसी आपने छोड़ी थी। न कोई ढेर, न कुछ पूरा करना। शुरू करने के लिए एक धीमी साँस काफ़ी है।",
   "The latch": "कुंडी",
   "the latch": "कुंडी",
   "This room is latched.": "इस कमरे की कुंडी लगी है।",

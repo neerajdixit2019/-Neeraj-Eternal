@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listMoods, listJournal, getProfile, listPaths, logMood, annotateMood, saveJournal } from "@/lib/data.functions";
 import { generateArrivalQuestions, generateArrivalRead } from "@/lib/arrival.functions";
 import { FALLBACK_QUESTIONS, fallbackRead, type ArrivalQuestion, type ArrivalOption } from "@/lib/arrival-schema";
 import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions";
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import { roomFor, GROWTH_NOTE, type Room, type RoomMood } from "@/lib/room-state";
+import { returnStateFor, latestActivityMs, isReturning, type ReturnState } from "@/lib/return-state";
 import { radioArrowNav } from "@/lib/a11y";
 import { useLang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
@@ -143,6 +144,26 @@ function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The room that waited — how long since the reader's last sign, frozen once
+  // the data first arrives so it stays steady through the visit (and quietly
+  // recedes on the next return, once they've done something today).
+  const [returning, setReturning] = useState<ReturnState>("present");
+  const returningFrozen = useRef(false);
+  useEffect(() => {
+    if (returningFrozen.current) return;
+    // Wait for EVERY source the gap is measured over — moods, journal AND
+    // conversations. Freezing before convs loads would drop a recent chat
+    // and falsely tell a companion-first reader they'd been away for weeks.
+    if (m === undefined || j === undefined || convs === undefined) return;
+    const last = latestActivityMs([
+      ...((m ?? []) as { created_at?: string | null }[]).map((x) => x.created_at),
+      ...((j ?? []) as { created_at?: string | null }[]).map((x) => x.created_at),
+      ...((convs ?? []) as { updated_at?: string | null }[]).map((x) => x.updated_at),
+    ]);
+    setReturning(returnStateFor(last, Date.now()));
+    returningFrozen.current = true;
+  }, [m, j, convs]);
+
   return (
     <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
       {/* 1 · Header row — brand eyebrow, SOS pill, sanctuary door */}
@@ -197,6 +218,9 @@ function Home() {
         </p>
         {room === "growth" && <p className="margin-note mt-3">{tx(lang, GROWTH_NOTE)}</p>}
       </div>
+
+      {/* 2b · the room that waited — only when the reader's been away */}
+      {isReturning(returning) && <ReturningNote state={returning} lang={lang} />}
 
       {/* 3 · Emotional weather */}
       <MoodOrbs alreadyLogged={!!todayMood} />
@@ -257,6 +281,34 @@ type MoodRow = {
 };
 
 /** Count tag occurrences across the last 7 days of check-ins. */
+// The room that waited — a warm aside for a reader who's been away. No
+// backlog, no count of missed days, no pressure: absence is honoured, never
+// scored. A brand-new reader never sees this (they aren't "returning").
+const RETURNING_COPY: Record<Exclude<ReturnState, "present">, { line: string; sub?: string }> = {
+  stepped_away: { line: "Good to have you back." },
+  been_a_while: {
+    line: "It's been a little while — and that's okay.",
+    sub: "The page waited. There's nothing to catch up on; start wherever feels easy.",
+  },
+  long_away: {
+    line: "It's been a while — welcome back.",
+    sub: "This is still your quiet place, just as you left it. No backlog, no catching up. One slow breath is enough to begin.",
+  },
+};
+
+function ReturningNote({ state, lang }: { state: ReturnState; lang: ReturnType<typeof useLang> }) {
+  if (state === "present") return null;
+  const copy = RETURNING_COPY[state];
+  return (
+    <div className="fade-in mt-6 border-t pt-5" style={{ borderColor: "var(--border-subtle)" }} role="status">
+      <p className="font-serif text-[16px] font-light italic text-foreground/90">{tx(lang, copy.line)}</p>
+      {copy.sub && (
+        <p className="mt-1.5 max-w-[48ch] text-[13.5px] leading-relaxed text-muted-foreground">{tx(lang, copy.sub)}</p>
+      )}
+    </div>
+  );
+}
+
 function weekTagCounts(moods: MoodRow[]) {
   const weekAgo = Date.now() - 7 * 86400000;
   const emo = new Map<string, number>();
