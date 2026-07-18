@@ -24,6 +24,7 @@ import { Route as AppSosRouteImport } from './routes/_app.sos'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppReflectRouteImport } from './routes/_app.reflect'
 import { Route as AppPrivacyRouteImport } from './routes/_app.privacy'
+import { Route as AppMorningRouteImport } from './routes/_app.morning'
 import { Route as AppMemoriesRouteImport } from './routes/_app.memories'
 import { Route as AppJournalRouteImport } from './routes/_app.journal'
 import { Route as AppInsightsRouteImport } from './routes/_app.insights'
@@ -109,6 +110,11 @@ const AppPrivacyRoute = AppPrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMorningRoute = AppMorningRouteImport.update({
+  id: '/morning',
+  path: '/morning',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMemoriesRoute = AppMemoriesRouteImport.update({
   id: '/memories',
   path: '/memories',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/insights': typeof AppInsightsRoute
   '/journal': typeof AppJournalRoute
   '/memories': typeof AppMemoriesRoute
+  '/morning': typeof AppMorningRoute
   '/privacy': typeof AppPrivacyRoute
   '/reflect': typeof AppReflectRoute
   '/settings': typeof AppSettingsRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/insights': typeof AppInsightsRoute
   '/journal': typeof AppJournalRoute
   '/memories': typeof AppMemoriesRoute
+  '/morning': typeof AppMorningRoute
   '/privacy': typeof AppPrivacyRoute
   '/reflect': typeof AppReflectRoute
   '/settings': typeof AppSettingsRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/_app/insights': typeof AppInsightsRoute
   '/_app/journal': typeof AppJournalRoute
   '/_app/memories': typeof AppMemoriesRoute
+  '/_app/morning': typeof AppMorningRoute
   '/_app/privacy': typeof AppPrivacyRoute
   '/_app/reflect': typeof AppReflectRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -255,6 +264,7 @@ export interface FileRouteTypes {
     | '/insights'
     | '/journal'
     | '/memories'
+    | '/morning'
     | '/privacy'
     | '/reflect'
     | '/settings'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/insights'
     | '/journal'
     | '/memories'
+    | '/morning'
     | '/privacy'
     | '/reflect'
     | '/settings'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/_app/insights'
     | '/_app/journal'
     | '/_app/memories'
+    | '/_app/morning'
     | '/_app/privacy'
     | '/_app/reflect'
     | '/_app/settings'
@@ -439,6 +451,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPrivacyRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/morning': {
+      id: '/_app/morning'
+      path: '/morning'
+      fullPath: '/morning'
+      preLoaderRoute: typeof AppMorningRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/memories': {
       id: '/_app/memories'
       path: '/memories'
@@ -531,6 +550,7 @@ interface AppRouteChildren {
   AppInsightsRoute: typeof AppInsightsRoute
   AppJournalRoute: typeof AppJournalRoute
   AppMemoriesRoute: typeof AppMemoriesRoute
+  AppMorningRoute: typeof AppMorningRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
   AppReflectRoute: typeof AppReflectRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -551,6 +571,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInsightsRoute: AppInsightsRoute,
   AppJournalRoute: AppJournalRoute,
   AppMemoriesRoute: AppMemoriesRoute,
+  AppMorningRoute: AppMorningRoute,
   AppPrivacyRoute: AppPrivacyRoute,
   AppReflectRoute: AppReflectRoute,
   AppSettingsRoute: AppSettingsRoute,

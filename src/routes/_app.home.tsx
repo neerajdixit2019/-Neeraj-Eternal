@@ -9,6 +9,7 @@ import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions"
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import { roomFor, GROWTH_NOTE, type Room, type RoomMood } from "@/lib/room-state";
 import { returnStateFor, latestActivityMs, isReturning, type ReturnState } from "@/lib/return-state";
+import { readMorningPosture } from "@/lib/morning";
 import { radioArrowNav } from "@/lib/a11y";
 import { useLang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
@@ -164,6 +165,14 @@ function Home() {
     returningFrozen.current = true;
   }, [m, j, convs]);
 
+  // The morning you chose, carried quietly through today. Device-local,
+  // client-only, and it lets go of itself by tomorrow (readMorningPosture
+  // returns null once the day turns). Read once on mount.
+  const [morningEcho, setMorningEcho] = useState<string | null>(null);
+  useEffect(() => {
+    setMorningEcho(readMorningPosture(new Date()));
+  }, []);
+
   return (
     <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
       {/* 1 · Header row — brand eyebrow, SOS pill, sanctuary door */}
@@ -222,6 +231,13 @@ function Home() {
       {/* 2b · the room that waited — only when the reader's been away */}
       {isReturning(returning) && <ReturningNote state={returning} lang={lang} />}
 
+      {/* 2c · the morning you chose, carried through the day (never scored) */}
+      {morningEcho && (
+        <p className="fade-in mt-5 font-serif text-[15px] italic text-muted-foreground">
+          {tx(lang, morningEcho)}
+        </p>
+      )}
+
       {/* 3 · Emotional weather */}
       <MoodOrbs alreadyLogged={!!todayMood} />
 
@@ -239,6 +255,7 @@ function Home() {
         <p className="qs-section-label">also on the desk</p>
         <ul className="mt-2">
           {([
+            ...(hour != null && hour < 12 ? [["a gentle start", "/morning", "choose how to meet the day"]] as const : []),
             ["calm me now", "/sos", "sixty seconds of breath"],
             ["think this through", "/checkin", "a guided check-in, 3–5 min"],
             ["stop an impulse", "/urge-shield", "pause before the text"],

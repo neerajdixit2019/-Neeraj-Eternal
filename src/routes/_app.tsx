@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { flushSync } from "react-dom";
 import { LatchGate, Veil } from "@/components/LatchGate";
 import { latchEnabled, noteHidden, readHiddenAt, clearHidden, shouldRelatch, clearPin } from "@/lib/latch";
+import { clearMorningPosture } from "@/lib/morning";
 import { Home, BookHeart, HeartHandshake, MessageCircle, LifeBuoy, Settings, Eye, EyeOff, Sparkles, Star, User, Phone, Hand, Wind, X } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useQuery } from "@tanstack/react-query";
@@ -268,9 +269,11 @@ function AppLayout() {
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
       if (!session) {
         // Every way a session ends — settings sign-out, expiry, revocation —
-        // takes the latch with it: the latch belongs to the account holder,
-        // and the next person to sign in must never inherit a stranger's key.
+        // takes device-local personal state with it, so the next person to
+        // sign in on a shared phone inherits nothing: not the latch key, not
+        // a morning line someone left on Today.
         clearPin();
+        clearMorningPosture();
         setReady(false);
         await queryClient.cancelQueries();
         queryClient.clear();
