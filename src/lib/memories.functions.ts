@@ -91,7 +91,14 @@ export const getOnThisDay = createServerFn({ method: "GET" })
 export const saveWindDown = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) =>
-    z.object({ line: z.string().trim().min(1).max(500) }).parse(i),
+    // max covers the "Parked till morning: " prefix on a full-length worry.
+    // aiReadable defaults true (the reflective "set it down"); a parked worry
+    // passes false — a 2am worry you chose to stop holding shouldn't quietly
+    // become context InnerMate can raise back at you.
+    z.object({
+      line: z.string().trim().min(1).max(540),
+      aiReadable: z.boolean().default(true),
+    }).parse(i),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -100,7 +107,7 @@ export const saveWindDown = createServerFn({ method: "POST" })
       title: "Wind-down",
       body: data.line,
       entry_type: "wind_down",
-      is_ai_readable: true,
+      is_ai_readable: data.aiReadable,
       emotion_tags: [],
     });
     if (error) throw new Error(error.message);

@@ -97,7 +97,7 @@ export type StringKey = keyof typeof STRINGS.en;
 
 /* ── Translation memory: exact English source → Hindi ── */
 
-const HI_TEXT: Record<string, string> = {
+export const HI_TEXT: Record<string, string> = {
   /* home — greetings & sky */
   "Welcome": "स्वागत है",
   "Still up": "रात जाग रही है, और आप भी",
@@ -209,6 +209,32 @@ const HI_TEXT: Record<string, string> = {
     "इस दौर के चेक-इन — गिनती, औसत, जिन एहसासों का नाम आपने सबसे ज़्यादा लिया, और वे अक्सर किन हालात के साथ आए। कोई क्लिनिकल स्कोर नहीं।",
   "The name it carries": "इस पर आपका नाम",
   "Good to have you back.": "आपका फिर आना अच्छा लगा।",
+  "close": "बंद करें",
+  "the anchor · for the end of the day": "ठहराव · दिन के आख़िर के लिए",
+  "Night reset": "रात का सुकून",
+  "Continue": "आगे बढ़ें",
+  "What's one thing you want to set down before sleep?": "सोने से पहले एक बात, जो आप रख देना चाहें?",
+  "One thing to set down before sleep": "सोने से पहले रख देने के लिए एक बात",
+  "A sentence. Or none — that's allowed.": "एक वाक्य। या कुछ नहीं — वो भी ठीक है।",
+  "Nothing tonight": "आज कुछ नहीं",
+  "Setting it down…": "रख रहे हैं…",
+  "Set it down": "रख दें",
+  "It's held.": "यह सँभल गया।",
+  "Rest now.": "अब आराम करें।",
+  "back home": "घर वापस",
+  "the mind won't quiet down?": "मन शांत नहीं हो रहा?",
+  "What keeps circling?": "मन में क्या बार-बार घूम रहा है?",
+  "Nothing here has to be solved tonight. Name it, and let it wait for morning.": "आज रात यहाँ कुछ भी सुलझाना ज़रूरी नहीं। इसे नाम दें, और सुबह तक ठहरने दें।",
+  "What keeps circling": "मन में क्या बार-बार घूम रहा है",
+  "The thought that won't sit still…": "वो ख़याल जो टिकता नहीं…",
+  "back": "पीछे",
+  "Parking it…": "टिका रहे हैं…",
+  "Park it till morning": "सुबह तक टिका दें",
+  "if it's heavier than a worry — the steady room": "अगर यह चिंता से भारी है — स्टेडी रूम",
+  "Noted — and nothing here needs solving at this hour. It'll keep till morning.": "समझ लिया — और इस वक़्त यहाँ कुछ सुलझाने की ज़रूरत नहीं। यह सुबह तक ठहर जाएगा।",
+  "It's written down now, so your mind can set it down too. Morning is soon enough.": "अब यह लिख गया है, तो मन भी इसे रख सकता है। सुबह ज़्यादा दूर नहीं।",
+  "Whatever this is, it isn't asking to be fixed tonight. Let it wait where it's safe.": "यह जो भी है, आज रात इसे ठीक करने को नहीं कह रहा। इसे वहीं ठहरने दें जहाँ यह सुरक्षित है।",
+  "You've named it, and that's enough for now. Rested, tomorrow, you'll meet it clearer.": "आपने इसे नाम दे दिया, अभी के लिए इतना काफ़ी है। कल, आराम के बाद, आप इसे और साफ़ मन से देख पाएँगे।",
   "It's been a little while — and that's okay.": "थोड़ा वक़्त बीत गया — और यह ठीक है।",
   "The page waited. There's nothing to catch up on; start wherever feels easy.":
     "पन्ना इंतज़ार करता रहा। कुछ भी पूरा करने को बाक़ी नहीं; जहाँ आसान लगे वहीं से शुरू करें।",
