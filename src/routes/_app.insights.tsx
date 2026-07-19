@@ -15,6 +15,7 @@ import {
 } from "@/lib/insight-events";
 import { getProfile } from "@/lib/data.functions";
 import { useLang, tagLabel, type Lang } from "@/lib/i18n";
+import { istHour } from "@/lib/ist";
 import { tx } from "@/lib/i18n-strings";
 import { toast } from "sonner";
 import { TactileCard } from "@/components/TactileCard";
@@ -334,7 +335,7 @@ function SkyHero({ events }: { events: InsightEvent[] }) {
   const lang = useLang();
   const [showWhy, setShowWhy] = useState(false);
   const [hour, setHour] = useState<number | null>(null);
-  useEffect(() => { setHour(new Date().getHours()); }, []);
+  useEffect(() => { setHour(istHour()); }, []);
   const sky = useMemo(() => skyReading(events, undefined, lang, (t) => tagLabel(t, lang)), [events, lang]);
   const name = (profile as { display_name?: string | null } | null | undefined)?.display_name?.split(" ")[0];
   const greeting = hour == null ? tx(lang, "Hello") : hour < 5 ? tx(lang, "Still up") : hour < 12 ? tx(lang, "Good morning") : hour < 17 ? tx(lang, "Good afternoon") : tx(lang, "Good evening");

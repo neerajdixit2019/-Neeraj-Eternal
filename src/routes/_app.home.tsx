@@ -8,6 +8,7 @@ import { FALLBACK_QUESTIONS, fallbackRead, type ArrivalQuestion, type ArrivalOpt
 import { getCurrentLetter, generateWeeklyLetter } from "@/lib/letters.functions";
 import { currentWeekStartISO, isSundayLocal } from "@/lib/week";
 import { roomFor, GROWTH_NOTE, type Room, type RoomMood } from "@/lib/room-state";
+import { istHour, istDayKey } from "@/lib/ist";
 import { returnStateFor, latestActivityMs, isReturning, type ReturnState } from "@/lib/return-state";
 import { readMorningPosture } from "@/lib/morning";
 import { radioArrowNav } from "@/lib/a11y";
@@ -59,8 +60,8 @@ export const Route = createFileRoute("/_app/home")({
 function useLocalHour() {
   const [hour, setHour] = useState<number | null>(null);
   useEffect(() => {
-    setHour(new Date().getHours());
-    const id = setInterval(() => setHour(new Date().getHours()), 60 * 1000);
+    setHour(istHour());
+    const id = setInterval(() => setHour(istHour()), 60 * 1000);
     return () => clearInterval(id);
   }, []);
   return hour;
@@ -614,7 +615,7 @@ function OnThisDay() {
   const [todayKey, setTodayKey] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
   useEffect(() => {
-    const k = new Date().toISOString().slice(0, 10);
+    const k = istDayKey();
     setTodayKey(k);
     try { setDismissed(localStorage.getItem("onthisday-dismissed") === k); } catch { /* ignore */ }
   }, []);

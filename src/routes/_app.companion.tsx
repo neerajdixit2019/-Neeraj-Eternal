@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { listConversations, getConversation, deleteConversation } from "@/lib/companion.functions";
 import { getProfile, setCompanionTone } from "@/lib/data.functions";
 import { useLang, type Lang } from "@/lib/i18n";
+import { istHour } from "@/lib/ist";
 import { tx } from "@/lib/i18n-strings";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -260,9 +261,9 @@ function Companion() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
 
-  const [hour, setHour] = useState<number>(() => new Date().getHours());
+  const [hour, setHour] = useState<number>(() => istHour());
   useEffect(() => {
-    const id = window.setInterval(() => setHour(new Date().getHours()), 5 * 60 * 1000);
+    const id = window.setInterval(() => setHour(istHour()), 5 * 60 * 1000);
     return () => window.clearInterval(id);
   }, []);
   const tod = todOf(hour);

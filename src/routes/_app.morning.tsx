@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Sunrise, ArrowRight } from "lucide-react";
 import { useLang } from "@/lib/i18n";
+import { istDayOfMonth } from "@/lib/ist";
 import { tx } from "@/lib/i18n-strings";
 import { MORNING_POSTURES, morningLineFor, saveMorningPosture } from "@/lib/morning";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,7 @@ function Morning() {
   // Client-only: the opening line is deterministic per calendar day, and
   // Date is read in an effect so SSR never disagrees with hydration.
   useEffect(() => {
-    setLine(morningLineFor(new Date().getDate()));
+    setLine(morningLineFor(istDayOfMonth()));
   }, []);
 
   const choose = (echo: string) => {

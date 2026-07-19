@@ -18,6 +18,7 @@ import { z } from "zod";
 import { generateText } from "ai";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { AI_RATE_LIMITS, consumeAiRateLimit } from "@/lib/ai-rate-limit.server";
+import { istTimeOfDay } from "@/lib/ist";
 import { registerPromptVersion, logInvocation } from "@/lib/ai-prompt-registry.server";
 import { parseArrivalQuestions, parseArrivalRead, type ArrivalQuestion } from "@/lib/arrival-schema";
 
@@ -77,8 +78,7 @@ export const generateArrivalQuestions = createServerFn({ method: "POST" })
       context.supabase.from("journal_entries").select("title").eq("is_ai_readable", true)
         .order("created_at", { ascending: false }).limit(1),
     ]);
-    const hour = new Date().getHours();
-    const timeOfDay = hour < 5 ? "late night" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night";
+    const timeOfDay = istTimeOfDay(); // the reader's time of day in India, not the UTC server's
     const recentScores = (moodsRes.data ?? []).map((m) => m.mood_score).join(", ");
     const lastNote = (moodsRes.data ?? []).find((m) => m.note)?.note?.slice(0, 100) ?? "";
     const journalTitle = journalRes.data?.[0]?.title?.slice(0, 60) ?? "";

@@ -19,6 +19,7 @@
  */
 
 import type { Lang } from "./i18n"; // type-only — erased at build; keeps this module React-free for node:test
+import { istDayKey } from "./ist.ts"; // "today" is the reader's day in India, not UTC
 
 export type InsightSource = "daily_checkin" | "journal" | "memory" | "innermate_chat";
 
@@ -294,9 +295,9 @@ export function skyReading(
   labelFn: (t: string) => string = (t) => t.toLowerCase(),
 ): SkyReading {
   const hi = lang === "hi";
-  const todayKey = new Date(now).toDateString();
+  const todayKey = istDayKey(now);
   const scored = events.filter((e) => e.weight != null);
-  const today = scored.find((e) => new Date(e.created_at).toDateString() === todayKey) ?? null;
+  const today = scored.find((e) => istDayKey(e.created_at) === todayKey) ?? null;
   const week = scored.filter((e) => now - new Date(e.created_at).getTime() <= 7 * 86400000);
   const weekMean = week.length ? week.reduce((a, e) => a + (e.weight as number), 0) / week.length : null;
 

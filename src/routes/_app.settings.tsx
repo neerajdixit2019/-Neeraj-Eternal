@@ -17,6 +17,7 @@ import { useReadingSize, setReadingSize, type ReadingSize } from "@/lib/reading-
 import { radioArrowNav } from "@/lib/a11y";
 import { useLang, useT, setLang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
+import { istDayKey } from "@/lib/ist";
 import { Eye, EyeOff, LifeBuoy, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TactileCard } from "@/components/TactileCard";
@@ -486,7 +487,7 @@ function VaultSection() {
       const blob = buildPrivateArchivePdf(data, { includeTagline, tagline, includeDateRange, includeLastReflection, includeLastMoodCheckin }, lang);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const stamp = new Date().toISOString().slice(0, 10);
+      const stamp = istDayKey();
       a.href = url;
       a.download = `my-quiet-space-${stamp}.pdf`;
       a.click();

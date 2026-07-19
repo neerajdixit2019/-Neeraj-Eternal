@@ -10,6 +10,8 @@
  * from a clock on the render path.
  */
 
+import { istDayKey } from "./ist.ts";
+
 export type MorningPosture = {
   /** English key rendered through tx() — the word you tap. */
   key: string;
@@ -46,12 +48,9 @@ export function morningLineFor(dayOfMonth: number): string {
 
 const KEY = "mqs-morning";
 
-/** Local calendar day (not UTC) so "today" matches the reader's morning. */
+/** IST calendar day so "today" matches the reader's morning in India. */
 export function dayStamp(now: Date): string {
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return istDayKey(now);
 }
 
 export function saveMorningPosture(echo: string, now: Date): void {

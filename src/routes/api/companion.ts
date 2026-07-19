@@ -16,6 +16,7 @@ import {
   logInvocation,
 } from "@/lib/ai-prompt-registry.server";
 import { classifyInnerMateMessage, toWireMode } from "@/lib/companion-risk";
+import { istTimeOfDay, istWeekday } from "@/lib/ist";
 import { buildActiveDangerReply, buildSafetyCheckFallback } from "@/lib/crisis-resources";
 import { wisdomGroundingBlock } from "@/lib/wisdom";
 
@@ -395,10 +396,9 @@ export const Route = createFileRoute("/api/companion")({
         });
 
         const now = new Date();
-        const hour = now.getHours();
-        const timeOfDay =
-          hour < 5 ? "late night" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night";
-        const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
+        // Time and weekday as the reader lives them in India, not the UTC server.
+        const timeOfDay = istTimeOfDay(now);
+        const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][istWeekday(now)];
 
         // The latest check-in note carries the Home mindset answers
         // ("arriving: heavy · mind: circling one thing · needs: rest") —

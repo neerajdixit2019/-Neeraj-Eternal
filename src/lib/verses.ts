@@ -16,6 +16,7 @@ import v15 from "@/assets/verses/verse-15.jpg";
 import v16 from "@/assets/verses/verse-16.jpg";
 import v17 from "@/assets/verses/verse-17.jpg";
 import v18 from "@/assets/verses/verse-18.jpg";
+import { istDayOfMonth } from "@/lib/ist";
 
 export type VerseAccent = "lavender" | "rose" | "amber" | "mint" | "sky";
 export type Verse = {
@@ -55,7 +56,9 @@ export const VERSES: Verse[] = [
 ];
 
 export function dailyVerse(): Verse {
-  return VERSES[new Date().getDate() % VERSES.length];
+  // One verse per IST day — the same all day for a reader in India, and
+  // identical on server and client (no hydration drift from a timezone gap).
+  return VERSES[istDayOfMonth() % VERSES.length];
 }
 
 export function randomVerse(seed?: number): Verse {

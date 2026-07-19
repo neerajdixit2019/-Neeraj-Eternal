@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { ArrowLeft, FileDown, Printer } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
+import { istDayKey } from "@/lib/ist";
 
 /**
  * THE LETTER YOU HAND SOMEONE — a consent-first export for a therapist or
@@ -182,7 +183,7 @@ function TrustedLetter() {
       const blob = buildTrustedLetterPdf(composeInput(), lang);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const stamp = new Date().toISOString().slice(0, 10);
+      const stamp = istDayKey();
       a.href = url;
       a.download = `a-letter-about-how-ive-been-${stamp}.pdf`;
       a.click();

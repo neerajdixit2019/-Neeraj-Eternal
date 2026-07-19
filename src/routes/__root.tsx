@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { initOfflineSanctuary } from "@/lib/offline";
 import { syncReadingSize } from "@/lib/reading-prefs";
 import { syncDocLang, useLang } from "@/lib/i18n";
+import { istHour } from "@/lib/ist";
 import { tx } from "@/lib/i18n-strings";
 
 function NotFoundComponent() {
@@ -168,7 +169,7 @@ function RootComponent() {
 
   useEffect(() => {
     const apply = () => {
-      const h = new Date().getHours();
+      const h = istHour(); // the room follows the sun over India
       const tod =
         h < 5 ? "tod-night"
         : h < 12 ? "tod-morning"

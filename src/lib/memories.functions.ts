@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { istParts, istStartOfDay } from "@/lib/ist";
 
 type Whisper = {
   kind: "journal" | "memory" | "mood";
@@ -17,10 +18,11 @@ export const getOnThisDay = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<Whisper | null> => {
     const { supabase } = context;
-    const now = new Date();
-    const day = now.getDate();
-    const month = now.getMonth() + 1;
-    const today = new Date(now.getFullYear(), now.getMonth(), day);
+    // "On this day" means this calendar day in India (IST), not the UTC server.
+    const nowP = istParts();
+    const day = nowP.day;
+    const month = nowP.month;
+    const todayMs = istStartOfDay().getTime();
 
     const [j, m, mo] = await Promise.all([
       supabase.from("journal_entries")
@@ -35,15 +37,15 @@ export const getOnThisDay = createServerFn({ method: "GET" })
     ]);
 
     const candidates: Whisper[] = [];
-    const sameDay = (d: Date) =>
-      d.getDate() === day && d.getMonth() + 1 === month &&
-      // strictly past (not today)
-      (d.getFullYear() < now.getFullYear() ||
-        (d.getFullYear() === now.getFullYear() && d.getMonth() < now.getMonth()) ||
-        // also allow earlier in same month (weeks-ago feel)
-        false);
-    const monthsAgo = (d: Date) => Math.round((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    const yearsAgo = (d: Date) => now.getFullYear() - d.getFullYear();
+    const sameDay = (d: Date) => {
+      const p = istParts(d);
+      return p.day === day && p.month === month &&
+        // strictly past (not today) — same date in a prior year
+        (p.year < nowP.year ||
+          (p.year === nowP.year && p.month < nowP.month));
+    };
+    const monthsAgo = (d: Date) => Math.round((todayMs - istStartOfDay(d).getTime()) / (1000 * 60 * 60 * 24 * 30));
+    const yearsAgo = (d: Date) => nowP.year - istParts(d).year;
 
     for (const r of j.data ?? []) {
       const d = new Date(r.created_at);

@@ -10,6 +10,7 @@
  */
 
 import type { Lang } from "./i18n"; // type-only — erased at build; keeps this module React-free for node:test
+import { istHour, istDayKey, istWeekday } from "./ist.ts"; // day/time buckets anchored to India
 
 export type MoodEntry = {
   created_at: string;
@@ -277,7 +278,7 @@ export function todLabel(tod: TodLabel, lang: Lang = "en"): string {
 }
 
 export function todOf(iso: string): TodLabel {
-  const h = new Date(iso).getHours();
+  const h = istHour(iso); // time-of-day bucket in the reader's India, not UTC
   if (h < 6) return "Night";
   if (h < 12) return "Morning";
   if (h < 18) return "Midday";
@@ -392,12 +393,11 @@ export function weekdayRhythm(moods: MoodEntry[], lang: Lang = "en"): WeekdayRhy
 
   const overall = scored.reduce((a, m) => a + (m.mood_score as number), 0) / scored.length;
 
-  // Mean per calendar day, grouped by weekday.
+  // Mean per IST calendar day, grouped by IST weekday.
   const dayMeans = new Map<string, { weekday: number; sum: number; n: number }>();
   for (const m of scored) {
-    const d = new Date(m.created_at);
-    const key = d.toDateString();
-    const cur = dayMeans.get(key) ?? { weekday: d.getDay(), sum: 0, n: 0 };
+    const key = istDayKey(m.created_at);
+    const cur = dayMeans.get(key) ?? { weekday: istWeekday(m.created_at), sum: 0, n: 0 };
     cur.sum += m.mood_score as number;
     cur.n += 1;
     dayMeans.set(key, cur);

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
+import { istDayKey } from "@/lib/ist";
 
 const PROMPTS = [
   "Name one feeling, even if it's blurry.",
@@ -31,7 +32,7 @@ function dayIndex() {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return istDayKey(); // "today" for the reminder dedup is the reader's IST day
 }
 
 const STORE_TIME = "innermate.checkin.time"; // "HH:MM"

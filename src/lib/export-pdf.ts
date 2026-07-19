@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { Lang } from "./i18n";
+import { istWeekStartKey } from "./ist.ts";
 import { anyDevanagari, devanagariFontFor } from "./pdf-devanagari.ts";
 
 type Letter = {
@@ -126,10 +127,8 @@ function bucketCheckIns(items: CheckIn[]) {
   for (const c of items) {
     const d = new Date(c.created_at);
     if (Number.isNaN(d.getTime())) continue;
-    // ISO week start (Monday)
-    const day = (d.getUTCDay() + 6) % 7;
-    const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
-    const key = monday.toISOString().slice(0, 10);
+    // Group by the IST week (Monday start) the reader lived, not the UTC week.
+    const key = istWeekStartKey(c.created_at);
     if (!byWeek.has(key)) byWeek.set(key, []);
     byWeek.get(key)!.push(c);
   }
