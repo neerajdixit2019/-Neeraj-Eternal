@@ -10,18 +10,20 @@ import { listMoods, listJournal, listHiddenPatterns, unhidePattern, hidePattern 
 import { listInsightEvents, keepIntention, getIntentionState, recordIntentionOutcome } from "@/lib/insights.functions";
 import {
   sourceMixFor, describeMix, sourceCount, isInferredOnly, toMoodEntries, changeSignals,
-  skyReading, SOURCE_LABEL,
+  skyReading, SOURCE_LABEL, sourceLabel,
   type InsightEvent,
 } from "@/lib/insight-events";
 import { getProfile } from "@/lib/data.functions";
+import { useLang, tagLabel, type Lang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { toast } from "sonner";
 import { TactileCard } from "@/components/TactileCard";
 import { CheckinRitual } from "@/components/CheckinRitual";
 import { CompanionCloud } from "@/components/CompanionCloud";
 import {
-  filterByPeriod, buildConstellation, statusFor, timeOfDayFor, peakTod,
+  filterByPeriod, buildConstellation, statusFor, statusLabel, timeOfDayFor, peakTod, todLabel,
   momentsFor, timelinePoints, timelineSummary, innermateContext, tagStats,
-  cooccurrence, coBetween, weekdayRhythm, PERIOD_LABEL, PERIOD_DAYS, TOD_LABELS,
+  cooccurrence, coBetween, weekdayRhythm, PERIOD_LABEL, periodLabel, PERIOD_DAYS, TOD_LABELS,
   type Period, type MoodEntry, type Constellation, type MapNode,
 } from "@/lib/pattern-map";
 
@@ -63,8 +65,17 @@ function hashStr(s: string): number {
 function tagTint(label: string): string {
   return TAG_TINTS[label] ?? ACCENTS[hashStr(label) % ACCENTS.length];
 }
-const WEIGHT_WORD = (score: number) =>
+const WEIGHT_WORD_EN = (score: number) =>
   score <= 3 ? "heavy" : score <= 5 ? "cloudy" : score <= 7 ? "settled" : score <= 9 ? "open" : "bright";
+const WEIGHT_WORD_HI = (score: number) =>
+  score <= 3 ? "भारी" : score <= 5 ? "धुंधला" : score <= 7 ? "थमा हुआ" : score <= 9 ? "खुला" : "उजला";
+const WEIGHT_WORD = (score: number, lang: Lang = "en") =>
+  lang === "hi" ? WEIGHT_WORD_HI(score) : WEIGHT_WORD_EN(score);
+
+const WEEKDAY_HI: Record<string, string> = {
+  Sunday: "रविवार", Monday: "सोमवार", Tuesday: "मंगलवार", Wednesday: "बुधवार",
+  Thursday: "गुरुवार", Friday: "शुक्रवार", Saturday: "शनिवार",
+};
 
 /* ── Screen ── */
 
@@ -73,6 +84,7 @@ function Insights() {
   const j = useServerFn(listJournal);
   const hiddenFn = useServerFn(listHiddenPatterns);
   const navigate = useNavigate();
+  const lang = useLang();
   const eventsFn = useServerFn(listInsightEvents);
   const { data: moodsRaw, isLoading } = useQuery({ queryKey: ["moods"], queryFn: () => m() });
   const { data: journal } = useQuery({ queryKey: ["journal"], queryFn: () => j() });
@@ -103,8 +115,8 @@ function Insights() {
     [periodEvents, periodMoods],
   );
   const constellation = useMemo(
-    () => buildConstellation(engineEntries, { hidden }),
-    [engineEntries, hidden],
+    () => buildConstellation(engineEntries, { hidden, lang }),
+    [engineEntries, hidden, lang],
   );
   const co = useMemo(() => cooccurrence(engineEntries), [engineEntries]);
   const stats = useMemo(() => tagStats(engineEntries), [engineEntries]);
@@ -122,13 +134,13 @@ function Insights() {
   };
 
   const exploreConstellation = () =>
-    talkToInnerMate(innermateContext(constellation, periodMoods, PERIOD_LABEL[period]));
+    talkToInnerMate(innermateContext(constellation, periodMoods, periodLabel(period, lang), lang, (t) => tagLabel(t, lang)));
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
       {/* Eyebrow row — the observatory's date line */}
       <div className="flex items-baseline justify-between gap-4">
-        <p className="qs-section-label">insights</p>
+        <p className="qs-section-label">{tx(lang, "insights")}</p>
         <p className="text-[12.5px] text-muted-foreground">
           {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
         </p>
@@ -139,7 +151,7 @@ function Insights() {
 
       {/* Tabs + period */}
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
-        <div role="tablist" aria-label="Insight views" className="flex gap-1 rounded-full border p-1"
+        <div role="tablist" aria-label={tx(lang, "Insight views")} className="flex gap-1 rounded-full border p-1"
           style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)", width: "fit-content" }}>
           {(["constellation", "timeline"] as const).map((v) => (
             <button
@@ -154,19 +166,19 @@ function Insights() {
                 ? { background: "var(--surface-selected)", color: "var(--text-primary)", fontWeight: 600 }
                 : { color: "var(--text-secondary)" }}
             >
-              {v}
+              {tx(lang, v)}
             </button>
           ))}
         </div>
         <select
           value={period}
           onChange={(e) => { setPeriod(e.target.value as Period); setSelected(null); }}
-          aria-label="Time period"
+          aria-label={tx(lang, "Time period")}
           className="h-10 rounded-full border px-4 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 60%, transparent)", color: "var(--text-primary)" }}
         >
           {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
-            <option key={p} value={p}>{PERIOD_LABEL[p]}</option>
+            <option key={p} value={p}>{periodLabel(p, lang)}</option>
           ))}
         </select>
       </div>
@@ -176,7 +188,7 @@ function Insights() {
       {isLoading ? (
         <div className="study-window mt-6">
           <div className="sky-panel flex h-[280px] items-center justify-center">
-            <p className="font-serif text-[14px] italic text-foreground/60">reading your sky…</p>
+            <p className="font-serif text-[14px] italic text-foreground/60">{tx(lang, "reading your sky…")}</p>
           </div>
         </div>
       ) : view === "constellation" ? (
@@ -197,7 +209,7 @@ function Insights() {
       </div>
 
       {/* NOTES ON THE SILL — everything below the window, one ruled column */}
-      <p className="qs-section-label mt-10">notes on the sill</p>
+      <p className="qs-section-label mt-10">{tx(lang, "notes on the sill")}</p>
 
       {/* Compact check-in — expands to the full ritual */}
       <div className="mt-3">
@@ -205,41 +217,47 @@ function Insights() {
           <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-3xl px-5 py-4">
             <div className="min-w-0">
               <p className="font-serif text-[16px] leading-snug">
-                Today feels <em className="italic">{WEIGHT_WORD(todayMood.mood_score)}</em>
+                {lang === "hi"
+                  ? <>आज <em className="italic">{WEIGHT_WORD(todayMood.mood_score, lang)}</em> लग रहा है</>
+                  : <>Today feels <em className="italic">{WEIGHT_WORD(todayMood.mood_score, lang)}</em></>}
               </p>
               <p className="mt-1 text-[12.5px] text-muted-foreground">
-                {[...(todayMood.emotion_tags ?? []), ...(todayMood.trigger_tags ?? [])].slice(0, 4).join(" · ") || "no tags"}
-                {" · saved at "}
-                {new Date(todayMood.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                {[...(todayMood.emotion_tags ?? []), ...(todayMood.trigger_tags ?? [])].slice(0, 4).map((t) => tagLabel(t, lang)).join(" · ") || tx(lang, "no tags")}
+                {" · "}
+                {lang === "hi"
+                  ? `${new Date(todayMood.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} पर सहेजा गया`
+                  : `saved at ${new Date(todayMood.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
               </p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setCheckinOpen(true)}
                 className="rounded-full border px-3.5 py-2 text-[12.5px] transition hover:-translate-y-0.5"
                 style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}>
-                Add another
+                {tx(lang, "Add another")}
               </button>
               <button type="button"
-                onClick={() => talkToInnerMate(`I just checked in — today feels ${WEIGHT_WORD(todayMood.mood_score)}. ${(todayMood.emotion_tags ?? []).join(", ")}${todayMood.trigger_tags?.length ? ` — around ${todayMood.trigger_tags.join(", ")}` : ""}.${todayMood.note ? ` ${todayMood.note}` : ""}`)}
+                onClick={() => talkToInnerMate(lang === "hi"
+                  ? `मैंने अभी चेक-इन किया — आज ${WEIGHT_WORD(todayMood.mood_score, "hi")} लग रहा है। ${(todayMood.emotion_tags ?? []).map((t) => tagLabel(t, "hi")).join(", ")}${todayMood.trigger_tags?.length ? ` — ${todayMood.trigger_tags.map((t) => tagLabel(t, "hi")).join(", ")} के इर्द-गिर्द` : ""}।${todayMood.note ? ` ${todayMood.note}` : ""}`
+                  : `I just checked in — today feels ${WEIGHT_WORD(todayMood.mood_score, "en")}. ${(todayMood.emotion_tags ?? []).join(", ")}${todayMood.trigger_tags?.length ? ` — around ${todayMood.trigger_tags.join(", ")}` : ""}.${todayMood.note ? ` ${todayMood.note}` : ""}`)}
                 className="rounded-full px-3.5 py-2 text-[12.5px] transition"
                 style={{ background: "color-mix(in oklab, var(--accent-primary) 20%, transparent)", color: "var(--text-primary)" }}>
-                Talk to InnerMate
+                {tx(lang, "Talk to InnerMate")}
               </button>
             </div>
           </div>
         ) : (
           <div className="glass rounded-3xl p-5">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="qs-section-label">a moment to check in</p>
+              <p className="qs-section-label">{tx(lang, "a moment to check in")}</p>
               {todayMood && (
                 <button type="button" onClick={() => setCheckinOpen(false)} className="text-[12px] text-muted-foreground transition hover:text-foreground">
-                  collapse
+                  {tx(lang, "collapse")}
                 </button>
               )}
             </div>
             <div className="mt-3"><CheckinRitual /></div>
             <Link to="/checkin" className="mt-2 inline-block text-[13px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline">
-              prefer the guided journey? →
+              {tx(lang, "prefer the guided journey? →")}
             </Link>
           </div>
         )}
@@ -248,10 +266,10 @@ function Insights() {
       {/* What may be shaping it — the design's influence list, on real signals */}
       {topSignals.length > 0 && (
         <div className="mt-6">
-          <p className="qs-section-label">what may be shaping it · {PERIOD_LABEL[period].toLowerCase()}</p>
+          <p className="qs-section-label">{tx(lang, "what may be shaping it")} · {lang === "hi" ? periodLabel(period, lang) : periodLabel(period, lang).toLowerCase()}</p>
           <div className="mt-3.5 flex flex-col gap-4">
             {topSignals.slice(0, 3).map((s, i) => {
-              const mix = describeMix(sourceMixFor(periodEvents, s.label));
+              const mix = describeMix(sourceMixFor(periodEvents, s.label), lang);
               return (
                 <Link key={s.label} to="/pattern/$tag" params={{ tag: s.label }} className="group flex gap-3">
                   <span
@@ -260,11 +278,13 @@ function Insights() {
                     style={{ background: "var(--dawn)", boxShadow: "0 0 8px color-mix(in oklab, var(--dawn) 60%, transparent)", animationDelay: `${i * 0.9}s` }}
                   />
                   <span className="min-w-0">
-                    <span className="block text-[14.5px] font-semibold text-foreground transition group-hover:text-foreground">{s.label}</span>
+                    <span className="block text-[14.5px] font-semibold text-foreground transition group-hover:text-foreground">{tagLabel(s.label, lang)}</span>
                     <span className="mt-0.5 block text-[13px] leading-relaxed text-secondary-foreground">
-                      appeared {s.count} {s.count === 1 ? "time" : "times"} · {statusFor(s.count).toLowerCase()}
+                      {lang === "hi"
+                        ? `${s.count} बार · ${statusLabel(statusFor(s.count), "hi")}`
+                        : `appeared ${s.count} ${s.count === 1 ? "time" : "times"} · ${statusFor(s.count).toLowerCase()}`}
                     </span>
-                    {mix && <span className="mt-0.5 block text-[11px] text-muted-foreground">seen in {mix}</span>}
+                    {mix && <span className="mt-0.5 block text-[11px] text-muted-foreground">{lang === "hi" ? `${mix} में देखा गया` : `seen in ${mix}`}</span>}
                   </span>
                 </Link>
               );
@@ -295,8 +315,13 @@ function Insights() {
 
 /* ── Tonight's sky — narrative hero (design 1a "Quiet cosmic sanctuary") ── */
 
-function daysAgoLabel(iso: string) {
+function daysAgoLabel(iso: string, lang: Lang = "en") {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (lang === "hi") {
+    if (d <= 0) return "आज";
+    if (d === 1) return "कल";
+    return `${d} दिन पहले`;
+  }
   if (d <= 0) return "today";
   if (d === 1) return "yesterday";
   return `${d} days ago`;
@@ -305,12 +330,13 @@ function daysAgoLabel(iso: string) {
 function SkyHero({ events }: { events: InsightEvent[] }) {
   const profileFn = useServerFn(getProfile);
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: () => profileFn() });
+  const lang = useLang();
   const [showWhy, setShowWhy] = useState(false);
   const [hour, setHour] = useState<number | null>(null);
   useEffect(() => { setHour(new Date().getHours()); }, []);
-  const sky = useMemo(() => skyReading(events), [events]);
+  const sky = useMemo(() => skyReading(events, undefined, lang, (t) => tagLabel(t, lang)), [events, lang]);
   const name = (profile as { display_name?: string | null } | null | undefined)?.display_name?.split(" ")[0];
-  const greeting = hour == null ? "Hello" : hour < 5 ? "Still up" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greeting = hour == null ? tx(lang, "Hello") : hour < 5 ? tx(lang, "Still up") : hour < 12 ? tx(lang, "Good morning") : hour < 17 ? tx(lang, "Good afternoon") : tx(lang, "Good evening");
 
   return (
     <div className="relative mt-5">
@@ -343,7 +369,7 @@ function SkyHero({ events }: { events: InsightEvent[] }) {
           className="mt-3 text-[12.5px] transition hover:brightness-125"
           style={{ color: "var(--accent-secondary)" }}
         >
-          why this sky? ›
+          {tx(lang, "why this sky? ›")}
         </button>
       )}
       {showWhy && (
@@ -351,22 +377,24 @@ function SkyHero({ events }: { events: InsightEvent[] }) {
           className="fade-in mt-3 rounded-2xl border p-4"
           style={{ borderColor: "color-mix(in oklab, var(--lamp) 18%, transparent)", background: "color-mix(in oklab, var(--lamp) 6%, transparent)" }}
         >
-          <p className="qs-section-label">read from what you shared</p>
+          <p className="qs-section-label">{tx(lang, "read from what you shared")}</p>
           <ul className="mt-2.5 space-y-2 text-[12.5px] leading-relaxed text-secondary-foreground">
             {sky.sources.map((s) => (
               <li key={s.id} className="flex gap-2">
                 <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-foreground/50" />
                 <span>
-                  {SOURCE_LABEL[s.source] === "check-ins" ? "a check-in" : SOURCE_LABEL[s.source] === "chats" ? "a conversation" : SOURCE_LABEL[s.source] === "journal" ? "a journal page" : "a memory"}
-                  {" "}{daysAgoLabel(s.created_at)}
-                  {[...s.emotions, ...s.triggers].length > 0 ? ` — ${[...s.emotions, ...s.triggers].slice(0, 3).join(", ").toLowerCase()}` : ""}
+                  {lang === "hi"
+                    ? (SOURCE_LABEL[s.source] === "check-ins" ? "एक चेक-इन" : SOURCE_LABEL[s.source] === "chats" ? "एक बातचीत" : SOURCE_LABEL[s.source] === "journal" ? "जर्नल का एक पन्ना" : "एक याद")
+                    : (SOURCE_LABEL[s.source] === "check-ins" ? "a check-in" : SOURCE_LABEL[s.source] === "chats" ? "a conversation" : SOURCE_LABEL[s.source] === "journal" ? "a journal page" : "a memory")}
+                  {" "}{daysAgoLabel(s.created_at, lang)}
+                  {[...s.emotions, ...s.triggers].length > 0 ? ` — ${[...s.emotions, ...s.triggers].slice(0, 3).map((t) => tagLabel(t, lang)).join(", ").toLowerCase()}` : ""}
                   {s.excerpt ? <> · <em>“{s.excerpt}”</em></> : ""}
                 </span>
               </li>
             ))}
           </ul>
           <p className="mt-3 text-[11.5px] text-muted-foreground">
-            nothing else is read — <Link to="/settings" className="underline underline-offset-2">manage what your sky may learn from</Link>
+            {tx(lang, "nothing else is read")} — <Link to="/settings" className="underline underline-offset-2">{tx(lang, "manage what your sky may learn from")}</Link>
           </p>
         </div>
       )}
@@ -390,6 +418,7 @@ function ConstellationView({
   onTalk: (text: string) => void;
 }) {
   const { center, ring, edges, checkinCount, confidence } = constellation;
+  const lang = useLang();
 
   /* Low-data: no fake maps. */
   if (!center) {
@@ -398,10 +427,15 @@ function ConstellationView({
       <div className="sky-panel flex min-h-[260px] flex-col items-center justify-center px-8 py-10 text-center">
         <CompanionCloud size={64} state="calm" />
         <p className="mt-4 max-w-sm font-serif text-[16px] italic leading-relaxed text-foreground/75">
-          Your constellation is beginning to form.
-          {confidence.level === "insufficient" && confidence.needed > 0
-            ? ` ${confidence.needed === 1 ? "One more check-in" : `${confidence.needed} more check-ins`} may reveal the first connections.`
-            : " Check in when something is worth naming."}
+          {lang === "hi" ? (
+            <>आपका नक्षत्र अभी बनना शुरू हो रहा है।{confidence.level === "insufficient" && confidence.needed > 0
+              ? (confidence.needed === 1 ? ` एक और चेक-इन पहली कड़ियाँ दिखा सकता है।` : ` ${confidence.needed} और चेक-इन पहली कड़ियाँ दिखा सकते हैं।`)
+              : " जब कुछ नाम देने लायक हो, तब चेक-इन करें।"}</>
+          ) : (
+            <>Your constellation is beginning to form.{confidence.level === "insufficient" && confidence.needed > 0
+              ? ` ${confidence.needed === 1 ? "One more check-in" : `${confidence.needed} more check-ins`} may reveal the first connections.`
+              : " Check in when something is worth naming."}</>
+          )}
         </p>
         {periodMoods.length > 0 && (
           <div className="mt-5 w-full max-w-sm space-y-2 text-left">
@@ -409,15 +443,17 @@ function ConstellationView({
               <div key={mm.created_at} className="rounded-2xl border px-4 py-3" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
                 <p className="text-[12px] text-muted-foreground">{new Date(mm.created_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</p>
                 <p className="mt-0.5 text-[13.5px] text-foreground/90">
-                  {mm.mood_score != null ? `feels ${WEIGHT_WORD(mm.mood_score)}` : "a noted moment"}
-                  {(mm.emotion_tags?.length ?? 0) > 0 ? ` · ${mm.emotion_tags!.join(", ")}` : ""}
+                  {mm.mood_score != null
+                    ? (lang === "hi" ? `${WEIGHT_WORD(mm.mood_score, lang)} लग रहा है` : `feels ${WEIGHT_WORD(mm.mood_score, lang)}`)
+                    : (lang === "hi" ? "एक दर्ज पल" : "a noted moment")}
+                  {(mm.emotion_tags?.length ?? 0) > 0 ? ` · ${mm.emotion_tags!.map((t) => tagLabel(t, lang)).join(", ")}` : ""}
                 </p>
               </div>
             ))}
           </div>
         )}
         <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="qs-pill-cta mt-6">
-          Add today's moment
+          {tx(lang, "Add today's moment")}
         </button>
       </div>
       </div>
@@ -435,7 +471,7 @@ function ConstellationView({
     <>
       {/* The map — held in the study's etched window frame */}
       <div className="study-window mt-6">
-      <div className="sky-panel relative h-[340px] sm:h-[400px]" role="group" aria-label={`Your pattern constellation — strongest: ${center.label}, ${center.count} appearances`}>
+      <div className="sky-panel relative h-[340px] sm:h-[400px]" role="group" aria-label={lang === "hi" ? `आपका पैटर्न नक्षत्र — सबसे मज़बूत: ${tagLabel(center.label, lang)}, ${center.count} बार` : `Your pattern constellation — strongest: ${center.label}, ${center.count} appearances`}>
         {/* faint background stars (fixed, decorative) */}
         {Array.from({ length: 26 }, (_, i) => (
           <span key={i} aria-hidden className="absolute rounded-full"
@@ -473,7 +509,7 @@ function ConstellationView({
               type="button"
               onClick={() => setSelected(selected === n.label ? null : n.label)}
               aria-pressed={selected === n.label}
-              aria-label={`${n.label}: appeared ${n.count} ${n.count === 1 ? "time" : "times"}, ${statusFor(n.count).toLowerCase()}`}
+              aria-label={lang === "hi" ? `${tagLabel(n.label, lang)}: ${n.count} बार, ${statusLabel(statusFor(n.count), "hi")}` : `${n.label}: appeared ${n.count} ${n.count === 1 ? "time" : "times"}, ${statusFor(n.count).toLowerCase()}`}
               className="absolute flex min-h-[44px] min-w-[44px] -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none transition-opacity duration-300 focus-visible:ring-2 focus-visible:ring-primary/60 rounded-2xl"
               style={{ left: `${n.x}%`, top: `${n.y}%`, opacity: dimmed ? 0.25 : 1 }}
             >
@@ -485,9 +521,9 @@ function ConstellationView({
                 }} />
               <span className="mt-1.5 whitespace-nowrap text-center font-serif text-[11px] italic leading-tight"
                 style={{ color: `color-mix(in oklab, ${tint} 28%, var(--foreground))` }}>
-                {n.label.toLowerCase()}
+                {tagLabel(n.label, lang).toLowerCase()}
               </span>
-              <span className="text-[9.5px] text-muted-foreground">×{n.count}{isCenter ? ` · ${statusFor(n.count).toLowerCase()}` : ""}</span>
+              <span className="text-[9.5px] text-muted-foreground">×{n.count}{isCenter ? ` · ${statusLabel(statusFor(n.count), lang).toLowerCase()}` : ""}</span>
             </button>
           );
         })}
@@ -496,11 +532,11 @@ function ConstellationView({
           <button type="button" onClick={() => setSelected(null)}
             className="absolute right-3 top-3 rounded-full border px-3 py-1.5 text-[11.5px] backdrop-blur transition hover:text-foreground"
             style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--background) 70%, transparent)", color: "var(--text-secondary)" }}>
-            reset
+            {tx(lang, "reset")}
           </button>
         )}
         <p className="absolute inset-x-0 bottom-2.5 text-center font-serif text-[10.5px] italic text-foreground/40">
-          tap a star to see its connections · size is frequency, light is recency
+          {tx(lang, "tap a star to see its connections · size is frequency, light is recency")}
         </p>
       </div>
       </div>
@@ -522,11 +558,12 @@ function NodePanel({
   node: MapNode; periodMoods: Mood[]; events: InsightEvent[]; co: Map<string, number>; centerLabel: string;
   onTalk: (t: string) => void; onClose: () => void;
 }) {
+  const lang = useLang();
   const [whyOpen, setWhyOpen] = useState(false);
   const moments = momentsFor(periodMoods, node.label, 3);
   const peak = peakTod(timeOfDayFor(periodMoods, node.label));
   const mix = sourceMixFor(events, node.label);
-  const mixLine = describeMix(mix);
+  const mixLine = describeMix(mix, lang);
   const inferredOnly = isInferredOnly(events, node.label);
   const related = tagStats(periodMoods)
     .filter((s) => s.label !== node.label)
@@ -535,41 +572,42 @@ function NodePanel({
     .sort((a, b) => b.n - a.n)
     .slice(0, 3);
   return (
-    <div className="glass mt-3 rounded-3xl p-5 fade-in" role="region" aria-label={`Details for ${node.label}`}>
+    <div className="glass mt-3 rounded-3xl p-5 fade-in" role="region" aria-label={lang === "hi" ? `${tagLabel(node.label, lang)} का विवरण` : `Details for ${node.label}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="qs-section-label">{node.kind === "emotion" ? "a feeling" : "a signal"}</p>
-          <h3 className="mt-1 font-serif text-[20px] font-light leading-snug">{node.label}</h3>
+          <p className="qs-section-label">{node.kind === "emotion" ? tx(lang, "a feeling") : tx(lang, "a signal")}</p>
+          <h3 className="mt-1 font-serif text-[20px] font-light leading-snug">{tagLabel(node.label, lang)}</h3>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
-            {node.count} supporting {node.count === 1 ? "moment" : "moments"}
-            {mixLine ? ` · ${mixLine}` : ""} · {statusFor(node.count).toLowerCase()}
-            {peak ? ` · most often ${peak.label.toLowerCase()}` : ""}
-            {node.label !== centerLabel && node.linkToCenter > 0 ? ` · with ${centerLabel.toLowerCase()} ×${node.linkToCenter}` : ""}
+            {lang === "hi"
+              ? `${node.count} सहायक पल${mixLine ? ` · ${mixLine}` : ""} · ${statusLabel(statusFor(node.count), "hi")}${peak ? ` · अक्सर ${todLabel(peak.label, "hi")}` : ""}${node.label !== centerLabel && node.linkToCenter > 0 ? ` · ${tagLabel(centerLabel, "hi")} के साथ ×${node.linkToCenter}` : ""}`
+              : `${node.count} supporting ${node.count === 1 ? "moment" : "moments"}${mixLine ? ` · ${mixLine}` : ""} · ${statusFor(node.count).toLowerCase()}${peak ? ` · most often ${peak.label.toLowerCase()}` : ""}${node.label !== centerLabel && node.linkToCenter > 0 ? ` · with ${centerLabel.toLowerCase()} ×${node.linkToCenter}` : ""}`}
           </p>
           {inferredOnly && (
             <p className="mt-1 text-[11.5px] italic text-muted-foreground">
-              noticed in your own words in chat — you haven't named it in a check-in yet.
+              {tx(lang, "noticed in your own words in chat — you haven't named it in a check-in yet.")}
             </p>
           )}
         </div>
-        <button type="button" onClick={onClose} aria-label="Close details" className="glass flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
+        <button type="button" onClick={onClose} aria-label={tx(lang, "Close details")} className="glass flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
           <X className="h-3.5 w-3.5" strokeWidth={1.8} />
         </button>
       </div>
 
       {related.length > 0 && (
         <p className="mt-3 text-[13px] leading-relaxed text-secondary-foreground">
-          tended to appear alongside {related.map((r) => `${r.label.toLowerCase()} (×${r.n})`).join(", ")}.
+          {lang === "hi"
+            ? `अक्सर इनके साथ ${related.map((r) => `${tagLabel(r.label, "hi")} (×${r.n})`).join(", ")} भी दिखे।`
+            : `tended to appear alongside ${related.map((r) => `${r.label.toLowerCase()} (×${r.n})`).join(", ")}.`}
         </p>
       )}
 
       {moments.length > 0 && (
         <div className="mt-4 space-y-2">
-          <p className="qs-section-label">supporting moments</p>
+          <p className="qs-section-label">{tx(lang, "supporting moments")}</p>
           {moments.map((mm) => (
             <div key={mm.created_at} className="rounded-2xl border px-4 py-2.5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
               <p className="text-[11.5px] text-muted-foreground">
-                {new Date(mm.created_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · feels {WEIGHT_WORD(mm.mood_score ?? 5)}
+                {new Date(mm.created_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}{lang === "hi" ? ` · ${WEIGHT_WORD(mm.mood_score ?? 5, lang)} लग रहा है` : ` · feels ${WEIGHT_WORD(mm.mood_score ?? 5, lang)}`}
               </p>
               {mm.note && <p className="mt-1 font-serif text-[13px] italic leading-relaxed text-foreground/85 line-clamp-2">“{mm.note}”</p>}
             </div>
@@ -580,36 +618,46 @@ function NodePanel({
       {/* Why am I seeing this? — full provenance, in plain language */}
       <button type="button" onClick={() => setWhyOpen(!whyOpen)} aria-expanded={whyOpen}
         className="mt-3 text-[12px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline">
-        why am I seeing this?
+        {tx(lang, "why am I seeing this?")}
       </button>
       {whyOpen && (
         <div className="mt-2 rounded-2xl border px-4 py-3 text-[12.5px] leading-relaxed text-secondary-foreground fade-in"
           style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 35%, transparent)" }}>
           <p>
-            This appears because it came up in {mixLine || `${node.count} of your moments`} during this period
-            {peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}.
-            {" "}{inferredOnly
-              ? "It was noticed by matching words in things you wrote — an inference, not something you selected."
-              : "It comes from tags you selected yourself, which is the strongest kind of evidence."}
+            {lang === "hi" ? (
+              <>यह इसलिए दिख रहा है क्योंकि इस दौर में इसका ज़िक्र {mixLine || `आपके ${node.count} पलों`} में आया{peak ? `, अक्सर ${todLabel(peak.label, "hi")} के समय` : ""}।{" "}{inferredOnly
+                ? "यह आपके लिखे हुए में शब्दों के मेल से पहचाना गया — एक अनुमान, आपका चुना हुआ नहीं।"
+                : "यह उन टैग से है जो आपने ख़ुद चुने — यही सबसे मज़बूत सबूत है।"}</>
+            ) : (
+              <>This appears because it came up in {mixLine || `${node.count} of your moments`} during this period{peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}.{" "}{inferredOnly
+                ? "It was noticed by matching words in things you wrote — an inference, not something you selected."
+                : "It comes from tags you selected yourself, which is the strongest kind of evidence."}</>
+            )}
           </p>
           <p className="mt-1.5">
-            Only your own words are read — never InnerMate's replies, and never anything from a safety moment.
+            {lang === "hi" ? (
+              <>सिर्फ़ आपके अपने शब्द पढ़े जाते हैं — कभी InnerMate के जवाब नहीं, और किसी सुरक्षा-पल से कुछ भी नहीं। किसी भी स्रोत को <Link to="/settings" className="underline underline-offset-2">सैंक्चुअरी</Link> में बंद किया जा सकता है, या इस पैटर्न को इसके <Link to="/pattern/$tag" params={{ tag: node.label }} className="underline underline-offset-2">विवरण पन्ने</Link> पर अलग रखा जा सकता है।</>
+            ) : (
+              <>Only your own words are read — never InnerMate's replies, and never anything from a safety moment.
             You can switch any source off in <Link to="/settings" className="underline underline-offset-2">the Sanctuary</Link>,
-            or set this pattern aside on its <Link to="/pattern/$tag" params={{ tag: node.label }} className="underline underline-offset-2">detail page</Link>.
+            or set this pattern aside on its <Link to="/pattern/$tag" params={{ tag: node.label }} className="underline underline-offset-2">detail page</Link>.</>
+            )}
           </p>
         </div>
       )}
 
       <div className="mt-4 flex flex-wrap gap-2.5">
         <button type="button"
-          onClick={() => onTalk(`${node.label} has come up in ${node.count} of my recent moments${mixLine ? ` (${mixLine})` : ""}${peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}. Does that feel accurate to explore together?`)}
+          onClick={() => onTalk(lang === "hi"
+            ? `${tagLabel(node.label, "hi")} का ज़िक्र मेरे हाल के ${node.count} पलों में आया है${mixLine ? ` (${mixLine})` : ""}${peak ? `, अक्सर ${todLabel(peak.label, "hi")} के समय` : ""}। क्या इसे साथ मिलकर देखना सही लगेगा?`
+            : `${node.label} has come up in ${node.count} of my recent moments${mixLine ? ` (${mixLine})` : ""}${peak ? `, most often in the ${peak.label.toLowerCase()}` : ""}. Does that feel accurate to explore together?`)}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition hover:brightness-110" style={{ borderColor: "var(--border-active)", background: "color-mix(in oklab, var(--violet) 14%, transparent)", color: "var(--text-primary)" }}>
-          <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> Explore with InnerMate
+          <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> {tx(lang, "Explore with InnerMate")}
         </button>
         <Link to="/pattern/$tag" params={{ tag: node.label }}
           className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition hover:-translate-y-0.5"
           style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}>
-          full detail <ArrowRight className="h-3 w-3" />
+          {tx(lang, "full detail")} <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
     </div>
@@ -622,41 +670,56 @@ function RevealCard({
   constellation: Constellation; periodMoods: Mood[]; events: InsightEvent[]; period: Period;
   onExplore: () => void; onSelectCenter: () => void;
 }) {
+  const lang = useLang();
   const { center, ring, checkinCount, confidence } = constellation;
   if (!center) return null;
   const companions = ring.filter((n) => n.linkToCenter > 0).slice(0, 2);
   const peak = peakTod(timeOfDayFor(periodMoods, center.label));
   const mix = sourceMixFor(events, center.label);
-  const mixLine = describeMix(mix);
+  const mixLine = describeMix(mix, lang);
   const crossSource = sourceCount(mix) >= 2;
   return (
     <TactileCard tint="lavender" className="mt-4">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="qs-section-label">what this pattern may reveal</p>
-        <p className="text-[11px] text-muted-foreground">{confidence.label} · {checkinCount} moments</p>
+        <p className="qs-section-label">{tx(lang, "what this pattern may reveal")}</p>
+        <p className="text-[11px] text-muted-foreground">{confidence.label} · {checkinCount} {lang === "hi" ? "पल" : "moments"}</p>
       </div>
       <p className="mt-3 text-[14.5px] leading-relaxed text-foreground/90">
-        <strong className="font-medium">{center.label}</strong> appeared in {center.count} of your {checkinCount} moments
-        {peak ? <>, most often in the <strong className="font-medium">{peak.label.toLowerCase()}</strong></> : null}
-        {companions.length > 0 && (
-          <>, and tended to occur when {companions.map((c) => c.label.toLowerCase()).join(" or ")} {companions.length === 1 ? "was" : "were"} present</>
-        )}.
-        {" "}That's an observation, not a verdict — but it may be worth exploring gently.
+        {lang === "hi" ? (
+          <>
+            <strong className="font-medium">{tagLabel(center.label, "hi")}</strong> का ज़िक्र आपके {checkinCount} में से {center.count} पलों में
+            {peak ? <>, अक्सर <strong className="font-medium">{todLabel(peak.label, "hi")}</strong> के समय</> : null}
+            {companions.length > 0 && (
+              <>, और अक्सर {companions.map((c) => tagLabel(c.label, "hi")).join(" या ")} के साथ</>
+            )}
+            {" "}आया। यह एक अवलोकन है, कोई फ़ैसला नहीं — पर इसे धीरे से देखना शायद सही हो।
+          </>
+        ) : (
+          <>
+            <strong className="font-medium">{center.label}</strong> appeared in {center.count} of your {checkinCount} moments
+            {peak ? <>, most often in the <strong className="font-medium">{peak.label.toLowerCase()}</strong></> : null}
+            {companions.length > 0 && (
+              <>, and tended to occur when {companions.map((c) => c.label.toLowerCase()).join(" or ")} {companions.length === 1 ? "was" : "were"} present</>
+            )}.
+            {" "}That's an observation, not a verdict — but it may be worth exploring gently.
+          </>
+        )}
       </p>
       {mixLine && (
         <p className="mt-2 text-[12px] text-muted-foreground">
-          seen across {mixLine}
-          {crossSource ? " — appearing in more than one place makes this more dependable" : ""}.
+          {lang === "hi"
+            ? `${mixLine} में देखा गया${crossSource ? " — एक से ज़्यादा जगह दिखना इसे और भरोसेमंद बनाता है" : ""}।`
+            : `seen across ${mixLine}${crossSource ? " — appearing in more than one place makes this more dependable" : ""}.`}
         </p>
       )}
       <div className="mt-4 flex flex-wrap gap-2.5">
         <button type="button" onClick={onExplore} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition hover:brightness-110" style={{ borderColor: "var(--border-active)", background: "color-mix(in oklab, var(--violet) 14%, transparent)", color: "var(--text-primary)" }}>
-          <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> Explore this with InnerMate
+          <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> {tx(lang, "Explore this with InnerMate")}
         </button>
         <button type="button" onClick={onSelectCenter}
           className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition hover:-translate-y-0.5"
           style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}>
-          view supporting moments
+          {tx(lang, "view supporting moments")}
         </button>
       </div>
     </TactileCard>
@@ -670,9 +733,10 @@ function TimelineView({
 }: {
   periodMoods: Mood[]; visibleTags: string[]; filterTag: string | null; setFilterTag: (t: string | null) => void;
 }) {
+  const lang = useLang();
   const [openIso, setOpenIso] = useState<string | null>(null);
   const points = useMemo(() => timelinePoints(periodMoods, filterTag ?? undefined), [periodMoods, filterTag]);
-  const summary = useMemo(() => timelineSummary(points, periodMoods), [points, periodMoods]);
+  const summary = useMemo(() => timelineSummary(points, periodMoods, lang), [points, periodMoods, lang]);
   const open = openIso ? points.find((p) => p.iso === openIso) ?? null : null;
 
   const W = 640, H = 150, pad = 14;
@@ -701,12 +765,12 @@ function TimelineView({
             <button key={t} type="button" onClick={() => setFilterTag(filterTag === t ? null : t)}
               aria-pressed={filterTag === t}
               className={`qs-chip ${filterTag === t ? "qs-chip--active" : ""}`}>
-              {t}
+              {tagLabel(t, lang)}
             </button>
           ))}
           {filterTag && (
             <button type="button" onClick={() => setFilterTag(null)} className="text-[12px] text-muted-foreground underline-offset-4 hover:underline">
-              clear
+              {tx(lang, "clear")}
             </button>
           )}
         </div>
@@ -716,10 +780,12 @@ function TimelineView({
       <div className="sky-panel p-4">
         {points.length === 0 ? (
           <p className="py-10 text-center font-serif text-[14px] italic text-foreground/60">
-            no check-ins {filterTag ? `with ${filterTag.toLowerCase()} ` : ""}in this period.
+            {lang === "hi"
+              ? `इस दौर में ${filterTag ? `${tagLabel(filterTag, "hi")} के साथ ` : ""}कोई चेक-इन नहीं।`
+              : `no check-ins ${filterTag ? `with ${filterTag.toLowerCase()} ` : ""}in this period.`}
           </p>
         ) : (
-          <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`Timeline of ${points.length} check-ins. ${summary}`}>
+          <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={lang === "hi" ? `${points.length} चेक-इन की समयरेखा। ${summary}` : `Timeline of ${points.length} check-ins. ${summary}`}>
             {segments.map((s, i) => (
               <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke="currentColor" strokeOpacity="0.35" strokeWidth="1.4" strokeLinecap="round" />
             ))}
@@ -735,7 +801,7 @@ function TimelineView({
                     cx={xFor(p.iso)} cy={yFor(p.score)} r={10} fill="transparent"
                     role="button"
                     tabIndex={0}
-                    aria-label={`Check-in ${when}, feels ${WEIGHT_WORD(p.score)}`}
+                    aria-label={lang === "hi" ? `चेक-इन ${when}, ${WEIGHT_WORD(p.score, lang)} लग रहा है` : `Check-in ${when}, feels ${WEIGHT_WORD(p.score, lang)}`}
                     aria-pressed={openIso === p.iso}
                     style={{ cursor: "pointer" }}
                     onClick={toggle}
@@ -750,25 +816,25 @@ function TimelineView({
         )}
         <div className="mt-1 flex items-center justify-between text-[10.5px] text-muted-foreground">
           <span>{points.length ? new Date(points[0].iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
-          <span>gaps are simply days you didn't check in — they don't count against you</span>
+          <span>{tx(lang, "gaps are simply days you didn't check in — they don't count against you")}</span>
           <span>{points.length ? new Date(points[points.length - 1].iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
         </div>
       </div>
       </div>
 
       {open && (
-        <div className="glass mt-3 rounded-3xl p-5 fade-in" role="region" aria-label="Check-in details">
+        <div className="glass mt-3 rounded-3xl p-5 fade-in" role="region" aria-label={tx(lang, "Check-in details")}>
           <div className="flex items-start justify-between">
             <p className="text-[12px] text-muted-foreground">
               {new Date(open.iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
             </p>
-            <button type="button" onClick={() => setOpenIso(null)} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={() => setOpenIso(null)} aria-label={tx(lang, "Close")} className="text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-          <p className="mt-1.5 font-serif text-[16px]">feels {WEIGHT_WORD(open.score)}</p>
+          <p className="mt-1.5 font-serif text-[16px]">{lang === "hi" ? `${WEIGHT_WORD(open.score, lang)} लग रहा है` : `feels ${WEIGHT_WORD(open.score, lang)}`}</p>
           {(open.emotions.length > 0 || open.triggers.length > 0) && (
-            <p className="mt-1 text-[13px] text-secondary-foreground">{[...open.emotions, ...open.triggers].join(" · ")}</p>
+            <p className="mt-1 text-[13px] text-secondary-foreground">{[...open.emotions, ...open.triggers].map((t) => tagLabel(t, lang)).join(" · ")}</p>
           )}
           {open.note && <p className="mt-2 font-serif text-[13.5px] italic leading-relaxed text-foreground/85">“{open.note}”</p>}
         </div>
@@ -781,8 +847,9 @@ function TimelineView({
 
 function RhythmCard({ moods, hidden }: { moods: Mood[]; hidden: string[] }) {
   const qc = useQueryClient();
+  const lang = useLang();
   const hideFn = useServerFn(hidePattern);
-  const rhythm = useMemo(() => weekdayRhythm(moods), [moods]);
+  const rhythm = useMemo(() => weekdayRhythm(moods, lang), [moods, lang]);
   const [hiding, setHiding] = useState(false);
   if (!rhythm) return null;
   const tag = `${rhythm.weekday} rhythm`;
@@ -799,10 +866,12 @@ function RhythmCard({ moods, hidden }: { moods: Mood[]; hidden: string[] }) {
 
   return (
     <div className="glass mt-5 rounded-3xl p-5">
-      <p className="qs-section-label">a rhythm we noticed</p>
+      <p className="qs-section-label">{tx(lang, "a rhythm we noticed")}</p>
       <p className="mt-2 text-[14.5px] leading-relaxed text-foreground/90">{rhythm.statement}</p>
       <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-        {rhythm.evidence} · an observation, not a rule — some {rhythm.weekday}s will be different.
+        {rhythm.evidence} · {lang === "hi"
+          ? `एक अवलोकन, कोई नियम नहीं — कुछ ${WEEKDAY_HI[rhythm.weekday] ?? rhythm.weekday} अलग भी होंगे।`
+          : `an observation, not a rule — some ${rhythm.weekday}s will be different.`}
       </p>
       <button
         type="button"
@@ -810,7 +879,7 @@ function RhythmCard({ moods, hidden }: { moods: Mood[]; hidden: string[] }) {
         disabled={hiding}
         className="mt-3 text-[12px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline disabled:opacity-60"
       >
-        this doesn't fit — set it aside
+        {tx(lang, "this doesn't fit — set it aside")}
       </button>
     </div>
   );
@@ -819,16 +888,17 @@ function RhythmCard({ moods, hidden }: { moods: Mood[]; hidden: string[] }) {
 /* ── What is changing — only when evidence supports it ── */
 
 function WhatIsChanging({ events }: { events: InsightEvent[] }) {
-  const signals = useMemo(() => changeSignals(events), [events]);
+  const lang = useLang();
+  const signals = useMemo(() => changeSignals(events, undefined, lang), [events, lang]);
   if (signals.length === 0) return null;
   return (
     <TactileCard tint="mint" className="mt-5">
-      <p className="qs-section-label">what is changing</p>
+      <p className="qs-section-label">{tx(lang, "what is changing")}</p>
       <ul className="mt-3 space-y-3">
         {signals.map((s) => (
           <li key={s.text}>
             <p className="text-[14px] leading-relaxed text-foreground/90">{s.text}</p>
-            <p className="mt-0.5 text-[11.5px] text-muted-foreground">evidence: {s.evidence}</p>
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">{tx(lang, "evidence:")} {s.evidence}</p>
           </li>
         ))}
       </ul>
@@ -839,6 +909,7 @@ function WhatIsChanging({ events }: { events: InsightEvent[] }) {
 /* ── Supporting panels ── */
 
 function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood[]; visible: ReturnType<typeof tagStats>; journal: JournalRow[] }) {
+  const lang = useLang();
   const total = periodMoods.length;
   const emotions = visible.filter((s) => s.kind === "emotion").slice(0, 3);
   const triggers = visible.filter((s) => s.kind === "trigger").slice(0, 3);
@@ -858,15 +929,17 @@ function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood
   return (
     <div className="mt-5 grid gap-4 sm:grid-cols-2">
       <TactileCard tint="mint">
-        <p className="qs-section-label">what kept returning</p>
+        <p className="qs-section-label">{tx(lang, "what kept returning")}</p>
         {emotions.length === 0 ? (
-          <p className="mt-3 text-sm italic text-muted-foreground">no feelings named yet — the sky can wait.</p>
+          <p className="mt-3 text-sm italic text-muted-foreground">{tx(lang, "no feelings named yet — the sky can wait.")}</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {emotions.map((e) => (
               <li key={e.label}>
                 <Link to="/pattern/$tag" params={{ tag: e.label }} className="block text-[13.5px] leading-relaxed text-foreground/90 transition hover:text-foreground">
-                  <strong className="font-medium">{e.label}</strong> appeared in {e.count} of {total} moments →
+                  {lang === "hi"
+                    ? <><strong className="font-medium">{tagLabel(e.label, "hi")}</strong> का ज़िक्र {total} में से {e.count} पलों में आया →</>
+                    : <><strong className="font-medium">{e.label}</strong> appeared in {e.count} of {total} moments →</>}
                 </Link>
               </li>
             ))}
@@ -875,17 +948,19 @@ function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood
       </TactileCard>
 
       <TactileCard tint="rose">
-        <p className="qs-section-label">what tended to stir it</p>
+        <p className="qs-section-label">{tx(lang, "what tended to stir it")}</p>
         {triggers.length === 0 ? (
-          <p className="mt-3 text-sm italic text-muted-foreground">no signals yet. they surface when they're ready.</p>
+          <p className="mt-3 text-sm italic text-muted-foreground">{tx(lang, "no signals yet. they surface when they're ready.")}</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {triggers.map((t) => {
               const withTop = topEmotion ? coBetween(co, t.label, topEmotion) : 0;
               return (
                 <li key={t.label} className="text-[13.5px] leading-relaxed text-foreground/90">
-                  <strong className="font-medium">{t.label}</strong> ×{t.count}
-                  {withTop > 0 && topEmotion ? ` — in ${withTop} ${topEmotion.toLowerCase()} check-ins` : ""}
+                  <strong className="font-medium">{tagLabel(t.label, lang)}</strong> ×{t.count}
+                  {withTop > 0 && topEmotion
+                    ? (lang === "hi" ? ` — ${withTop} ${tagLabel(topEmotion, "hi")} चेक-इन में` : ` — in ${withTop} ${topEmotion.toLowerCase()} check-ins`)
+                    : ""}
                 </li>
               );
             })}
@@ -894,7 +969,7 @@ function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood
       </TactileCard>
 
       <TactileCard>
-        <p className="qs-section-label">when it tended to happen</p>
+        <p className="qs-section-label">{tx(lang, "when it tended to happen")}</p>
         <div className="mt-4 grid grid-cols-4 gap-3">
           {TOD_LABELS.map((l) => (
             <div key={l} className="flex flex-col items-center gap-1.5">
@@ -905,29 +980,31 @@ function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood
                   opacity: heavyPeak?.label === l ? 0.85 : 0.22,
                 }} aria-hidden />
               </div>
-              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{l}</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{todLabel(l, lang)}</p>
               <p className="text-[10.5px] text-foreground/60">{allTod[l]}</p>
             </div>
           ))}
         </div>
         {heavyPeak && (
           <p className="mt-3 border-t border-border/40 pt-3 text-[12.5px] leading-relaxed text-muted-foreground">
-            most of the heavier check-ins happened around {heavyPeak.label.toLowerCase()}.
+            {lang === "hi"
+              ? `ज़्यादातर भारी चेक-इन ${todLabel(heavyPeak.label, "hi")} के आस-पास हुए।`
+              : `most of the heavier check-ins happened around ${heavyPeak.label.toLowerCase()}.`}
           </p>
         )}
       </TactileCard>
 
       <TactileCard tint="amber">
-        <p className="qs-section-label">practices you returned to</p>
+        <p className="qs-section-label">{tx(lang, "practices you returned to")}</p>
         <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-foreground/90">
-          {pagesThisPeriod > 0 && <li>{pagesThisPeriod} journal {pagesThisPeriod === 1 ? "page" : "pages"} this week</li>}
-          {windDowns > 0 && <li>{windDowns} night{windDowns === 1 ? "" : "s"} set down with the wind-down</li>}
+          {pagesThisPeriod > 0 && <li>{lang === "hi" ? `इस हफ़्ते ${pagesThisPeriod} जर्नल ${pagesThisPeriod === 1 ? "पन्ना" : "पन्ने"}` : `${pagesThisPeriod} journal ${pagesThisPeriod === 1 ? "page" : "pages"} this week`}</li>}
+          {windDowns > 0 && <li>{lang === "hi" ? `रात के सुकून के साथ ${windDowns} ${windDowns === 1 ? "रात रख दी गई" : "रातें रख दी गईं"}` : `${windDowns} night${windDowns === 1 ? "" : "s"} set down with the wind-down`}</li>}
           {pagesThisPeriod === 0 && windDowns === 0 && (
-            <li className="italic text-muted-foreground">nothing yet — the tools are there when you want them.</li>
+            <li className="italic text-muted-foreground">{tx(lang, "nothing yet — the tools are there when you want them.")}</li>
           )}
         </ul>
         <p className="mt-3 border-t border-border/40 pt-3 text-[11.5px] italic leading-relaxed text-muted-foreground">
-          we only list what you actually did — never a claim that it "worked".
+          {tx(lang, `we only list what you actually did — never a claim that it "worked".`)}
         </p>
       </TactileCard>
     </div>
@@ -938,6 +1015,7 @@ function SupportingPanels({ periodMoods, visible, journal }: { periodMoods: Mood
 
 function SetAside({ tags }: { tags: string[] }) {
   const qc = useQueryClient();
+  const lang = useLang();
   const unhideFn = useServerFn(unhidePattern);
   const restore = async (tag: string) => {
     try {
@@ -947,16 +1025,16 @@ function SetAside({ tags }: { tags: string[] }) {
   };
   return (
     <TactileCard className="mt-4">
-      <p className="qs-section-label">set aside</p>
+      <p className="qs-section-label">{tx(lang, "set aside")}</p>
       <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
-        Patterns you told me didn't fit. They're hidden from your sky — bring any back whenever you like.
+        {tx(lang, "Patterns you told me didn't fit. They're hidden from your sky — bring any back whenever you like.")}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {tags.map((t) => (
           <button key={t} type="button" onClick={() => restore(t)}
             className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition hover:-translate-y-0.5"
             style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)", color: "var(--text-secondary)" }}>
-            {t} <span className="text-[11px] text-muted-foreground">restore</span>
+            {tagLabel(t, lang)} <span className="text-[11px] text-muted-foreground">{tx(lang, "restore")}</span>
           </button>
         ))}
       </div>
@@ -981,6 +1059,7 @@ const DEEPER_QUESTIONS: Record<string, string> = {
 
 function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmotion?: string }) {
   const qc = useQueryClient();
+  const lang = useLang();
   const keepFn = useServerFn(keepIntention);
   const stateFn = useServerFn(getIntentionState);
   const outcomeFn = useServerFn(recordIntentionOutcome);
@@ -1021,21 +1100,21 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
       {/* Yesterday's kept intention — the page follows up, gently */}
       {intent?.open && !answered && (
         <div className="glass mt-6 rounded-3xl p-5 fade-in">
-          <p className="qs-section-label">the intention you kept</p>
+          <p className="qs-section-label">{tx(lang, "the intention you kept")}</p>
           <p className="mt-2 font-serif text-[16.5px] italic leading-relaxed text-foreground/90">
-            “{intent.open.comment}”
+            “{tx(lang, intent.open.comment ?? "")}”
           </p>
-          <p className="mt-1.5 text-[12.5px] text-muted-foreground">how did it go?</p>
+          <p className="mt-1.5 text-[12.5px] text-muted-foreground">{tx(lang, "how did it go?")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {([["yes", "it happened"], ["a_little", "partly"], ["not_really", "it didn't — that's okay"]] as const).map(([k, label]) => (
-              <button key={k} type="button" onClick={() => answer(k)} className="qs-chip">{label}</button>
+              <button key={k} type="button" onClick={() => answer(k)} className="qs-chip">{tx(lang, label)}</button>
             ))}
           </div>
         </div>
       )}
       {answered && (
         <p className="mt-6 text-[13px] italic text-muted-foreground fade-in">
-          either way — you noticed. that counts.
+          {tx(lang, "either way — you noticed. that counts.")}
         </p>
       )}
 
@@ -1047,23 +1126,23 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
           borderColor: "color-mix(in oklab, var(--lamp) 26%, transparent)",
         }}
       >
-        <p className="qs-section-label" style={{ color: "var(--accent-secondary)" }}>one small thing</p>
-        <p className="mt-2 font-serif text-[19px] font-normal leading-[1.3]">{step.title}?</p>
-        <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-secondary-foreground">{step.body}</p>
+        <p className="qs-section-label" style={{ color: "var(--accent-secondary)" }}>{tx(lang, "one small thing")}</p>
+        <p className="mt-2 font-serif text-[19px] font-normal leading-[1.3]">{tx(lang, step.title)}?</p>
+        <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-secondary-foreground">{tx(lang, step.body)}</p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {step.to ? (
             <Link to={step.to} className="qs-pill-cta" style={{ padding: "0.6rem 1.15rem", fontSize: "13.5px" }}>
-              {step.cta}
+              {tx(lang, step.cta)}
             </Link>
           ) : (
             <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="qs-pill-cta" style={{ padding: "0.6rem 1.15rem", fontSize: "13.5px" }}>
-              {step.cta}
+              {tx(lang, step.cta)}
             </button>
           )}
           {intent?.today ? (
             <span className="text-[13px]" style={{ color: "var(--dawn)" }}>
-              ✦ kept as tonight's intention — it'll wait for you here tomorrow.
+              ✦ {tx(lang, "kept as tonight's intention — it'll wait for you here tomorrow.")}
             </span>
           ) : (
             <button
@@ -1073,16 +1152,16 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
               className="rounded-full border px-4 py-2.5 text-[13px] transition hover:-translate-y-0.5 disabled:opacity-60"
               style={{ borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
             >
-              {keeping ? "keeping…" : "keep as tonight's intention"}
+              {keeping ? tx(lang, "keeping…") : tx(lang, "keep as tonight's intention")}
             </button>
           )}
         </div>
       </div>
 
       <TactileCard tint="lavender" className="mt-4">
-        <p className="qs-section-label">one deeper question</p>
-        <p className="mt-4 font-serif text-lg italic leading-relaxed text-foreground/90">{question}</p>
-        <p className="mt-3 text-[12px] text-muted-foreground">no need to answer today. let it orbit for a while.</p>
+        <p className="qs-section-label">{tx(lang, "one deeper question")}</p>
+        <p className="mt-4 font-serif text-lg italic leading-relaxed text-foreground/90">{tx(lang, question)}</p>
+        <p className="mt-3 text-[12px] text-muted-foreground">{tx(lang, "no need to answer today. let it orbit for a while.")}</p>
       </TactileCard>
 
       <div className="mt-10 flex flex-col items-center">
@@ -1092,20 +1171,20 @@ function ClosingRow({ periodMoods, topEmotion }: { periodMoods: Mood[]; topEmoti
           style={{ borderColor: "color-mix(in oklab, var(--dawn) 35%, transparent)", background: "color-mix(in oklab, var(--dawn) 8%, transparent)", color: "var(--dawn)" }}
         >
           <Sparkles className="h-4 w-4" strokeWidth={1.7} />
-          Open your letter from the moon cycle
+          {tx(lang, "Open your letter from the moon cycle")}
         </Link>
-        <p className="mt-3 text-center text-[12px] text-muted-foreground">your letter from the week waits on Home.</p>
+        <p className="mt-3 text-center text-[12px] text-muted-foreground">{tx(lang, "your letter from the week waits on Home.")}</p>
       </div>
 
       {/* Transparency footer — the design's closing promise, with real doors */}
       <p className="mt-10 text-center text-[11.5px] leading-relaxed text-muted-foreground">
-        Everything here is read only from what you've shared — nothing else.{" "}
-        <Link to="/privacy" className="underline underline-offset-2 transition hover:text-foreground">how this works</Link>
+        {tx(lang, "Everything here is read only from what you've shared — nothing else.")}{" "}
+        <Link to="/privacy" className="underline underline-offset-2 transition hover:text-foreground">{tx(lang, "how this works")}</Link>
         {" · "}
-        <Link to="/settings" className="underline underline-offset-2 transition hover:text-foreground">manage what may be read</Link>
+        <Link to="/settings" className="underline underline-offset-2 transition hover:text-foreground">{tx(lang, "manage what may be read")}</Link>
       </p>
       <p className="mt-4 text-center font-serif text-[13px] italic text-muted-foreground">
-        a quiet week and a loud week both count.
+        {tx(lang, "a quiet week and a loud week both count.")}
       </p>
     </>
   );

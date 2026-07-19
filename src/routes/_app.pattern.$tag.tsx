@@ -5,6 +5,9 @@ import { useMemo, useState } from "react";
 import { listMoods, hidePattern } from "@/lib/data.functions";
 import { ArrowLeft, ArrowRight, MoonStar, Hand, Wind, Feather, MessageCircle, Check, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { useLang, tagLabel, type Lang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
+import { todLabel, type TodLabel } from "@/lib/pattern-map";
 
 /**
  * Insight detail — the reference boards' "Overthinking / evenings" screen,
@@ -44,8 +47,16 @@ function titleCase(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function daysAgo(iso: string) {
+function daysAgo(iso: string, lang: Lang = "en") {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (lang === "hi") {
+    if (d <= 0) return "आज";
+    if (d === 1) return "कल";
+    if (d < 7) return `${d} दिन पहले`;
+    if (d < 14) return "पिछले हफ़्ते";
+    if (d < 60) return `${Math.round(d / 7)} हफ़्ते पहले`;
+    return `${Math.round(d / 30)} महीने पहले`;
+  }
   if (d <= 0) return "today";
   if (d === 1) return "yesterday";
   if (d < 7) return `${d} days ago`;
@@ -58,6 +69,7 @@ function PatternDetail() {
   const { tag } = Route.useParams();
   const decoded = decodeURIComponent(tag);
   const navigate = useNavigate();
+  const lang = useLang();
   const qc = useQueryClient();
   const moodsFn = useServerFn(listMoods);
   const hideFn = useServerFn(hidePattern);
@@ -82,14 +94,14 @@ function PatternDetail() {
 
     const times: Record<string, number> = { Night: 0, Morning: 0, Midday: 0, Evening: 0 };
     const co = new Map<string, number>();
-    const excerpts: { note: string; when: string }[] = [];
+    const excerpts: { note: string; iso: string }[] = [];
     for (const m of matches) {
       times[timeBucket(new Date(m.created_at).getHours())] += 1;
       for (const t of [...(m.emotion_tags ?? []), ...(m.trigger_tags ?? [])]) {
         if (t.toLowerCase() !== key) co.set(t, (co.get(t) ?? 0) + 1);
       }
       const note = (m.note ?? "").trim();
-      if (note && excerpts.length < 3) excerpts.push({ note, when: daysAgo(m.created_at) });
+      if (note && excerpts.length < 3) excerpts.push({ note, iso: m.created_at });
     }
 
     const peakTime = (Object.entries(times).sort((a, b) => b[1] - a[1])[0] ?? ["", 0]) as [string, number];
@@ -103,10 +115,10 @@ function PatternDetail() {
   // The old High/Medium/Low badge, spoken instead of stamped.
   const levelLine =
     ev.count >= 4
-      ? "a steady visitor in your check-ins."
+      ? (lang === "hi" ? "आपके चेक-इन में बार-बार आने वाला मेहमान।" : "a steady visitor in your check-ins.")
       : ev.count >= 2
-        ? "beginning to repeat — worth keeping an eye on."
-        : "noted, but rarely — too soon to call it a pattern.";
+        ? (lang === "hi" ? "दोहराव शुरू हो रहा है — थोड़ा ध्यान देने लायक।" : "beginning to repeat — worth keeping an eye on.")
+        : (lang === "hi" ? "इसका ज़िक्र तो हुआ, पर कभी-कभार — इसे पैटर्न कहना अभी जल्दबाज़ी होगी।" : "noted, but rarely — too soon to call it a pattern.");
   const timeMax = Math.max(1, ...Object.values(ev.times));
 
   // Ink mixes for writing on the paper sheet. Faint ink stays AA-readable.
@@ -127,8 +139,14 @@ function PatternDetail() {
   const ActionIcon = action.icon;
 
   const askInnerMate = () => {
-    const co = ev.topCo[0] ? `, often alongside ${ev.topCo[0].label.toLowerCase()}` : "";
-    try { sessionStorage.setItem("innermate.reflect", `I noticed a pattern in my check-ins: ${ev.label.toLowerCase()} keeps coming up${co}. Can we look at it together?`); } catch { /* noop */ }
+    if (lang === "hi") {
+      const co = ev.topCo[0] ? `, अक्सर ${tagLabel(ev.topCo[0].label, "hi")} के साथ` : "";
+      const msg = `मैंने अपने चेक-इन में एक पैटर्न देखा: ${tagLabel(ev.label, "hi")} का ज़िक्र बार-बार आता है${co}। क्या हम इसे साथ मिलकर देख सकते हैं?`;
+      try { sessionStorage.setItem("innermate.reflect", msg); } catch { /* noop */ }
+    } else {
+      const co = ev.topCo[0] ? `, often alongside ${ev.topCo[0].label.toLowerCase()}` : "";
+      try { sessionStorage.setItem("innermate.reflect", `I noticed a pattern in my check-ins: ${ev.label.toLowerCase()} keeps coming up${co}. Can we look at it together?`); } catch { /* noop */ }
+    }
     navigate({ to: "/companion" });
   };
 
@@ -138,7 +156,7 @@ function PatternDetail() {
     try {
       await hideFn({ data: { tag: ev.label, reasons: [] } });
       qc.invalidateQueries({ queryKey: ["hiddenPatterns"] });
-      toast.success("Set aside. You can bring it back anytime from Insights.");
+      toast.success(tx(lang, "Set aside. You can bring it back anytime from Insights."));
       navigate({ to: "/insights" });
     } catch (e) {
       toast.error((e as Error).message);
@@ -149,19 +167,18 @@ function PatternDetail() {
   return (
     <div className="mx-auto max-w-2xl px-5 py-8 sm:px-8 sm:py-12">
       <Link to="/insights" className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" strokeWidth={1.7} /> back to your sky
+        <ArrowLeft className="h-4 w-4" strokeWidth={1.7} /> {tx(lang, "back to your sky")}
       </Link>
 
       {isLoading ? (
         <p className="mt-10 text-muted-foreground">…</p>
       ) : ev.count === 0 ? (
         <div className="mt-10">
-          <h1 className="font-serif text-[1.8rem] font-light leading-snug">{titleCase(decoded)}</h1>
+          <h1 className="font-serif text-[1.8rem] font-light leading-snug">{tagLabel(titleCase(decoded), lang)}</h1>
           <p className="mt-3 text-[14.5px] leading-relaxed text-muted-foreground">
-            This one hasn't appeared in your check-ins yet — so there's nothing to read into. When it does,
-            its pattern will gather here.
+            {tx(lang, "This one hasn't appeared in your check-ins yet — so there's nothing to read into. When it does, its pattern will gather here.")}
           </p>
-          <Link to="/insights" className="qs-pill-cta mt-7">Back to check in</Link>
+          <Link to="/insights" className="qs-pill-cta mt-7">{tx(lang, "Back to check in")}</Link>
         </div>
       ) : (
         <>
@@ -172,18 +189,28 @@ function PatternDetail() {
             className="mt-6 rounded-[4px] p-6 sm:p-8"
             style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)" }}
           >
-            <p className="font-serif text-[13px] italic" style={{ color: inkFaint }}>field notes</p>
-            <h1 className="mt-1.5 font-serif text-[2rem] font-light leading-tight tracking-tight">{ev.label}</h1>
+            <p className="font-serif text-[13px] italic" style={{ color: inkFaint }}>{tx(lang, "field notes")}</p>
+            <h1 className="mt-1.5 font-serif text-[2rem] font-light leading-tight tracking-tight">{tagLabel(ev.label, lang)}</h1>
             <p className="mt-2 text-[13.5px]" style={{ color: inkSoft }}>
-              appeared {ev.count} {ev.count === 1 ? "time" : "times"}
-              {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}
-              {ev.count > 0 ? ` · first noticed ${daysAgo(new Date(ev.firstSeen).toISOString())}` : ""}
+              {lang === "hi" ? (
+                <>
+                  {ev.count} बार
+                  {ev.spanDays > 0 ? ` · ${ev.spanDays} ${ev.spanDays === 1 ? "दिन" : "दिनों"} में` : ""}
+                  {ev.count > 0 ? ` · पहली बार ${daysAgo(new Date(ev.firstSeen).toISOString(), "hi")}` : ""}
+                </>
+              ) : (
+                <>
+                  appeared {ev.count} {ev.count === 1 ? "time" : "times"}
+                  {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}
+                  {ev.count > 0 ? ` · first noticed ${daysAgo(new Date(ev.firstSeen).toISOString())}` : ""}
+                </>
+              )}
             </p>
             <p className="mt-1 font-serif text-[14.5px] italic" style={{ color: inkSoft }}>{levelLine}</p>
 
             {/* When it tends to appear — real time-of-day distribution, printed in ink */}
             <div className="mt-6 border-t pt-5" style={{ borderColor: inkHair }}>
-              <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>when it tends to appear</p>
+              <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>{tx(lang, "when it tends to appear")}</p>
               <div className="mt-4 grid grid-cols-4 gap-3">
                 {TIME_LABELS.map((t) => {
                   const c = ev.times[t];
@@ -194,7 +221,7 @@ function PatternDetail() {
                       <div className="flex h-14 items-end">
                         <div className="w-7 rounded-t-[3px]" style={{ height: `${h}px`, background: "var(--ink)", opacity: peak ? 0.85 : 0.22, transition: "height 400ms ease" }} aria-hidden />
                       </div>
-                      <p className="text-[10.5px] uppercase tracking-[0.12em]" style={{ color: peak ? inkSoft : inkFaint, fontWeight: peak ? 600 : 400 }}>{t}</p>
+                      <p className="text-[10.5px] uppercase tracking-[0.12em]" style={{ color: peak ? inkSoft : inkFaint, fontWeight: peak ? 600 : 400 }}>{todLabel(t, lang)}</p>
                       <p className="text-[10.5px]" style={{ color: inkFaint }}>{c}</p>
                     </div>
                   );
@@ -205,51 +232,66 @@ function PatternDetail() {
             {/* What it arrives alongside — real co-occurrence, written as a sentence */}
             {ev.topCo.length > 0 && (
               <div className="mt-5 border-t pt-5" style={{ borderColor: inkHair }}>
-                <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>what it arrives alongside</p>
+                <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>{tx(lang, "what it arrives alongside")}</p>
                 <p className="mt-2.5 text-[14px] leading-relaxed" style={{ color: inkSoft }}>
                   {ev.topCo.map((c, i) => (
                     <span key={c.label}>
-                      {i === 0 ? "most often " : i === ev.topCo.length - 1 ? " and " : ", "}
+                      {i === 0
+                        ? (lang === "hi" ? "सबसे अक्सर " : "most often ")
+                        : i === ev.topCo.length - 1
+                          ? (lang === "hi" ? " और " : " and ")
+                          : ", "}
                       <Link
                         to="/pattern/$tag"
                         params={{ tag: c.label }}
                         className="underline decoration-[1px] underline-offset-4 transition hover:opacity-70"
                         style={{ color: "var(--ink)", textDecorationColor: "color-mix(in oklab, var(--ink) 40%, transparent)" }}
                       >
-                        {c.label.toLowerCase()}
+                        {lang === "hi" ? tagLabel(c.label, "hi") : c.label.toLowerCase()}
                       </Link>
                       {` (×${c.count})`}
                     </span>
                   ))}
-                  .
+                  {lang === "hi" ? "।" : "."}
                 </p>
               </div>
             )}
 
             {/* What this means / Why it matters — cautious, evidence-anchored */}
             <div className="mt-5 border-t pt-5" style={{ borderColor: inkHair }}>
-              <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>what this might mean</p>
+              <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>{tx(lang, "what this might mean")}</p>
               <p className="mt-2.5 text-[14px] leading-relaxed" style={{ color: inkSoft }}>
-                Across your check-ins, {ev.label.toLowerCase()} showed up most often in the{" "}
-                <strong className="font-medium" style={{ color: "var(--ink)" }}>{ev.peakTime[0].toLowerCase()}</strong>
-                {ev.topCo[0] ? <>, and <strong className="font-medium" style={{ color: "var(--ink)" }}>{ev.topCo[0].label.toLowerCase()}</strong> was named alongside it {ev.topCo[0].count} {ev.topCo[0].count === 1 ? "time" : "times"}</> : null}.
-                That's a rhythm worth noticing — not a verdict, and not the whole of you.
+                {lang === "hi" ? (
+                  <>
+                    आपके चेक-इन में, {tagLabel(ev.label, "hi")} का ज़िक्र सबसे अक्सर{" "}
+                    <strong className="font-medium" style={{ color: "var(--ink)" }}>{todLabel(ev.peakTime[0] as TodLabel, "hi")}</strong>{" "}
+                    के समय आया
+                    {ev.topCo[0] ? <>, और इसके साथ <strong className="font-medium" style={{ color: "var(--ink)" }}>{tagLabel(ev.topCo[0].label, "hi")}</strong> का नाम {ev.topCo[0].count} बार लिया गया</> : null}।{" "}
+                    यह एक लय है जिसे देखना सही है — कोई फ़ैसला नहीं, और न आपकी पूरी कहानी।
+                  </>
+                ) : (
+                  <>
+                    Across your check-ins, {ev.label.toLowerCase()} showed up most often in the{" "}
+                    <strong className="font-medium" style={{ color: "var(--ink)" }}>{ev.peakTime[0].toLowerCase()}</strong>
+                    {ev.topCo[0] ? <>, and <strong className="font-medium" style={{ color: "var(--ink)" }}>{ev.topCo[0].label.toLowerCase()}</strong> was named alongside it {ev.topCo[0].count} {ev.topCo[0].count === 1 ? "time" : "times"}</> : null}.
+                    That's a rhythm worth noticing — not a verdict, and not the whole of you.
+                  </>
+                )}
               </p>
               <p className="mt-3 text-[14px] leading-relaxed" style={{ color: inkSoft }}>
-                Naming when a feeling tends to arrive, and what tends to arrive with it, is how it stops
-                running quietly in the background. You're not trying to fix it. You're just letting it be seen.
+                {tx(lang, "Naming when a feeling tends to arrive, and what tends to arrive with it, is how it stops running quietly in the background. You're not trying to fix it. You're just letting it be seen.")}
               </p>
             </div>
 
             {/* The user's own words — real excerpts, quoted in the margin */}
             {ev.excerpts.length > 0 && (
               <div className="mt-5 border-t pt-5" style={{ borderColor: inkHair }}>
-                <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>in your own words</p>
+                <p className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: inkFaint }}>{tx(lang, "in your own words")}</p>
                 <div className="mt-3 space-y-3">
                   {ev.excerpts.map((e, i) => (
                     <div key={i} className="border-l-2 pl-3.5" style={{ borderColor: "color-mix(in oklab, var(--ink) 28%, transparent)" }}>
                       <p className="font-serif text-[14.5px] italic leading-relaxed" style={{ color: inkSoft }}>“{e.note}”</p>
-                      <p className="mt-1 text-[11px]" style={{ color: inkFaint }}>{e.when}</p>
+                      <p className="mt-1 text-[11px]" style={{ color: inkFaint }}>{daysAgo(e.iso, lang)}</p>
                     </div>
                   ))}
                 </div>
@@ -257,21 +299,30 @@ function PatternDetail() {
             )}
 
             <p className="mt-6 border-t pt-4 text-[11.5px] italic leading-relaxed" style={{ borderColor: inkHair, color: inkFaint }}>
-              based only on your own check-ins — {ev.count} {ev.count === 1 ? "moment" : "moments"}
-              {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}. not a diagnosis.
+              {lang === "hi" ? (
+                <>
+                  सिर्फ़ आपके अपने चेक-इन के आधार पर — {ev.count} पल
+                  {ev.spanDays > 0 ? `, ${ev.spanDays} ${ev.spanDays === 1 ? "दिन" : "दिनों"} में` : ""}। कोई निदान नहीं।
+                </>
+              ) : (
+                <>
+                  based only on your own check-ins — {ev.count} {ev.count === 1 ? "moment" : "moments"}
+                  {ev.spanDays > 0 ? ` across ${ev.spanDays} ${ev.spanDays === 1 ? "day" : "days"}` : ""}. not a diagnosis.
+                </>
+              )}
             </p>
           </div>
 
           {/* What you can do — one real practice, a door on the wall beneath the note */}
           <Link to={action.to} className="glass mt-5 block rounded-3xl p-5 transition hover:-translate-y-0.5">
-            <p className="qs-section-label">one thing you could try</p>
+            <p className="qs-section-label">{tx(lang, "one thing you could try")}</p>
             <div className="mt-3 flex items-center gap-4">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background/60">
                 <ActionIcon className="h-5 w-5" strokeWidth={1.6} style={{ color: "var(--accent-primary)" }} />
               </span>
               <div className="min-w-0">
-                <p className="font-serif text-[17px] leading-snug">{action.title}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{action.line}</p>
+                <p className="font-serif text-[17px] leading-snug">{tx(lang, action.title)}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{tx(lang, action.line)}</p>
               </div>
               <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
             </div>
@@ -279,9 +330,9 @@ function PatternDetail() {
 
           {/* Does this fit you? — you decide, InnerMate doesn't. */}
           <div className="mt-8 rounded-3xl border p-5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
-            <p className="qs-section-label">does this fit you?</p>
+            <p className="qs-section-label">{tx(lang, "does this fit you?")}</p>
             <p className="mt-2 text-[13.5px] leading-relaxed text-secondary-foreground">
-              This is only what your check-ins show — you know your life better than any pattern does.
+              {tx(lang, "This is only what your check-ins show — you know your life better than any pattern does.")}
             </p>
             <div className="mt-4 flex flex-wrap gap-2.5">
               <button
@@ -293,7 +344,7 @@ function PatternDetail() {
                   ? { background: "color-mix(in oklab, var(--state-success) 18%, transparent)", borderColor: "color-mix(in oklab, var(--state-success) 40%, transparent)", color: "var(--text-primary)" }
                   : { background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
               >
-                <Check className="h-3.5 w-3.5" strokeWidth={2} /> {confirmed ? "noted" : "this fits"}
+                <Check className="h-3.5 w-3.5" strokeWidth={2} /> {confirmed ? tx(lang, "noted") : tx(lang, "this fits")}
               </button>
               <button
                 type="button"
@@ -301,7 +352,7 @@ function PatternDetail() {
                 className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition"
                 style={{ background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
               >
-                <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} /> ask InnerMate about this
+                <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} /> {tx(lang, "ask InnerMate about this")}
               </button>
               <button
                 type="button"
@@ -310,7 +361,7 @@ function PatternDetail() {
                 className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] transition disabled:opacity-60"
                 style={{ background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
               >
-                <EyeOff className="h-3.5 w-3.5" strokeWidth={1.8} /> this doesn't fit — set it aside
+                <EyeOff className="h-3.5 w-3.5" strokeWidth={1.8} /> {tx(lang, "this doesn't fit — set it aside")}
               </button>
             </div>
           </div>

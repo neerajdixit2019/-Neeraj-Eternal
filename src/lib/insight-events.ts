@@ -357,7 +357,7 @@ export function skyReading(
   const named = [...today.emotions, ...today.triggers].slice(0, 3);
   const parts: string[] = [];
   if (hi) {
-    const namedHi = named.length ? named.map(labelFn).join(", ") : `एक ${w <= 4 ? "भारी" : w <= 7 ? "ठहरा" : "हल्का"} पल`;
+    const namedHi = named.length ? named.map(labelFn).join(", ") : `एक ${w <= 4 ? "भारी" : w <= 7 ? "थमा हुआ" : "हल्का"} पल`;
     parts.push(`आज आपने ${namedHi} नाम दिया।`);
     if (delta != null && trend !== "steady") {
       parts.push(trend === "lighter" ? "यह आपके हफ़्ते से हल्का है।" : "यह आपके हफ़्ते से भारी बैठता है।");
@@ -415,7 +415,7 @@ export function changeSignals(events: InsightEvent[], now = Date.now(), lang: La
   if (thisWeek >= lastWeek + 2 && thisWeek >= 3) {
     out.push(hi
       ? {
-          text: "इस हफ़्ते आपकी हाज़िरी पहले से ज़्यादा रही है।",
+          text: "इस हफ़्ते आपने पहले से ज़्यादा बार अपने लिए वक़्त निकाला है।",
           evidence: `इस हफ़्ते ${thisWeek} सक्रिय दिन, पिछले हफ़्ते ${lastWeek}`,
         }
       : {
