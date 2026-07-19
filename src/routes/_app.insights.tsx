@@ -142,7 +142,7 @@ function Insights() {
       <div className="flex items-baseline justify-between gap-4">
         <p className="qs-section-label">{tx(lang, "insights")}</p>
         <p className="text-[12.5px] text-muted-foreground">
-          {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+          {new Date().toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { weekday: "long", day: "numeric", month: "long" })}
         </p>
       </div>
 
@@ -224,9 +224,10 @@ function Insights() {
               <p className="mt-1 text-[12.5px] text-muted-foreground">
                 {[...(todayMood.emotion_tags ?? []), ...(todayMood.trigger_tags ?? [])].slice(0, 4).map((t) => tagLabel(t, lang)).join(" · ") || tx(lang, "no tags")}
                 {" · "}
-                {lang === "hi"
-                  ? `${new Date(todayMood.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} पर सहेजा गया`
-                  : `saved at ${new Date(todayMood.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+                {(() => {
+                  const at = new Date(todayMood.created_at).toLocaleTimeString(lang === "hi" ? "hi-IN" : undefined, { hour: "numeric", minute: "2-digit" });
+                  return lang === "hi" ? `${at} पर सहेजा गया` : `saved at ${at}`;
+                })()}
               </p>
             </div>
             <div className="flex gap-2">
@@ -441,7 +442,7 @@ function ConstellationView({
           <div className="mt-5 w-full max-w-sm space-y-2 text-left">
             {periodMoods.slice(0, 3).map((mm) => (
               <div key={mm.created_at} className="rounded-2xl border px-4 py-3" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
-                <p className="text-[12px] text-muted-foreground">{new Date(mm.created_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</p>
+                <p className="text-[12px] text-muted-foreground">{new Date(mm.created_at).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { weekday: "short", month: "short", day: "numeric" })}</p>
                 <p className="mt-0.5 text-[13.5px] text-foreground/90">
                   {mm.mood_score != null
                     ? (lang === "hi" ? `${WEIGHT_WORD(mm.mood_score, lang)} लग रहा है` : `feels ${WEIGHT_WORD(mm.mood_score, lang)}`)
@@ -607,7 +608,7 @@ function NodePanel({
           {moments.map((mm) => (
             <div key={mm.created_at} className="rounded-2xl border px-4 py-2.5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 40%, transparent)" }}>
               <p className="text-[11.5px] text-muted-foreground">
-                {new Date(mm.created_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}{lang === "hi" ? ` · ${WEIGHT_WORD(mm.mood_score ?? 5, lang)} लग रहा है` : ` · feels ${WEIGHT_WORD(mm.mood_score ?? 5, lang)}`}
+                {new Date(mm.created_at).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { weekday: "short", month: "short", day: "numeric" })}{lang === "hi" ? ` · ${WEIGHT_WORD(mm.mood_score ?? 5, lang)} लग रहा है` : ` · feels ${WEIGHT_WORD(mm.mood_score ?? 5, lang)}`}
               </p>
               {mm.note && <p className="mt-1 font-serif text-[13px] italic leading-relaxed text-foreground/85 line-clamp-2">“{mm.note}”</p>}
             </div>
@@ -792,7 +793,7 @@ function TimelineView({
             {points.map((p) => {
               const domEmotion = p.emotions[0];
               const tint = domEmotion ? tagTint(domEmotion) : "var(--mint)";
-              const when = new Date(p.iso).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+              const when = new Date(p.iso).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { weekday: "short", month: "short", day: "numeric" });
               const toggle = () => setOpenIso(openIso === p.iso ? null : p.iso);
               return (
                 <g key={p.iso}>
@@ -815,9 +816,9 @@ function TimelineView({
           </svg>
         )}
         <div className="mt-1 flex items-center justify-between text-[10.5px] text-muted-foreground">
-          <span>{points.length ? new Date(points[0].iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
+          <span>{points.length ? new Date(points[0].iso).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "short", day: "numeric" }) : ""}</span>
           <span>{tx(lang, "gaps are simply days you didn't check in — they don't count against you")}</span>
-          <span>{points.length ? new Date(points[points.length - 1].iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}</span>
+          <span>{points.length ? new Date(points[points.length - 1].iso).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "short", day: "numeric" }) : ""}</span>
         </div>
       </div>
       </div>
@@ -826,7 +827,7 @@ function TimelineView({
         <div className="glass mt-3 rounded-3xl p-5 fade-in" role="region" aria-label={tx(lang, "Check-in details")}>
           <div className="flex items-start justify-between">
             <p className="text-[12px] text-muted-foreground">
-              {new Date(open.iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+              {new Date(open.iso).toLocaleString(lang === "hi" ? "hi-IN" : undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
             </p>
             <button type="button" onClick={() => setOpenIso(null)} aria-label={tx(lang, "Close")} className="text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />

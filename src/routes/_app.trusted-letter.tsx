@@ -303,7 +303,7 @@ function TrustedLetter() {
                   <input type="checkbox" className="mt-1" checked={on} onChange={() => toggleEntry(j.id)} />
                   <span className="min-w-0 text-[13.5px]">
                     <span className="block text-[11px] text-muted-foreground">
-                      {new Date(j.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      {new Date(j.created_at).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "short", day: "numeric" })}
                       {j.title?.trim() ? ` · ${j.title.trim()}` : ""}
                     </span>
                     <span className="mt-0.5 block truncate font-serif italic text-foreground/80">{firstLine}</span>

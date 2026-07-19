@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Feather, Shuffle, Mic } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useDictation, DICTATION_LANGUAGES } from "@/hooks/use-dictation";
-import { useLang, useT } from "@/lib/i18n";
+import { useLang, useT, type Lang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
 import { track } from "@/lib/analytics";
 
@@ -108,8 +108,8 @@ function detectMode(title: string | null | undefined): JournalMode | null {
   return MODES.find(m => m.key !== "free" && t.startsWith(m.label.toLowerCase())) ?? null;
 }
 
-function monthKey(d: Date) {
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+function monthKey(d: Date, lang: Lang = "en") {
+  return d.toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "long", year: "numeric" });
 }
 
 function Journal() {
@@ -253,7 +253,7 @@ function Journal() {
   const grouped = useMemo(() => {
     const map = new Map<string, typeof entries>();
     for (const e of entries ?? []) {
-      const key = monthKey(new Date(e.created_at));
+      const key = monthKey(new Date(e.created_at), lang);
       const arr = map.get(key) ?? [];
       arr.push(e);
       map.set(key, arr);
@@ -296,7 +296,7 @@ function Journal() {
         }}
       >
         <p className="font-serif italic text-sm" style={{ color: "color-mix(in oklab, var(--ink) 70%, var(--paper))" }}>
-          {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+          {new Date().toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { weekday: "long", month: "long", day: "numeric" })}
         </p>
         {editing.mode.key !== "free" && (
           <p className="mt-1 font-serif italic text-[13px]" style={{ color: "color-mix(in oklab, var(--ink) 66%, var(--paper))" }}>{tx(lang, editing.mode.whisper)}</p>
@@ -435,7 +435,7 @@ function Journal() {
           style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 16px 48px rgba(10, 8, 4, 0.5)" }}
         >
           <p className="font-serif italic text-sm" style={{ color: "color-mix(in oklab, var(--ink) 70%, var(--paper))" }}>
-            {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+            {new Date().toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { weekday: "long", month: "long", day: "numeric" })}
           </p>
           <p className="font-reading mt-2 text-[17px]" style={{ color: "color-mix(in oklab, var(--ink) 72%, var(--paper))" }}>
             {tx(lang, "tonight's page is waiting…")}
@@ -483,7 +483,7 @@ function Journal() {
                           style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
                         >
                           <span className="w-12 shrink-0 pt-0.5 text-right text-[11px] tabular-nums text-muted-foreground">
-                            {new Date(e.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                            {new Date(e.created_at).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "short", day: "numeric" })}
                           </span>
                           <button
                             className="min-w-0 flex-1 text-left"
