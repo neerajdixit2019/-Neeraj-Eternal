@@ -278,6 +278,31 @@ function negatedSafe(n: string): boolean {
   return beforeTokens.some((t) => NEGATION_WORDS.includes(t));
 }
 
+/**
+ * Devanagari mirror of NEGATION_WORDS/negatedSafe(). normalize() folds the
+ * anusvara/chandrabindu, so "नहीं" collapses to "नही" before this ever runs —
+ * spelled here in its POST-FOLD form so the comparison actually fires.
+ */
+const NEGATION_WORDS_HI = ["नही", "ना", "न"];
+
+/** Negation word shortly before a matched Devanagari safe phrase — same
+ *  word-boundary discipline as negatedSafe(), for the "सुरक्षित हूँ" family. */
+function negatedSafeHi(n: string, phrase: string): boolean {
+  const idx = n.indexOf(phrase);
+  if (idx === -1) return false;
+  const beforeTokens = n.slice(Math.max(0, idx - 24), idx).split(" ").filter(Boolean);
+  return beforeTokens.some((t) => NEGATION_WORDS_HI.includes(t));
+}
+
+const HI_QUESTION_MARKER = normalize("क्या");
+
+/** A yes/no question is not a confirmation ("क्या मैं सुरक्षित हूँ?" — Am I
+ *  safe? — must never read as "I am safe"). Checked against the RAW message
+ *  because normalize() turns "?" into a space before this ever sees it. */
+function isInterrogative(raw: string, n: string): boolean {
+  return raw.includes("?") || n.includes(HI_QUESTION_MARKER);
+}
+
 /** Level 1 — high distress, identity-level pain, no self-harm language. */
 const L1_SIGNALS = [
   "life is ruined", "my life is ruined", "ruined my life", "failed everything",
@@ -309,7 +334,10 @@ const L1_SIGNALS = [
  */
 // "yes"/"ok" are ambiguous answers to "are you in danger, or can you stay
 // safe?" — they fall through to watchful carry-over instead.
-const SAFE_EXACT = ["safe", "yes safe", "im safe", "i am safe"];
+const SAFE_EXACT = ["safe", "yes safe", "im safe", "i am safe",
+  // Devanagari one-word "safe" (the Hindi safety-check offers "सुरक्षित या
+  // असुरक्षित" as the reply; the unsafe list below is tested first and wins).
+  "सुरक्षित", "हां सुरक्षित"].map(normalize);
 const SAFE_PHRASES = [
   "i can stay safe", "im safe", "i am safe", "i wont do anything",
   "i will not do anything", "no i wont hurt myself", "i can stay safe for now",
@@ -334,6 +362,7 @@ const UNSAFE_ANSWERS = [
   "सुरक्षित नहीं", "नहीं बचा सकता", "वादा नहीं कर सकता", "भरोसा नहीं", "पक्का नहीं",
   "नहीं पता", "यकीन नहीं", "नहीं संभाल", "नहीं रोक", "सुरक्षित महसूस नहीं",
   "खुद पर भरोसा नहीं", "खुद को नहीं रोक", "वादा नहीं कर सकती", "पता नहीं", "ठीक नहीं हूं",
+  "असुरक्षित", "सुरक्षित नहीं हूं", "नहीं रह सकता", "नहीं रह सकती",
 ].map(normalize);
 /** Grounding requests that must keep the safety flow open, not exit it. */
 const GROUNDING_REQUESTS = [
@@ -616,10 +645,19 @@ export function classifyInnerMateMessage(
       return level3("answered a safety check with an unsafe signal", "not_safe");
     }
     // Clear safe answers: exact words or unambiguous short phrases only.
-    if (
+    // SAFE_PHRASES is matched by substring, so a question ("क्या मैं सुरक्षित
+    // हूँ?" — Am I safe?) or a leading negation ("नहीं, मैं सुरक्षित हूं") must
+    // be vetoed the same way negatedSafe() already vetoes English — otherwise
+    // "…सुरक्षित हूँ" anywhere in the message reads as a confirmation.
+    // SAFE_EXACT is untouched: exact whole-message match can't be a question.
+    const safePhrase = n.length <= 80 ? hasAny(n, SAFE_PHRASES) : null;
+    const isConfirmedSafe =
       n.length <= 80 &&
-      (SAFE_EXACT.includes(n) || hasAny(n, SAFE_PHRASES))
-    ) {
+      (SAFE_EXACT.includes(n) ||
+        (safePhrase !== null &&
+          !isInterrogative(message, n) &&
+          !negatedSafeHi(n, safePhrase)));
+    if (isConfirmedSafe) {
       return {
         riskLevel: 2,
         primaryEmotion: "settling",

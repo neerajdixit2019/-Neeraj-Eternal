@@ -118,7 +118,7 @@ async function logSafetyEventSafely(row: {
   return false;
 }
 
-type ReqBody = { conversationId: string | null; message: string; tone?: "gentle" | "poetic" | "practical" };
+type ReqBody = { conversationId: string | null; message: string; tone?: "gentle" | "poetic" | "practical"; lang?: "en" | "hi" };
 
 export const Route = createFileRoute("/api/companion")({
   // Some @tanstack/react-start versions don't type the `server` route
@@ -152,6 +152,10 @@ export const Route = createFileRoute("/api/companion")({
         if (!body?.message || typeof body.message !== "string") {
           return new Response("Bad Request", { status: 400 });
         }
+        // The reader's chosen UI language. Display-only for classification
+        // (the classifier reads the raw message regardless), but it steers the
+        // model's reply language and picks the deterministic template language.
+        const lang: "en" | "hi" = body.lang === "hi" ? "hi" : "en";
 
         // Ensure conversation
         let conversationId = body.conversationId;
@@ -206,7 +210,7 @@ export const Route = createFileRoute("/api/companion")({
         if (isCrisis) {
           // Level 3 — active danger. The reply is deterministic (never
           // model-generated) and built ONLY from verified crisis resources.
-          const crisisReply = buildActiveDangerReply();
+          const crisisReply = buildActiveDangerReply(undefined, lang);
           // Stable key for this crisis turn: same user + conversation + message
           // content always produces the same key, so any retry (network blip,
           // client resend, internal backoff) collapses into one row.
@@ -286,7 +290,7 @@ export const Route = createFileRoute("/api/companion")({
             metadata: { conversation_id: convId, retry_after_seconds: rl.retryAfterSeconds, risk_level: risk.riskLevel },
           });
           if (risk.riskLevel === 2) {
-            const fallback = buildSafetyCheckFallback();
+            const fallback = buildSafetyCheckFallback(lang);
             await supabase.from("ai_messages").insert({
               conversation_id: convId,
               user_id: userId,
@@ -511,7 +515,14 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
               return "";
           }
         })();
-        const systemFinal = systemWithContext + riskModifier;
+        // Reply-language steer. All the instruction scaffolding above stays in
+        // English (it is guidance TO the model, not user-facing); this last,
+        // strongest line switches the OUTPUT language. Safety rules are unchanged
+        // — only the language of the reply changes. L3 never reaches the model.
+        const langDirective = lang === "hi"
+          ? `\n\nLANGUAGE: The user has chosen Hindi. Write your ENTIRE reply in warm, natural, everyday Hindi (Devanagari script) — the same voice, brevity, and safety rules as above, just in Hindi. Use gender-neutral phrasing about the user (avoid gendered participles like करता/करती). Keep proper names, app/UI labels, and "InnerMate" as-is, and NEVER write phone numbers. If a safety check is called for above, ask it in Hindi and invite a one-word reply — "सुरक्षित" या "असुरक्षित".`
+          : "";
+        const systemFinal = systemWithContext + riskModifier + langDirective;
 
         const messages: ModelMessage[] = [
           ...(history ?? []).map((m) => ({
@@ -534,7 +545,9 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
             async start(controller) {
               writeFrame(controller, "meta", JSON.stringify({ conversationId: convId, crisis: false }));
               writeFrame(controller, "phase", "ready");
-              const msg = "I'm here, quietly. (AI is not configured yet — your words are safely saved.)";
+              const msg = lang === "hi"
+                ? "मैं यहीं हूँ, चुपचाप। (AI अभी सेट नहीं है — आपके शब्द सुरक्षित सहेज लिए गए हैं।)"
+                : "I'm here, quietly. (AI is not configured yet — your words are safely saved.)";
               for (const ch of msg) {
                 writeFrame(controller, "token", JSON.stringify(ch));
                 await new Promise((r) => setTimeout(r, 10));
@@ -586,7 +599,9 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
             } catch (err) {
               console.error("Companion stream error:", err);
               streamError = err;
-              const fallback = "I'm here with you, but I'm having trouble finding my words right now. Try again in a moment.";
+              const fallback = lang === "hi"
+                ? "मैं आपके साथ हूँ, पर अभी शब्द नहीं मिल रहे। एक पल बाद फिर कोशिश कीजिए।"
+                : "I'm here with you, but I'm having trouble finding my words right now. Try again in a moment.";
               if (!full) {
                 full = fallback;
                 writeFrame(controller, "token", JSON.stringify(fallback));

@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listConversations, getConversation, deleteConversation } from "@/lib/companion.functions";
 import { getProfile, setCompanionTone } from "@/lib/data.functions";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,8 +164,16 @@ function todOf(h: number): "morning" | "afternoon" | "evening" | "night" {
   return "night";
 }
 
-function greetingFor(tod: "morning" | "afternoon" | "evening" | "night", name?: string | null) {
+function greetingFor(tod: "morning" | "afternoon" | "evening" | "night", name: string | null | undefined, lang: "en" | "hi") {
   const who = name ? `, ${name}` : "";
+  if (lang === "hi") {
+    switch (tod) {
+      case "morning":   return { eyebrow: "आज सुबह",   line: `एक शांत शुरुआत${who}।` };
+      case "afternoon": return { eyebrow: "आज दोपहर", line: `एक ठहराव आपका हक़ है${who}।` };
+      case "evening":   return { eyebrow: "आज शाम",    line: `दिन नरम पड़ रहा है${who}।` };
+      case "night":     return { eyebrow: "आज रात",    line: `ख़ुद से नरमी बरतिए${who}।` };
+    }
+  }
   switch (tod) {
     case "morning":   return { eyebrow: "This morning",   line: `A quiet start${who}.` };
     case "afternoon": return { eyebrow: "This afternoon", line: `You're allowed a pause${who}.` };
@@ -228,6 +238,9 @@ function Companion() {
   const delFn = useServerFn(deleteConversation);
   const profileFn = useServerFn(getProfile);
   const setToneFn = useServerFn(setCompanionTone);
+  // The app UI language (distinct from `lang` below, which is the Web-Speech
+  // VOICE locale). Drives chrome translation and the AI's reply language.
+  const uiLang = useLang();
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -430,7 +443,7 @@ function Companion() {
       const res = await fetch("/api/companion", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ conversationId: activeId, message: text, tone: selectedTone }),
+        body: JSON.stringify({ conversationId: activeId, message: text, tone: selectedTone, lang: uiLang }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) throw new Error(`Companion error (${res.status})`);
@@ -540,7 +553,7 @@ function Companion() {
       setSending(false);
       focusTextarea();
     }
-  }, [draft, sending, activeId, qc, listening, selectedTone]);
+  }, [draft, sending, activeId, qc, listening, selectedTone, uiLang]);
 
   const onSuggestion = useCallback((text: string) => {
     setDraft(text);
@@ -599,7 +612,7 @@ function Companion() {
     return list.filter(c => (c.title ?? "").toLowerCase().includes(q));
   }, [convs, historySearch]);
 
-  const greeting = greetingFor(tod, firstName);
+  const greeting = greetingFor(tod, firstName, uiLang);
   const lastConv = convs?.[0];
   const sendStatus: "ready" | "submitted" | "streaming" = sending
     ? (optimistic.some(m => m.role === "assistant" && m.content) ? "streaming" : "submitted")
@@ -704,7 +717,7 @@ function Companion() {
               className="h-1.5 w-1.5 flex-none rounded-full transition-colors duration-500"
               style={{ background: FACETS[lastMode].tint, boxShadow: `0 0 6px ${FACETS[lastMode].tint}` }}
             />
-            {FACETS[lastMode].line}
+            {tx(uiLang, FACETS[lastMode].line)}
           </motion.p>
         </div>
 
@@ -715,8 +728,8 @@ function Companion() {
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64">
-            <p className="qs-section-label">tone</p>
-            <p className="mt-1 mb-3 text-[11px] text-muted-foreground">How should InnerMate meet you?</p>
+            <p className="qs-section-label">{tx(uiLang, "tone")}</p>
+            <p className="mt-1 mb-3 text-[11px] text-muted-foreground">{tx(uiLang, "How should InnerMate meet you?")}</p>
             <div className="space-y-1.5">
               {TONE_STYLE_CHIPS.map(chip => {
                 const active = selectedTone === chip.value;
@@ -728,8 +741,8 @@ function Companion() {
                       active ? "border-primary/40 bg-primary/10" : "border-border/50 hover:border-primary/30 hover:bg-card"
                     }`}
                   >
-                    <p className="font-medium text-foreground">{chip.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{chip.description}</p>
+                    <p className="font-medium text-foreground">{tx(uiLang, chip.label)}</p>
+                    <p className="text-[11px] text-muted-foreground">{tx(uiLang, chip.description)}</p>
                   </button>
                 );
               })}
@@ -737,7 +750,7 @@ function Companion() {
           </PopoverContent>
         </Popover>
 
-        <Button size="icon" variant="ghost" aria-label="New conversation" className="h-9 w-9 rounded-full" onClick={newConversation}>
+        <Button size="icon" variant="ghost" aria-label={tx(uiLang, "New conversation")} className="h-9 w-9 rounded-full" onClick={newConversation}>
           <Plus className="h-4 w-4" />
         </Button>
       </header>
@@ -759,17 +772,17 @@ function Companion() {
               </div>
               <p className="qs-section-label">{greeting.eyebrow}</p>
               <h2 className="mt-3 max-w-sm font-serif text-[1.6rem] font-light leading-snug tracking-tight text-foreground sm:text-[1.85rem]">
-                What's sitting with you today?
+                {tx(uiLang, "What's sitting with you today?")}
               </h2>
               <p className="mt-4 max-w-xs text-[13.5px] leading-relaxed text-muted-foreground">
-                {greeting.line} Begin anywhere. There's no wrong way to start.
+                {greeting.line} {tx(uiLang, "Begin anywhere. There's no wrong way to start.")}
               </p>
 
               <div className="mt-7 flex max-w-md flex-wrap justify-center gap-2">
                 {EMPTY_STATE_CHIPS.map((label) => (
                   <button key={label} type="button" onClick={() => onSuggestion(label)} className="qs-chip">
                     <Sparkles className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.7} aria-hidden />
-                    {label}
+                    {tx(uiLang, label)}
                   </button>
                 ))}
               </div>
@@ -778,7 +791,7 @@ function Companion() {
                   so the empty room offers three openings, not ten. */}
               <details className="mt-8 w-full max-w-md">
                 <summary className="cursor-pointer list-none text-center text-[13px] text-muted-foreground transition hover:text-foreground">
-                  or tell me how to help ›
+                  {tx(uiLang, "or tell me how to help ›")}
                 </summary>
                 <div className="mt-3 grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
                   {SUPPORT_MODES.map((s) => (
@@ -789,8 +802,8 @@ function Companion() {
                       className="rounded-lg border px-3 py-3 text-left transition hover:-translate-y-0.5"
                       style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 45%, transparent)" }}
                     >
-                      <span className="block text-[13px] font-medium text-foreground">{s.label}</span>
-                      <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{s.hint}</span>
+                      <span className="block text-[13px] font-medium text-foreground">{tx(uiLang, s.label)}</span>
+                      <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{tx(uiLang, s.hint)}</span>
                     </button>
                   ))}
                 </div>
@@ -800,7 +813,7 @@ function Companion() {
                   onClick={() => setActiveId(lastConv.id)}
                   className="mt-7 text-xs text-muted-foreground transition hover:text-foreground underline-offset-4 hover:underline"
                 >
-                  Continue last · <span className="italic">{lastConv.title || "Untitled"}</span>
+                  {tx(uiLang, "Continue last")} · <span className="italic">{lastConv.title || tx(uiLang, "Untitled")}</span>
                 </button>
               )}
             </motion.div>
@@ -866,7 +879,7 @@ function Companion() {
                                     color: "var(--foreground)",
                                   }}
                                 >
-                                  {chip.label}
+                                  {tx(uiLang, chip.label)}
                                 </button>
                               ))}
                             </motion.div>
@@ -936,12 +949,12 @@ function Companion() {
               onChange={(e) => setDraft(e.currentTarget.value)}
               placeholder={
                 listening
-                  ? "Listening… speak gently"
+                  ? tx(uiLang, "Listening… speak gently")
                   : lastMode === "safety"
-                    ? "Reply with safe or not safe…"
-                    : "What is here right now?"
+                    ? tx(uiLang, "Reply with safe or not safe…")
+                    : tx(uiLang, "What is here right now?")
               }
-              aria-label="Message InnerMate"
+              aria-label={tx(uiLang, "Message InnerMate")}
             />
             <PromptInputFooter>
               <PromptInputTools>
