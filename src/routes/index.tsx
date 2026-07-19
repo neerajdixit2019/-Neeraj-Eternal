@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { CompanionCloud } from "@/components/CompanionCloud";
+import { useLang, setLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -67,6 +69,7 @@ function HeartMark({ size = 26 }: { size?: number }) {
 }
 
 function Landing() {
+  const lang = useLang();
   return (
     <main className="relative min-h-dvh overflow-hidden">
       {/* One dark wall. The page's only pool of lamplight sits behind the hero
@@ -84,38 +87,55 @@ function Landing() {
             <HeartMark />
             <span className="text-[17px] font-semibold tracking-tight text-foreground">InnerMate</span>
           </span>
-          <Link to="/login" className="inline-flex min-h-11 items-center rounded-full px-4 text-[14px] text-secondary-foreground/90 transition hover:text-foreground">
-            sign in
-          </Link>
+          <div className="flex items-center gap-1">
+            {/* Language, offered before the door — a Hindi reader is welcomed in
+                Hindi from the first screen, not only after onboarding. The choice
+                persists (localStorage) so login and the app inherit it. */}
+            <div role="group" aria-label={tx(lang, "Choose your language")} className="mr-1 flex items-center rounded-full border p-0.5" style={{ borderColor: "var(--border-subtle)" }}>
+              {(["en", "hi"] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLang(l)}
+                  aria-pressed={lang === l}
+                  className={`min-h-11 rounded-full px-3 text-[12.5px] transition ${lang === l ? "bg-[color-mix(in_oklab,var(--lamp)_22%,transparent)] text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {l === "en" ? "English" : "हिन्दी"}
+                </button>
+              ))}
+            </div>
+            <Link to="/login" className="inline-flex min-h-11 items-center rounded-full px-4 text-[14px] text-secondary-foreground/90 transition hover:text-foreground">
+              {tx(lang, "sign in")}
+            </Link>
+          </div>
         </header>
 
         {/* Hero — one lamp, one promise, one door */}
         <section className="fade-in flex flex-1 flex-col items-center justify-center py-12 text-center">
           <CompanionCloud size={88} state="calm" />
           <h1 className="mt-7 max-w-[16ch] font-serif text-[2.15rem] font-light leading-[1.12] tracking-tight text-foreground sm:max-w-[20ch] sm:text-[3rem]">
-            You don't have to explain everything at once.
+            {tx(lang, "You don't have to explain everything at once.")}
           </h1>
           <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-secondary-foreground sm:text-[17px]">
-            Begin with what is here. InnerMate listens, remembers with your permission,
-            and helps you understand what is happening inside you.
+            {tx(lang, "Begin with what is here. InnerMate listens, remembers with your permission, and helps you understand what is happening inside you.")}
           </p>
           <Link
             to="/login"
             className="qs-pill-cta group mt-9 inline-flex items-center justify-center gap-2"
             style={{ padding: "1rem 2.2rem", fontSize: "16px" }}
           >
-            Enter your quiet space
+            {tx(lang, "Enter your quiet space")}
             <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </Link>
           <p className="mt-6 inline-flex items-center gap-2 text-[13px] text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
-            Private by design. Nothing is remembered without your permission.
+            {tx(lang, "Private by design. Nothing is remembered without your permission.")}
           </p>
         </section>
 
         {/* Why — three short passages, numerals hung in the margin */}
         <section aria-labelledby="v-h" className="mt-10">
-          <h2 id="v-h" className="sr-only">How InnerMate helps</h2>
+          <h2 id="v-h" className="sr-only">{tx(lang, "How InnerMate helps")}</h2>
           <div className="space-y-8">
             {VALUES.map((v) => (
               <article key={v.title} className="grid grid-cols-[3rem_1fr] gap-4 border-t pt-6" style={{ borderColor: "var(--border-subtle)" }}>
@@ -123,8 +143,8 @@ function Landing() {
                   {v.n}
                 </p>
                 <div>
-                  <h3 className="text-[17px] font-semibold text-foreground">{v.title}</h3>
-                  <p className="mt-1.5 max-w-lg text-[14.5px] leading-relaxed text-secondary-foreground">{v.body}</p>
+                  <h3 className="text-[17px] font-semibold text-foreground">{tx(lang, v.title)}</h3>
+                  <p className="mt-1.5 max-w-lg text-[14.5px] leading-relaxed text-secondary-foreground">{tx(lang, v.body)}</p>
                 </div>
               </article>
             ))}
@@ -135,13 +155,12 @@ function Landing() {
         <section className="mt-16 sm:mt-20">
           <div className="grid items-center gap-8 sm:grid-cols-2">
             <div>
-              <p className="text-[12px] font-medium uppercase tracking-[0.18em] text-muted-foreground">a look into Insights</p>
+              <p className="text-[12px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{tx(lang, "a look into Insights")}</p>
               <h2 className="mt-3 font-serif text-[1.7rem] font-light leading-snug text-foreground">
-                What matters becomes a quiet constellation.
+                {tx(lang, "What matters becomes a quiet constellation.")}
               </h2>
               <p className="mt-3 text-[15px] leading-relaxed text-secondary-foreground">
-                Not a score, not a chart pretending to measure you. Just the feelings and
-                patterns you've named, gathered into a sky that grows as you do.
+                {tx(lang, "Not a score, not a chart pretending to measure you. Just the feelings and patterns you've named, gathered into a sky that grows as you do.")}
               </p>
             </div>
             <div className="study-window">
@@ -159,7 +178,7 @@ function Landing() {
                         className="motion-safe:animate-[qs-svg-twinkle_4.5s_ease-in-out_infinite]"
                         style={{ animationDelay: `${i * 0.6}s` }}
                       />
-                      {s.label && <text x={s.x} y={s.y + s.r + 4} textAnchor="middle" fontSize="3.2" fill="oklch(0.8 0.03 290)" fontStyle="italic">{s.label}</text>}
+                      {s.label && <text x={s.x} y={s.y + s.r + 4} textAnchor="middle" fontSize="3.2" fill="oklch(0.8 0.03 290)" fontStyle="italic">{tx(lang, s.label)}</text>}
                     </g>
                   ))}
                 </svg>
@@ -170,31 +189,30 @@ function Landing() {
 
         {/* How it works — a numbered marginalia list */}
         <section className="mt-16 sm:mt-20">
-          <h2 className="font-serif text-[1.5rem] font-light text-foreground">How InnerMate works</h2>
+          <h2 className="font-serif text-[1.5rem] font-light text-foreground">{tx(lang, "How InnerMate works")}</h2>
           <ol className="mt-5">
             {STEPS.map((s) => (
               <li key={s.n} className="grid grid-cols-[3rem_1fr] gap-4 border-t py-5" style={{ borderColor: "var(--border-subtle)" }}>
                 <p aria-hidden className="pt-0.5 font-serif text-[13px]" style={{ color: "color-mix(in oklab, var(--lamp) 82%, transparent)" }}>{s.n}</p>
                 <div>
-                  <h3 className="text-[16px] font-semibold text-foreground">{s.title}</h3>
-                  <p className="mt-1.5 max-w-lg text-[14px] leading-relaxed text-secondary-foreground">{s.body}</p>
+                  <h3 className="text-[16px] font-semibold text-foreground">{tx(lang, s.title)}</h3>
+                  <p className="mt-1.5 max-w-lg text-[14px] leading-relaxed text-secondary-foreground">{tx(lang, s.body)}</p>
                 </div>
               </li>
             ))}
           </ol>
           <p className="mt-8 font-serif text-[15px] italic text-muted-foreground">
-            whenever you're ready — the door above is the only one you need.
+            {tx(lang, "whenever you're ready — the door above is the only one you need.")}
           </p>
         </section>
 
         {/* The promises — legible, ruled, above the footer. Not footer dust. */}
         <div className="mt-16 border-t pt-6" style={{ borderColor: "var(--border-subtle)" }}>
           <p className="text-[13px] leading-relaxed text-secondary-foreground">
-            InnerMate is a reflective companion — not a clinician, and not for emergencies.
-            If you're in crisis, please reach a local emergency line or a trusted person right now.
+            {tx(lang, "InnerMate is a reflective companion — not a clinician, and not for emergencies. If you're in crisis, please reach a local emergency line or a trusted person right now.")}
           </p>
           <p className="mt-2 text-[13px] leading-relaxed text-secondary-foreground">
-            Private by design: your words stay in your account, and nothing is remembered without your permission.
+            {tx(lang, "Private by design: your words stay in your account, and nothing is remembered without your permission.")}
           </p>
         </div>
 
