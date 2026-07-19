@@ -6,6 +6,9 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LangToggle } from "@/components/LangToggle";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 
@@ -29,6 +32,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const lang = useLang();
   const { reason } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,7 +50,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (reason === "session-expired") {
-      toast.info("Your session expired. Please sign in again.");
+      toast.info(tx(lang, "Your session expired. Please sign in again."));
     }
   }, [reason]);
 
@@ -69,7 +73,7 @@ function LoginPage() {
         if (data.session) {
           navigate({ to: "/home" });
         } else {
-          toast.success("Check your email to confirm your new account.");
+          toast.success(tx(lang, "Check your email to confirm your new account."));
         }
         return;
       }
@@ -85,7 +89,7 @@ function LoginPage() {
     const host = window.location.hostname;
     if (host === "localhost" || host === "127.0.0.1") {
       toast.info(
-        "Google sign-in only works on the published site. Here, use email and password below — a new account is created automatically.",
+        tx(lang, "Google sign-in only works on the published site. Here, use email and password below — a new account is created automatically."),
       );
       return;
     }
@@ -95,7 +99,7 @@ function LoginPage() {
         redirect_uri: window.location.origin + "/home",
       });
       if (result.error) {
-        toast.error(result.error.message ?? "Could not sign in with Google.");
+        toast.error(result.error.message ?? tx(lang, "Could not sign in with Google."));
         return;
       }
       if (result.redirected) return;
@@ -115,7 +119,7 @@ function LoginPage() {
         redirectTo: window.location.origin + "/reset-password",
       });
       if (error) throw error;
-      toast.success("A reset link is on its way. Check your inbox.");
+      toast.success(tx(lang, "A reset link is on its way. Check your inbox."));
       setResetOpen(false);
     } catch (err) {
       toast.error((err as Error).message);
@@ -132,22 +136,28 @@ function LoginPage() {
             role="status"
             className="mb-6 rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-sm text-foreground"
           >
-            Your session expired for your safety. Please sign in again to continue.
+            {tx(lang, "Your session expired for your safety. Please sign in again to continue.")}
           </div>
         )}
-        <Link
-          to="/"
-          className="font-serif text-[13px] tracking-[0.18em] uppercase text-muted-foreground transition hover:text-foreground"
-        >
-          My Quiet Space
-        </Link>
+        {/* The language sits with the brand — a Hindi reader who chose Hindi on
+            the door keeps it here, and one arriving straight at /login can pick
+            it before signing in. */}
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            to="/"
+            className="font-serif text-[13px] tracking-[0.18em] uppercase text-muted-foreground transition hover:text-foreground"
+          >
+            My Quiet Space
+          </Link>
+          <LangToggle />
+        </div>
         <h1 className="mt-8 font-serif text-[2.6rem] leading-[1.05] tracking-tight sm:text-[3.2rem]">
-          {resetOpen ? "A reset, gently." : "A quiet place to put things down."}
+          {resetOpen ? tx(lang, "A reset, gently.") : tx(lang, "A quiet place to put things down.")}
         </h1>
         <p className="mt-5 max-w-md text-[15.5px] leading-relaxed text-muted-foreground">
           {resetOpen
-            ? "Enter your email and we'll send a fresh link."
-            : "Whatever you're carrying today — it can rest here. Sign in to continue, or just begin."}
+            ? tx(lang, "Enter your email and we'll send a fresh link.")
+            : tx(lang, "Whatever you're carrying today — it can rest here. Sign in to continue, or just begin.")}
         </p>
 
         <div
@@ -161,7 +171,7 @@ function LoginPage() {
         {resetOpen ? (
           <form onSubmit={sendReset} className="space-y-5">
             <div>
-              <Label htmlFor="reset-email">Email</Label>
+              <Label htmlFor="reset-email">{tx(lang, "Email")}</Label>
               <div className="relative mt-1.5">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -173,14 +183,14 @@ function LoginPage() {
               </div>
             </div>
             <Button type="submit" disabled={resetLoading} className="h-12 w-full rounded-xl text-base">
-              {resetLoading ? "One quiet moment…" : "Send me a link"}
+              {resetLoading ? tx(lang, "One quiet moment…") : tx(lang, "Send me a link")}
             </Button>
             <button
               type="button"
               onClick={() => setResetOpen(false)}
               className="w-full text-sm text-muted-foreground transition hover:text-foreground"
             >
-              ← back
+              {tx(lang, "← back")}
             </button>
           </form>
         ) : (
@@ -192,16 +202,16 @@ function LoginPage() {
               variant="outline"
               className="h-12 w-full rounded-xl text-base"
             >
-              <GoogleIcon /> Continue with Google
+              <GoogleIcon /> {tx(lang, "Continue with Google")}
             </Button>
 
             <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
-              <span className="h-px flex-1 bg-border/70" /> or <span className="h-px flex-1 bg-border/70" />
+              <span className="h-px flex-1 bg-border/70" /> {tx(lang, "or")} <span className="h-px flex-1 bg-border/70" />
             </div>
 
             <form onSubmit={submit} className="space-y-5">
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{tx(lang, "Email")}</Label>
                 <div className="relative mt-1.5">
                   <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -214,13 +224,13 @@ function LoginPage() {
               </div>
               <div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">{tx(lang, "Password")}</Label>
                   <button
                     type="button"
                     onClick={() => { setResetEmail(email); setResetOpen(true); }}
                     className="text-xs text-muted-foreground transition hover:text-foreground"
                   >
-                    forgot it?
+                    {tx(lang, "forgot it?")}
                   </button>
                 </div>
                 <div className="relative mt-1.5">
@@ -231,12 +241,12 @@ function LoginPage() {
                     required minLength={6}
                     value={password} onChange={(e) => setPassword(e.target.value)}
                     className="h-12 rounded-xl pl-10 pr-11 text-base"
-                    placeholder="At least 6 characters"
+                    placeholder={tx(lang, "At least 6 characters")}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(s => !s)}
-                    aria-label={showPw ? "Hide password" : "Show password"}
+                    aria-label={showPw ? tx(lang, "Hide password") : tx(lang, "Show password")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground transition hover:text-foreground"
                   >
                     {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -244,12 +254,12 @@ function LoginPage() {
                 </div>
               </div>
               <Button type="submit" disabled={loading} className="h-12 w-full rounded-xl text-base">
-                {loading ? "One quiet moment…" : "Begin"}
+                {loading ? tx(lang, "One quiet moment…") : tx(lang, "Begin")}
               </Button>
             </form>
 
             <p className="mt-6 text-center text-xs italic text-muted-foreground">
-              New here? Just continue — we'll create your space.
+              {tx(lang, "New here? Just continue — we'll create your space.")}
             </p>
 
             {import.meta.env.DEV && (

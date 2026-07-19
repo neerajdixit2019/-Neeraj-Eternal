@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LangToggle } from "@/components/LangToggle";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, ArrowLeft } from "lucide-react";
 import { VerseQuote } from "@/components/VerseQuote";
@@ -23,6 +26,7 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const lang = useLang();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -43,14 +47,14 @@ function ResetPasswordPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirm) {
-      toast.error("Both passwords need to match.");
+      toast.error(tx(lang, "Both passwords need to match."));
       return;
     }
     setLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      toast.success("Password updated. Welcome back.");
+      toast.success(tx(lang, "Password updated. Welcome back."));
       navigate({ to: "/home" });
     } catch (err) {
       toast.error((err as Error).message);
@@ -73,17 +77,20 @@ function ResetPasswordPage() {
       />
 
       <div className="w-full max-w-md rounded-[20px_20px_10px_10px] border p-7 sm:p-9" style={{ borderColor: "var(--border-subtle)", background: "var(--card)" }}>
-        <Link to="/login" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> back to sign in
-        </Link>
-        <h1 className="mt-5 font-serif text-4xl tracking-tight">Set a new password</h1>
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/login" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> {tx(lang, "back to sign in")}
+          </Link>
+          <LangToggle />
+        </div>
+        <h1 className="mt-5 font-serif text-4xl tracking-tight">{tx(lang, "Set a new password")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {ready ? "Choose something you'll remember. At least 6 characters." : "Open this page from the link in your email."}
+          {ready ? tx(lang, "Choose something you'll remember. At least 6 characters.") : tx(lang, "Open this page from the link in your email.")}
         </p>
 
         <form onSubmit={submit} className="mt-7 space-y-4">
           <div>
-            <Label htmlFor="new-password">New password</Label>
+            <Label htmlFor="new-password">{tx(lang, "New password")}</Label>
             <div className="relative mt-1.5">
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -94,7 +101,7 @@ function ResetPasswordPage() {
               />
               <button
                 type="button" onClick={() => setShowPw(s => !s)}
-                aria-label={showPw ? "Hide password" : "Show password"}
+                aria-label={showPw ? tx(lang, "Hide password") : tx(lang, "Show password")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground transition hover:text-foreground"
               >
                 {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -102,7 +109,7 @@ function ResetPasswordPage() {
             </div>
           </div>
           <div>
-            <Label htmlFor="confirm-password">Confirm password</Label>
+            <Label htmlFor="confirm-password">{tx(lang, "Confirm password")}</Label>
             <div className="relative mt-1.5">
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -114,7 +121,7 @@ function ResetPasswordPage() {
             </div>
           </div>
           <Button type="submit" disabled={loading || !ready} className="h-12 w-full rounded-xl text-base">
-            {loading ? "Saving…" : "Save new password"}
+            {loading ? tx(lang, "Saving…") : tx(lang, "Save new password")}
           </Button>
         </form>
 

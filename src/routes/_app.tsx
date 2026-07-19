@@ -74,10 +74,10 @@ function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) 
 
   if (!open) return null;
   return (
-    <div ref={sheetRef} className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Steady — help right now">
+    <div ref={sheetRef} className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={t("steady.dialogLabel")}>
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("action.close")}
         onClick={onClose}
         className="absolute inset-0 bg-black/55"
       />
@@ -88,7 +88,7 @@ function SteadySheet({ open, onClose }: { open: boolean; onClose: () => void }) 
         <div className="mx-auto max-w-md">
           <div className="flex items-center justify-between">
             <p className="text-[11px] uppercase tracking-[0.2em]" style={{ color: "var(--clay)" }}>{t("steady.label")}</p>
-            <button type="button" onClick={onClose} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
+            <button type="button" onClick={onClose} aria-label={t("action.close")} className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
               <X className="h-4 w-4" strokeWidth={1.8} />
             </button>
           </div>
@@ -292,7 +292,7 @@ function AppLayout() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4">
         <CompanionCloud size={72} state="calm" />
-        <p className="text-[13px] text-muted-foreground">opening your space</p>
+        <p className="text-[13px] text-muted-foreground">{t("app.opening")}</p>
       </div>
     );
   }
@@ -354,16 +354,16 @@ function AppLayout() {
             <LifeBuoy className="h-4 w-4" strokeWidth={1.7} />{t("steady.label")}
           </Link>
           <Link to="/settings" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-muted-foreground transition hover:text-foreground">
-            <Settings className="h-4 w-4" strokeWidth={1.6} />sanctuary
+            <Settings className="h-4 w-4" strokeWidth={1.6} />{t("nav.sanctuary")}
           </Link>
           <button
             onClick={toggle}
             className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-muted-foreground transition hover:text-foreground"
-            aria-label={privacy ? "Disable screen privacy mode" : "Enable screen privacy mode"}
-            title="Screen Privacy blurs sensitive text on screen. It is not encryption."
+            aria-label={privacy ? t("privacy.disable") : t("privacy.enable")}
+            title={t("privacy.note")}
           >
             {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            {privacy ? "privacy on" : "privacy off"}
+            {privacy ? t("privacy.on") : t("privacy.off")}
           </button>
         </div>
       </aside>
@@ -372,8 +372,8 @@ function AppLayout() {
         onClick={toggle}
         className="fixed right-4 top-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border bg-background/80 text-muted-foreground shadow-sm transition hover:text-foreground md:hidden"
         style={{ borderColor: "color-mix(in oklab, var(--ember) 40%, transparent)" }}
-        aria-label={privacy ? "Disable screen privacy mode" : "Enable screen privacy mode"}
-        title="Screen Privacy blurs text on screen. Not encryption."
+        aria-label={privacy ? t("privacy.disable") : t("privacy.enable")}
+        title={t("privacy.note")}
       >
         {privacy ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -397,7 +397,7 @@ function AppLayout() {
 
       {!path.startsWith("/companion") && (
         <nav
-          aria-label="Primary"
+          aria-label={t("nav.primaryLabel")}
           className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t pb-[max(env(safe-area-inset-bottom),0.25rem)] md:hidden"
           style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)", background: "color-mix(in oklab, var(--background) 97%, var(--foreground))" }}
         >
