@@ -6,6 +6,8 @@ import { getLetter, setLetterKept, deleteLetter } from "@/lib/letters.functions"
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { WeekArc } from "@/components/WeekArc";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 
 export const Route = createFileRoute("/_app/letter/$id")({
   component: LetterPage,
@@ -31,6 +33,7 @@ type LetterRow = {
 
 function LetterPage() {
   const { id } = Route.useParams();
+  const lang = useLang();
   const navigate = useNavigate();
   const getFn = useServerFn(getLetter);
   const keepFn = useServerFn(setLetterKept);
@@ -61,13 +64,13 @@ function LetterPage() {
   if (!letter) {
     return (
       <div className="mx-auto max-w-xl px-5 py-16 text-center">
-        <p className="font-serif text-2xl">This letter isn't here.</p>
-        <Link to="/home" className="mt-6 inline-block text-sm text-muted-foreground hover:text-foreground">← Back home</Link>
+        <p className="font-serif text-2xl">{tx(lang, "This letter isn't here.")}</p>
+        <Link to="/home" className="mt-6 inline-block text-sm text-muted-foreground hover:text-foreground">{tx(lang, "← Back home")}</Link>
       </div>
     );
   }
 
-  const dateStr = new Date(letter.week_start + "T00:00:00").toLocaleDateString(undefined, {
+  const dateStr = new Date(letter.week_start + "T00:00:00").toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, {
     month: "long", day: "numeric", year: "numeric",
   });
 
@@ -83,7 +86,7 @@ function LetterPage() {
     setWorking(true);
     try {
       await keepFn({ data: { id: letter.id, kept: !letter.kept } });
-      toast.success(!letter.kept ? "Kept." : "Removed from your shelf.");
+      toast.success(!letter.kept ? tx(lang, "Kept.") : tx(lang, "Removed from your shelf."));
       await refetch();
     } catch (e) { toast.error((e as Error).message); }
     finally { setWorking(false); }
@@ -101,10 +104,10 @@ function LetterPage() {
   return (
     <div className="mx-auto max-w-xl px-6 py-12 sm:py-16">
       <Link to="/home" className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Home
+        <ArrowLeft className="h-3 w-3" /> {tx(lang, "Home")}
       </Link>
 
-      <p className="qs-section-label mt-10">the moon cycle · a letter from your week</p>
+      <p className="qs-section-label mt-10">{tx(lang, "the moon cycle · a letter from your week")}</p>
 
       {/* THE LETTER — a full sheet of paper under the lamp: the drop-capped
           Newsreader letter the whole direction was built to earn. */}
@@ -115,12 +118,12 @@ function LetterPage() {
         {/* the week, drawn as a thin dawnline arc above the salutation */}
         {letter.arc && letter.arc.some((v) => v != null) && (
           <div className="mx-auto max-w-[260px]" style={{ color: "var(--dawnline)" }}>
-            <WeekArc days={letter.arc} height={48} className="w-full" label="How this week moved" />
+            <WeekArc days={letter.arc} height={48} className="w-full" label={tx(lang, "How this week moved")} />
           </div>
         )}
 
         <p className="mt-4 text-center font-serif text-[13px] italic" style={{ color: inkFaint }}>
-          week of {dateStr}
+          {lang === "hi" ? `${dateStr} का हफ़्ता` : `week of ${dateStr}`}
         </p>
 
         {letter.check_in_echo && (
@@ -128,7 +131,7 @@ function LetterPage() {
             className="mx-auto mt-4 max-w-[46ch] text-center text-[12.5px] italic leading-relaxed"
             style={{ color: inkFaint }}
           >
-            from your check-in — “{letter.check_in_echo}”
+            {lang === "hi" ? "आपके चेक-इन से — " : "from your check-in — "}“{letter.check_in_echo}”
           </p>
         )}
 
@@ -144,7 +147,7 @@ function LetterPage() {
         </article>
 
         <p className="mt-8 border-t pt-4 text-[11.5px] italic" style={{ borderColor: inkHair, color: inkFaint }}>
-          written from your week, read by no one else.
+          {tx(lang, "written from your week, read by no one else.")}
         </p>
       </div>
 
@@ -152,12 +155,12 @@ function LetterPage() {
           margin action with an in-world two-step, never a browser dialog. */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs text-muted-foreground">
-          {letter.kept ? "on your shelf." : "not kept."}
+          {letter.kept ? tx(lang, "on your shelf.") : tx(lang, "not kept.")}
         </span>
         <div className="flex flex-wrap items-center gap-4">
           {!letter.kept && (
             <button type="button" className="qs-pill-cta" disabled={working} onClick={toggleKeep}>
-              Keep this letter
+              {tx(lang, "Keep this letter")}
             </button>
           )}
           <button
@@ -169,7 +172,7 @@ function LetterPage() {
             className="inline-flex min-h-11 items-center text-[12.5px] underline-offset-4 transition hover:underline disabled:opacity-50"
             style={{ color: "var(--rose)" }}
           >
-            let it go
+            {tx(lang, "let it go")}
           </button>
         </div>
       </div>
@@ -179,11 +182,11 @@ function LetterPage() {
           className="fade-in mt-4 border-l-2 py-2 pl-4"
           style={{ borderColor: "var(--clay)" }}
           role="alertdialog"
-          aria-label="Confirm letting this letter go"
+          aria-label={tx(lang, "Confirm letting this letter go")}
           onKeyDown={(e) => { if (e.key === "Escape") cancelLetGo(); }}
         >
           <p className="text-[13.5px] leading-relaxed text-secondary-foreground">
-            let this letter go? it won't be kept anywhere — that's a true goodbye.
+            {tx(lang, "let this letter go? it won't be kept anywhere — that's a true goodbye.")}
           </p>
           <div className="mt-1.5 flex flex-wrap gap-6">
             <button
@@ -194,7 +197,7 @@ function LetterPage() {
               className="inline-flex min-h-11 items-center text-[13px] font-medium underline-offset-4 transition hover:underline disabled:opacity-60"
               style={{ color: "var(--rose)" }}
             >
-              {working ? "letting go…" : "yes, let it go"}
+              {working ? tx(lang, "letting go…") : tx(lang, "yes, let it go")}
             </button>
             <button
               type="button"
@@ -202,7 +205,7 @@ function LetterPage() {
               onClick={cancelLetGo}
               className="inline-flex min-h-11 items-center text-[13px] text-muted-foreground transition hover:text-foreground"
             >
-              keep it after all
+              {tx(lang, "keep it after all")}
             </button>
           </div>
         </div>

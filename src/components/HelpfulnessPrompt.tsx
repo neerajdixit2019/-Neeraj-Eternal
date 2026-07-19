@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { submitReflectionFeedback } from "@/lib/reflect.functions";
 import { Check, X } from "lucide-react";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 
 /**
  * A subtle, opt-in "Was this helpful?" — the real feedback loop from the
@@ -52,6 +54,7 @@ export function HelpfulnessPrompt({
   className?: string;
 }) {
   const send = useServerFn(submitReflectionFeedback);
+  const lang = useLang();
   const [rating, setRating] = useState<Rating | null>(null);
   const [reasons, setReasons] = useState<ReasonId[]>([]);
   const [sent, setSent] = useState(false);
@@ -91,7 +94,7 @@ export function HelpfulnessPrompt({
   if (sent) {
     return (
       <p className={`flex items-center gap-1.5 text-[11px] text-muted-foreground/80 ${className}`}>
-        <Check className="h-3 w-3" strokeWidth={2} /> thank you.
+        <Check className="h-3 w-3" strokeWidth={2} /> {tx(lang, "thank you.")}
       </p>
     );
   }
@@ -99,7 +102,7 @@ export function HelpfulnessPrompt({
   return (
     <div className={`fade-in ${className}`}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <span className="text-[11px] text-muted-foreground">was this helpful?</span>
+        <span className="text-[11px] text-muted-foreground">{tx(lang, "was this helpful?")}</span>
         {([
           { id: "yes", label: "yes" },
           { id: "a_little", label: "a little" },
@@ -114,13 +117,13 @@ export function HelpfulnessPrompt({
               ? { background: "var(--surface-selected)", borderColor: "var(--border-active)", color: "var(--text-primary)" }
               : { background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
           >
-            {opt.label}
+            {tx(lang, opt.label)}
           </button>
         ))}
         <button
           type="button"
           onClick={dismiss}
-          aria-label="Dismiss"
+          aria-label={tx(lang, "Dismiss")}
           className="ml-auto text-muted-foreground/60 transition hover:text-muted-foreground"
         >
           <X className="h-3 w-3" strokeWidth={2} />
@@ -129,7 +132,7 @@ export function HelpfulnessPrompt({
 
       {rating && rating !== "yes" && (
         <div className="fade-in mt-2.5">
-          <p className="text-[10.5px] text-muted-foreground/80">optional — what made it feel that way?</p>
+          <p className="text-[10.5px] text-muted-foreground/80">{tx(lang, "optional — what made it feel that way?")}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {REASONS.map((r) => {
               const on = reasons.includes(r.id);
@@ -143,7 +146,7 @@ export function HelpfulnessPrompt({
                     ? { background: "var(--surface-selected)", borderColor: "var(--border-active)", color: "var(--text-primary)" }
                     : { background: "transparent", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
                 >
-                  {r.label}
+                  {tx(lang, r.label)}
                 </button>
               );
             })}
@@ -154,7 +157,7 @@ export function HelpfulnessPrompt({
             className="mt-2.5 rounded-full px-3 py-1 text-[11px] transition"
             style={{ background: "color-mix(in oklab, var(--accent-primary) 20%, transparent)", color: "var(--text-primary)" }}
           >
-            send
+            {tx(lang, "send")}
           </button>
         </div>
       )}

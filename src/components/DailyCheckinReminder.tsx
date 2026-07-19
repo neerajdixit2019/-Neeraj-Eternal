@@ -4,6 +4,8 @@ import { Bell, BellOff, ArrowRight, Sparkles, Check } from "lucide-react";
 import { TactileCard } from "@/components/TactileCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 
 const PROMPTS = [
   "Name one feeling, even if it's blurry.",
@@ -37,6 +39,7 @@ const STORE_LAST = "innermate.checkin.lastFired"; // YYYY-MM-DD
 const STORE_DONE = "innermate.checkin.lastDone"; // YYYY-MM-DD
 
 export function DailyCheckinReminder() {
+  const lang = useLang();
   const prompt = useMemo(() => PROMPTS[dayIndex() % PROMPTS.length], []);
   const [reminderTime, setReminderTime] = useState<string>("");
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
@@ -69,8 +72,8 @@ export function DailyCheckinReminder() {
       const last = (() => { try { return localStorage.getItem(STORE_LAST); } catch { return null; } })();
       if (last !== todayKey()) {
         try {
-          new Notification("InnerMate — a two-minute check-in", {
-            body: "A quiet pause. No streaks, no scores.",
+          new Notification(tx(lang, "InnerMate — a two-minute check-in"), {
+            body: tx(lang, "A quiet pause. No streaks, no scores."),
             tag: "innermate-checkin",
           });
           localStorage.setItem(STORE_LAST, todayKey());
@@ -103,31 +106,31 @@ export function DailyCheckinReminder() {
 
   const enableReminder = async (time: string) => {
     if (permission === "unsupported") {
-      toast.message("Your browser doesn't support reminders, but the prompt is here whenever you visit.");
+      toast.message(tx(lang, "Your browser doesn't support reminders, but the prompt is here whenever you visit."));
     } else if (permission !== "granted" && "Notification" in window) {
       const p = await Notification.requestPermission();
       setPermission(p);
       if (p !== "granted") {
-        toast.message("No reminder set — you can still check in any time.");
+        toast.message(tx(lang, "No reminder set — you can still check in any time."));
         return;
       }
     }
     try { localStorage.setItem(STORE_TIME, time); } catch { /* ignore */ }
     setReminderTime(time);
-    toast.success(`Gentle nudge set for ${time} daily.`);
+    toast.success(lang === "hi" ? `हर दिन ${time} पर एक कोमल नज़र तय की गई।` : `Gentle nudge set for ${time} daily.`);
   };
 
   const turnOff = () => {
     try { localStorage.removeItem(STORE_TIME); } catch { /* ignore */ }
     setReminderTime("");
-    toast.message("Reminder off. The prompt is still here when you want it.");
+    toast.message(tx(lang, "Reminder off. The prompt is still here when you want it."));
   };
 
   const markDone = () => {
     try { localStorage.setItem(STORE_DONE, todayKey()); } catch { /* ignore */ }
     setDoneToday(true);
     setOpen(false);
-    toast.success("Noted. That counted.");
+    toast.success(tx(lang, "Noted. That counted."));
   };
 
   return (
@@ -138,26 +141,26 @@ export function DailyCheckinReminder() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            Two-minute check-in
+            {tx(lang, "Two-minute check-in")}
           </p>
-          <p className="mt-1.5 font-serif text-xl leading-snug">{prompt}</p>
+          <p className="mt-1.5 font-serif text-xl leading-snug">{tx(lang, prompt)}</p>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            A small daily pause — under two minutes. {doneToday ? "Done for today." : "No streaks, no shame."}
+            {tx(lang, "A small daily pause — under two minutes.")} {doneToday ? tx(lang, "Done for today.") : tx(lang, "No streaks, no shame.")}
           </p>
 
           {!open ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {!doneToday && (
                 <Button variant="outline" className="rounded-full" onClick={() => setOpen(true)}>
-                  Start the 2-minute check-in <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  {tx(lang, "Start the 2-minute check-in")} <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               )}
               <Link to="/checkin" className="soft-arrow text-sm">
-                Open the guided check-in <ArrowRight className="h-4 w-4" />
+                {tx(lang, "Open the guided check-in")} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           ) : (
-            <TwoMinuteFlow prompt={prompt} onDone={markDone} onCancel={() => setOpen(false)} />
+            <TwoMinuteFlow prompt={tx(lang, prompt)} onDone={markDone} onCancel={() => setOpen(false)} />
           )}
 
           <div className="mt-5 rounded-2xl border border-border/50 bg-background/40 p-3">
@@ -165,20 +168,20 @@ export function DailyCheckinReminder() {
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Bell className="h-4 w-4 text-muted-foreground" />
                 <span className="text-muted-foreground">
-                  Browser reminder at <span className="text-foreground">{reminderTime}</span>
+                  {tx(lang, "Browser reminder at")} <span className="text-foreground">{reminderTime}</span>
                 </span>
                 <input
                   type="time"
                   value={reminderTime}
                   onChange={(e) => enableReminder(e.target.value)}
                   className="ml-auto rounded-full border border-border/60 bg-background/70 px-3 py-1 text-sm"
-                  aria-label="Change reminder time"
+                  aria-label={tx(lang, "Change reminder time")}
                 />
                 <button onClick={turnOff} className="soft-arrow text-xs">
-                  <BellOff className="h-3.5 w-3.5" /> Turn off
+                  <BellOff className="h-3.5 w-3.5" /> {tx(lang, "Turn off")}
                 </button>
                 <p className="basis-full text-[11px] leading-relaxed text-muted-foreground/80">
-                  Gentle browser reminders work while this app is open or allowed by your browser. They may not appear if the tab is closed or notifications are blocked.
+                  {tx(lang, "Gentle browser reminders work while this app is open or allowed by your browser. They may not appear if the tab is closed or notifications are blocked.")}
                 </p>
               </div>
             ) : (
@@ -192,17 +195,18 @@ export function DailyCheckinReminder() {
 }
 
 function ReminderSetup({ onEnable, disabled }: { onEnable: (t: string) => void; disabled?: boolean }) {
+  const lang = useLang();
   const [time, setTime] = useState("21:00");
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <Bell className="h-4 w-4 text-muted-foreground" />
-      <span className="text-muted-foreground">Gentle browser reminder at</span>
+      <span className="text-muted-foreground">{tx(lang, "Gentle browser reminder at")}</span>
       <input
         type="time"
         value={time}
         onChange={(e) => setTime(e.target.value)}
         className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-sm"
-        aria-label="Choose reminder time"
+        aria-label={tx(lang, "Choose reminder time")}
         disabled={disabled}
       />
       <Button
@@ -212,23 +216,24 @@ function ReminderSetup({ onEnable, disabled }: { onEnable: (t: string) => void; 
         onClick={() => onEnable(time)}
         disabled={disabled}
       >
-        Turn on
+        {tx(lang, "Turn on")}
       </Button>
       <p className="basis-full text-[11px] leading-relaxed text-muted-foreground/80">
-        Works while this app is open or allowed by your browser. May not appear when the tab is closed or notifications are blocked.
+        {tx(lang, "Works while this app is open or allowed by your browser. May not appear when the tab is closed or notifications are blocked.")}
       </p>
     </div>
   );
 }
 
 function TwoMinuteFlow({ prompt, onDone, onCancel }: { prompt: string; onDone: () => void; onCancel: () => void }) {
+  const lang = useLang();
   const steps = useMemo(
     () => [
-      { label: "Breathe", body: "Three slow breaths. In through the nose, out through the mouth.", seconds: 30 },
-      { label: "Notice", body: prompt, seconds: 45 },
-      { label: "One kind line", body: "Say one kind, true sentence to yourself — out loud or silently.", seconds: 45 },
+      { label: tx(lang, "Breathe"), body: tx(lang, "Three slow breaths. In through the nose, out through the mouth."), seconds: 30 },
+      { label: tx(lang, "Notice"), body: prompt, seconds: 45 },
+      { label: tx(lang, "One kind line"), body: tx(lang, "Say one kind, true sentence to yourself — out loud or silently."), seconds: 45 },
     ],
-    [prompt],
+    [prompt, lang],
   );
   const [i, setI] = useState(0);
   const [left, setLeft] = useState(steps[0].seconds);
@@ -246,7 +251,7 @@ function TwoMinuteFlow({ prompt, onDone, onCancel }: { prompt: string; onDone: (
   return (
     <div className="mt-4 rounded-2xl border border-border/60 bg-background/60 p-4">
       <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-        Step {i + 1} of {steps.length} · {steps[i].label}
+        {lang === "hi" ? `${steps.length} में से ${i + 1} कदम` : `Step ${i + 1} of ${steps.length}`} · {steps[i].label}
       </p>
       <p className="mt-2 font-serif text-lg leading-snug">{steps[i].body}</p>
       <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-border/60">
@@ -257,12 +262,12 @@ function TwoMinuteFlow({ prompt, onDone, onCancel }: { prompt: string; onDone: (
       </div>
       <div className="mt-4 flex items-center justify-between">
         <button onClick={onCancel} className="text-xs text-muted-foreground">
-          Close
+          {tx(lang, "Close")}
         </button>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{left}s</span>
+          <span className="text-xs text-muted-foreground">{lang === "hi" ? `${left} सेकंड` : `${left}s`}</span>
           <Button size="sm" variant="outline" className="rounded-full" onClick={next}>
-            {i < steps.length - 1 ? "Next" : (<><Check className="mr-1 h-3.5 w-3.5" /> Done</>)}
+            {i < steps.length - 1 ? tx(lang, "Next") : (<><Check className="mr-1 h-3.5 w-3.5" /> {tx(lang, "Done")}</>)}
           </Button>
         </div>
       </div>

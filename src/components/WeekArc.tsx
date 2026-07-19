@@ -1,11 +1,12 @@
 import { useId } from "react";
+import { useLang } from "@/lib/i18n";
 
 // One dot per day: Mon..Sun. Pass average mood score per day (1..10) or null when missing.
 export function WeekArc({
   days,
   height = 56,
   className,
-  label = "How the week moved",
+  label,
 }: {
   days: (number | null)[]; // length 7, Mon..Sun
   height?: number;
@@ -13,6 +14,8 @@ export function WeekArc({
   label?: string;
 }) {
   const id = useId();
+  const lang = useLang();
+  const arcLabel = label ?? (lang === "hi" ? "यह हफ़्ता कैसे बीता" : "How the week moved");
   const w = 280;
   const h = height;
   const pad = 16;
@@ -33,10 +36,12 @@ export function WeekArc({
     if (v <= 6) return "var(--lavender)";
     return "var(--mint)";
   };
-  const labels = ["M", "T", "W", "T", "F", "S", "S"];
+  const labels = lang === "hi"
+    ? ["सो", "मं", "बु", "गु", "शु", "श", "र"]
+    : ["M", "T", "W", "T", "F", "S", "S"];
 
   return (
-    <figure className={className} aria-label={label}>
+    <figure className={className} aria-label={arcLabel}>
       <svg
         viewBox={`0 0 ${w} ${h + 18}`}
         width="100%"
@@ -44,7 +49,7 @@ export function WeekArc({
         role="img"
         aria-labelledby={`${id}-title`}
       >
-        <title id={`${id}-title`}>{label}</title>
+        <title id={`${id}-title`}>{arcLabel}</title>
         <path
           d={path}
           fill="none"
