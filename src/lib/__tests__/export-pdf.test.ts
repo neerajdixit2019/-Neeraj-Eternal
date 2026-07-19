@@ -63,4 +63,17 @@ describe("private archive PDF", () => {
     const buf = await pdfBytes({ ...base, letters: [], check_ins: [] });
     assert.equal(buf.subarray(0, 5).toString(), "%PDF-");
   });
+
+  it("embeds the Devanagari font for a Hindi-language archive even with English content", async () => {
+    // lang === "hi" makes the fixed chrome (titles, labels) Devanagari, so the
+    // font must embed regardless of the user's own content.
+    const buf = Buffer.from(await buildPrivateArchivePdf(base, {}, "hi").arrayBuffer());
+    assert.equal(buf.subarray(0, 5).toString(), "%PDF-");
+    assert.equal(buf.includes("NotoDevanagari"), true);
+  });
+
+  it("still leaves the font out of an English-language English archive", async () => {
+    const buf = Buffer.from(await buildPrivateArchivePdf(base, {}, "en").arrayBuffer());
+    assert.equal(buf.includes("NotoDevanagari"), false);
+  });
 });

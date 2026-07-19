@@ -883,7 +883,7 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not signed in");
+      if (!user) throw new Error(tx(lang, "Not signed in"));
       const ext = file.name.split(".").pop() ?? "bin";
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("memories").upload(path, file, {
@@ -1125,7 +1125,7 @@ function ReliveDialog({
               {memory.media_type === "video" ? (
                 <video src={memory.media_url} muted controls playsInline className="w-full" />
               ) : (
-                <img src={memory.media_url} alt={memory.title ?? "memory"} className="w-full object-cover" loading="lazy" />
+                <img src={memory.media_url} alt={memory.title ?? tx(lang, "memory")} className="w-full object-cover" loading="lazy" />
               )}
             </div>
           )

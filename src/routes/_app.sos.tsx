@@ -144,10 +144,10 @@ function SOS() {
               {tx(lang, "If there is any chance of harm to yourself or someone else, the kindest thing right now is a human voice. These lines are free, confidential, and answer 24/7.")}
             </p>
             <div className="mt-4 space-y-2 text-[15px]">
-              <p><strong>India — Tele-MANAS:</strong> <a href="tel:14416" className="underline underline-offset-2">14416</a> · <a href="tel:18008914416" className="underline underline-offset-2">1-800-891-4416</a></p>
-              <p><strong>KIRAN (India):</strong> <a href="tel:18005990019" className="underline underline-offset-2">1800-599-0019</a></p>
-              <p><strong>iCall (India):</strong> <a href="tel:+919152987821" className="underline underline-offset-2">+91 9152987821</a></p>
-              <p><strong>International:</strong> <a href="https://findahelpline.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">findahelpline.com</a></p>
+              <p><strong>{tx(lang, "India — Tele-MANAS:")}</strong> <a href="tel:14416" className="underline underline-offset-2">14416</a> · <a href="tel:18008914416" className="underline underline-offset-2">1-800-891-4416</a></p>
+              <p><strong>{tx(lang, "KIRAN (India):")}</strong> <a href="tel:18005990019" className="underline underline-offset-2">1800-599-0019</a></p>
+              <p><strong>{tx(lang, "iCall (India):")}</strong> <a href="tel:+919152987821" className="underline underline-offset-2">+91 9152987821</a></p>
+              <p><strong>{tx(lang, "International:")}</strong> <a href="https://findahelpline.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">findahelpline.com</a></p>
             </div>
           </div>
           <GroundingList />
@@ -181,9 +181,9 @@ function SOS() {
               {tx(lang, "This page burns itself — nothing here is saved, sent, or seen.")}
             </p>
             <Textarea
-              aria-label="Write what you'd rather not send"
+              aria-label={tx(lang, "Write what you'd rather not send")}
               className="mt-3 min-h-32 rounded-lg text-[16px]"
-              placeholder="Everything you want to send…"
+              placeholder={tx(lang, "Everything you want to send…")}
               value={unsent}
               onChange={(e) => setUnsent(e.target.value)}
             />
@@ -202,12 +202,12 @@ function SOS() {
 
       {flow === "choose" && (
         <p className="relative mt-8 text-[14px] italic leading-relaxed text-muted-foreground">
-          Whichever fits this minute. There's no wrong door.
+          {tx(lang, "Whichever fits this minute. There's no wrong door.")}
         </p>
       )}
 
       <p className="relative mt-12 text-[13px] leading-relaxed text-muted-foreground">
-        My Quiet Space is a companion, not a clinician. See <Link to="/privacy" className="underline underline-offset-2">Data & Privacy</Link>.
+        {tx(lang, "My Quiet Space is a companion, not a clinician. See")} <Link to="/privacy" className="underline underline-offset-2">{tx(lang, "Data & Privacy")}</Link>.
       </p>
     </div>
   );
@@ -244,7 +244,7 @@ function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe";
               region speaks only at milestones, never every second. */}
           <p className="relative mt-5 text-[15px] tabular-nums text-secondary-foreground" aria-hidden="true">{count}s</p>
           <p className="sr-only" aria-live="polite">
-            {count === 45 ? "45 seconds left" : count === 30 ? "halfway there" : count === 10 ? "10 seconds left" : ""}
+            {count === 45 ? tx(lang, "45 seconds left") : count === 30 ? tx(lang, "halfway there") : count === 10 ? tx(lang, "10 seconds left") : ""}
           </p>
           {/* reduced-motion fallback: a still dawnline fill */}
           <div className="relative mx-auto mt-4 h-1 w-48 overflow-hidden rounded-full motion-safe:hidden" style={{ background: "color-mix(in oklab, var(--dawnline) 20%, transparent)" }}>
@@ -260,15 +260,16 @@ function BreathOfTheRoom({ phase, count, onBegin }: { phase: "idle" | "breathe";
 }
 
 function GroundingList() {
+  const lang = useLang();
   return (
     <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklab, var(--card) 55%, transparent)" }}>
-      <h2 className="font-serif text-[18px] font-light">5-4-3-2-1 grounding</h2>
+      <h2 className="font-serif text-[18px] font-light">{tx(lang, "5-4-3-2-1 grounding")}</h2>
       <ul className="mt-3 space-y-2 text-[15px] leading-relaxed text-foreground/90">
-        <li><strong>5</strong> things you can see</li>
-        <li><strong>4</strong> things you can feel</li>
-        <li><strong>3</strong> things you can hear</li>
-        <li><strong>2</strong> things you can smell</li>
-        <li><strong>1</strong> small thing you can do now</li>
+        <li><strong>5</strong> {tx(lang, "things you can see")}</li>
+        <li><strong>4</strong> {tx(lang, "things you can feel")}</li>
+        <li><strong>3</strong> {tx(lang, "things you can hear")}</li>
+        <li><strong>2</strong> {tx(lang, "things you can smell")}</li>
+        <li><strong>1</strong> {tx(lang, "small thing you can do now")}</li>
       </ul>
     </div>
   );
@@ -316,32 +317,33 @@ const SCRIPTS = [
 ];
 
 function BoundaryScripts() {
+  const lang = useLang();
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Copied. Read it once more before you send.");
+      toast.success(tx(lang, "Copied. Read it once more before you send."));
     } catch {
-      toast.error("Couldn't copy — long-press to select.");
+      toast.error(tx(lang, "Couldn't copy — long-press to select."));
     }
   };
   return (
     <div className="mt-2">
-      <p className="font-serif text-[18px] font-light">If you do need to say something — a few quiet scripts.</p>
+      <p className="font-serif text-[18px] font-light">{tx(lang, "If you do need to say something — a few quiet scripts.")}</p>
       <p className="mt-1.5 text-[13px] text-muted-foreground">
-        Read first. Edit to sound like you. Sending is your choice.
+        {tx(lang, "Read first. Edit to sound like you. Sending is your choice.")}
       </p>
       <div className="mt-4 divide-y" style={{ borderColor: "var(--border-subtle)" }}>
         {SCRIPTS.map((s) => (
           <div key={s.title} className="flex items-start justify-between gap-3 border-t py-4" style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}>
             <div className="min-w-0">
-              <p className="font-serif text-[15.5px] italic text-foreground/90">{s.title}</p>
-              <p className="mt-1.5 text-[14.5px] leading-relaxed text-secondary-foreground">{s.body}</p>
+              <p className="font-serif text-[15.5px] italic text-foreground/90">{tx(lang, s.title)}</p>
+              <p className="mt-1.5 text-[14.5px] leading-relaxed text-secondary-foreground">{tx(lang, s.body)}</p>
             </div>
             <button
-              onClick={() => copy(s.body)}
+              onClick={() => copy(tx(lang, s.body))}
               className="shrink-0 rounded-full border p-2.5 text-muted-foreground transition hover:text-foreground"
               style={{ borderColor: "var(--border-subtle)" }}
-              aria-label={`Copy: ${s.title}`}
+              aria-label={`${tx(lang, "Copy: ")}${tx(lang, s.title)}`}
             >
               <Copy className="h-3.5 w-3.5" />
             </button>

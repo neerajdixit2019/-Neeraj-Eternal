@@ -109,7 +109,7 @@ export function CheckinRitual() {
         <h2 id="mood-h" className="qs-section-label">{tx(lang, "your inner weather, right now")}</h2>
         <div
           role="radiogroup"
-          aria-label="Choose the mood that fits closest"
+          aria-label={tx(lang, "Choose the mood that fits closest")}
           className="mt-5 flex items-center justify-between gap-1.5"
         >
           {ORBS.map((o) => {
@@ -191,7 +191,7 @@ export function CheckinRitual() {
         <label htmlFor="checkin-note" className="font-serif text-[16px] font-light text-foreground">{tx(lang, "A line, if there's one")}</label>
         <Textarea
           id="checkin-note"
-          aria-label="Optional note about today"
+          aria-label={tx(lang, "Optional note about today")}
           className="mt-3 min-h-24 rounded-2xl border-border/60 bg-card/50 text-[14.5px] leading-relaxed placeholder:text-muted-foreground"
           placeholder={tx(lang, "Whatever's here. Or leave it empty.")}
           value={note}

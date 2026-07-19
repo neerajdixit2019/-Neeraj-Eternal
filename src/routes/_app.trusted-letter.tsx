@@ -142,7 +142,7 @@ function TrustedLetter() {
     return {
       preparedBy: signedValue.trim() || null,
       forName,
-      windowLabel: windowDef.label,
+      windowLabel: tx(lang, windowDef.label),
       personalNote,
       moodOverview: overview,
       patterns: patterns && patterns.length ? patterns : null,
@@ -179,7 +179,7 @@ function TrustedLetter() {
     if (!anythingChosen || preparing) return;
     setPreparing(true);
     try {
-      const blob = buildTrustedLetterPdf(composeInput());
+      const blob = buildTrustedLetterPdf(composeInput(), lang);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const stamp = new Date().toISOString().slice(0, 10);
@@ -187,7 +187,7 @@ function TrustedLetter() {
       a.download = `a-letter-about-how-ive-been-${stamp}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Prepared. It downloaded to your device — you choose who holds it.");
+      toast.success(tx(lang, "Prepared. It downloaded to your device — you choose who holds it."));
     } catch (e) {
       toast.error((e as Error).message);
     } finally {

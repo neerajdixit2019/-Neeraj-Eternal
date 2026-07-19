@@ -4,12 +4,15 @@ import { readFileSync } from "node:fs";
 import {
   buildTrustedLetterPdf,
   letterHasDevanagari,
+  letterCopy,
   LETTER_COVER_EYEBROW,
   LETTER_COVER_TITLE,
   LETTER_NOTHING_UNTICKED,
   LETTER_CLOSING,
   type TrustedLetterInput,
 } from "../trusted-letter.ts";
+
+const hasDevanagari = (s: string) => /[ऀ-ॿ]/.test(s);
 
 const base: TrustedLetterInput = {
   preparedBy: "Neeraj",
@@ -111,6 +114,19 @@ describe("buildTrustedLetterPdf", () => {
     assert.equal(buf.includes("NotoDevanagari"), true);
   });
 
+  it("embeds the Devanagari font for a Hindi-language letter even with English content", async () => {
+    // lang === "hi" makes the fixed chrome Devanagari, so the font must embed
+    // regardless of the user's own content.
+    const buf = Buffer.from(await buildTrustedLetterPdf(base, "hi").arrayBuffer());
+    assert.equal(buf.subarray(0, 5).toString(), "%PDF-");
+    assert.equal(buf.includes("NotoDevanagari"), true);
+  });
+
+  it("still leaves the font out of an English-language English letter", async () => {
+    const buf = Buffer.from(await buildTrustedLetterPdf(base, "en").arrayBuffer());
+    assert.equal(buf.includes("NotoDevanagari"), false);
+  });
+
   it("builds a letter that is only a personal note", async () => {
     const buf = await pdfBytes({
       ...base,
@@ -132,15 +148,36 @@ describe("the fair copy stays the same letter", () => {
   const route = readFileSync("src/routes/_app.trusted-letter.tsx", "utf-8");
   const css = readFileSync("src/styles.css", "utf-8");
 
-  it("both renderings draw their fixed copy from the shared constants", () => {
-    for (const name of ["LETTER_COVER_EYEBROW", "LETTER_COVER_TITLE", "LETTER_NOTHING_UNTICKED", "LETTER_CLOSING", "LETTER_SECTIONS", "LETTER_DISCLAIMERS"]) {
-      assert.ok(sheet.includes(name), `fair copy must use ${name}`);
+  it("both renderings draw their fixed copy from the one shared source", () => {
+    // The fair copy and the PDF both build their fixed strings from
+    // letterCopy(lang) — the single source that keeps the two from drifting.
+    assert.ok(sheet.includes("letterCopy"), "fair copy must read letterCopy(lang)");
+    // the English copy keeps its promises
+    const en = letterCopy("en");
+    assert.match(en.coverEyebrow, /Shared by choice/);
+    assert.match(en.coverTitle, /A letter about how I've been/);
+    assert.match(en.nothingUnticked, /nothing unticked/);
+    assert.match(en.closing, /keeps no copy/);
+    // the back-compat aliases still resolve to the English copy
+    assert.equal(LETTER_COVER_EYEBROW, en.coverEyebrow);
+    assert.equal(LETTER_COVER_TITLE, en.coverTitle);
+    assert.equal(LETTER_NOTHING_UNTICKED, en.nothingUnticked);
+    assert.equal(LETTER_CLOSING, en.closing);
+  });
+
+  it("the Hindi copy is real Devanagari across every fixed field", () => {
+    const hi = letterCopy("hi");
+    for (const s of [hi.coverEyebrow, hi.coverTitle, hi.nothingUnticked, hi.closing,
+      hi.sections.ownWords, hi.sections.days, hi.sections.patterns, hi.sections.pages,
+      hi.disclaimers.moods, hi.disclaimers.patterns]) {
+      assert.ok(hasDevanagari(s), `expected Hindi in: ${s}`);
     }
-    // the constants themselves keep their promises
-    assert.match(LETTER_COVER_EYEBROW, /Shared by choice/);
-    assert.match(LETTER_COVER_TITLE, /A letter about how I've been/);
-    assert.match(LETTER_NOTHING_UNTICKED, /nothing unticked/);
-    assert.match(LETTER_CLOSING, /keeps no copy/);
+    // the templated lines translate too
+    assert.ok(hasDevanagari(hi.forLine("Dr. Mehta")));
+    assert.ok(hasDevanagari(hi.moodCount(5, 6.4)));
+    assert.ok(hasDevanagari(hi.insideLine([hi.bits.days])));
+    // brand stays Latin, names pass through untouched
+    assert.ok(hi.closing.includes("My Quiet Space"));
   });
 
   it("printing the fair copy cannot blank other pages of the app", () => {
@@ -157,7 +194,7 @@ describe("the fair copy stays the same letter", () => {
 
   it("the route composes one input for both renderings", () => {
     assert.ok(route.includes("composeInput"), "shared composition must exist");
-    assert.ok(route.includes("buildTrustedLetterPdf(composeInput())"), "download must use it");
+    assert.ok(route.includes("buildTrustedLetterPdf(composeInput(), lang)"), "download must use it, in the reader's language");
     assert.ok(route.includes("setPrintInput(composeInput())"), "print must use it");
     assert.ok(route.includes("afterprint"), "the sheet must unmount after the dialog");
   });

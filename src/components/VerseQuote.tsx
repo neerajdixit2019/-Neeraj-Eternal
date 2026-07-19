@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { VERSES, type Verse, type VerseAccent } from "@/lib/verses";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 
 const ACCENT_VAR: Record<VerseAccent, string> = {
   lavender: "var(--lavender)",
@@ -22,6 +24,7 @@ export function VerseQuote({
   variant?: "card" | "plain";
   className?: string;
 }) {
+  const lang = useLang();
   const start = initial ?? VERSES[0];
   const [verse, setVerse] = useState<Verse>(start);
   const [fade, setFade] = useState(true);
@@ -63,8 +66,8 @@ export function VerseQuote({
             <button
               type="button"
               onClick={shuffle}
-              aria-label="Another quote"
-              title="another"
+              aria-label={tx(lang, "Another quote")}
+              title={tx(lang, "another")}
               className="rounded-full p-1 text-muted-foreground/70 transition hover:text-foreground"
             >
               <RefreshCw className="h-3 w-3" strokeWidth={1.7} />

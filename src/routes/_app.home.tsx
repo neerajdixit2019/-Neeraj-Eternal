@@ -192,7 +192,7 @@ function Home() {
           </Link>
           <Link
             to="/settings"
-            aria-label="The sanctuary — settings"
+            aria-label={tx(lang, "The sanctuary — settings")}
             className="glass flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground"
           >
             <Settings className="h-3.5 w-3.5" strokeWidth={1.7} />
@@ -252,7 +252,7 @@ function Home() {
 
       {/* 6 · also on the desk — everything else, as a quiet margin list */}
       <div className="mt-10">
-        <p className="qs-section-label">also on the desk</p>
+        <p className="qs-section-label">{tx(lang, "also on the desk")}</p>
         <ul className="mt-2">
           {([
             ...(hour != null && hour < 12 ? [["a gentle start", "/morning", "choose how to meet the day"]] as const : []),
@@ -266,8 +266,8 @@ function Home() {
           ] as const).map(([label, to, hint]) => (
             <li key={to} className="border-t" style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 9%, transparent)" }}>
               <Link to={to} className="group flex items-baseline justify-between gap-4 py-3 transition">
-                <span className="text-[14.5px] text-foreground/90 transition group-hover:text-foreground">{label}</span>
-                <span className="shrink-0 text-[12px] text-muted-foreground">{hint} →</span>
+                <span className="text-[14.5px] text-foreground/90 transition group-hover:text-foreground">{tx(lang, label)}</span>
+                <span className="shrink-0 text-[12px] text-muted-foreground">{tx(lang, hint)} →</span>
               </Link>
             </li>
           ))}
@@ -284,7 +284,7 @@ function Home() {
 
       {/* 11 · Closing */}
       <p className="mt-12 text-center font-serif text-[15px] italic text-muted-foreground">
-        the pause is the practice.
+        {tx(lang, "the pause is the practice.")}
       </p>
     </div>
   );
@@ -358,32 +358,35 @@ function ConstellationLine({ moods }: { moods: MoodRow[] }) {
 
 /** One recommendation with a real reason, driven by the week's top trigger. */
 function RecommendedForYou({ moods }: { moods: MoodRow[] }) {
+  const lang = useLang();
   const { topTrigger } = weekTagCounts(moods);
   const pick = (() => {
     switch (topTrigger?.[0]) {
       case "Sleep":
         return { to: "/wind-down" as const, title: "Night reset", meta: "3 min · guided wind-down",
-          why: `because Sleep kept appearing in your check-ins this week` };
+          why: tx(lang, "because Sleep kept appearing in your check-ins this week") };
       case "Work":
         return { to: "/urge-shield" as const, title: "A pause before reacting", meta: "2 min · steadying",
-          why: `because Work has been a loud signal this week` };
+          why: tx(lang, "because Work has been a loud signal this week") };
       case "Relationship":
       case "Memories":
         return { to: "/journal" as const, title: "The unsent letter", meta: "write it, keep it",
-          why: `because ${topTrigger![0]} kept surfacing this week` };
+          why: <>{tx(lang, "because")} {topTrigger![0]} {tx(lang, "kept surfacing this week")}</> };
       default:
         return { to: "/heal" as const, title: "A two-minute grounding", meta: "2 min · gentle path",
-          why: topTrigger ? `because ${topTrigger[0]} kept appearing this week` : "a gentle way to begin" };
+          why: topTrigger
+            ? <>{tx(lang, "because")} {topTrigger[0]} {tx(lang, "kept appearing this week")}</>
+            : tx(lang, "a gentle way to begin") };
     }
   })();
   return (
     <div className="mt-8">
-      <p className="qs-section-label">recommended for you</p>
+      <p className="qs-section-label">{tx(lang, "recommended for you")}</p>
       <Link to={pick.to} className="glass mt-3 block rounded-3xl p-5 transition hover:-translate-y-0.5">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="font-serif text-[17px] font-light leading-snug">{pick.title}</p>
-            <p className="mt-1 text-[12px] text-muted-foreground">{pick.meta}</p>
+            <p className="font-serif text-[17px] font-light leading-snug">{tx(lang, pick.title)}</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">{tx(lang, pick.meta)}</p>
             <p className="mt-2 text-[12.5px] italic leading-relaxed text-muted-foreground/90">{pick.why}</p>
           </div>
           <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -395,6 +398,7 @@ function RecommendedForYou({ moods }: { moods: MoodRow[] }) {
 
 /** The most recent real conversation, resumable — or a first meeting. */
 function ContinueWithInnerMate() {
+  const lang = useLang();
   const listFn = useServerFn(listConversations);
   const { data: convs } = useQuery({ queryKey: ["convs"], queryFn: () => listFn() });
   const last = convs?.[0] as { id: string; title: string | null; updated_at?: string | null } | undefined;
@@ -403,23 +407,23 @@ function ContinueWithInnerMate() {
     <div className="glass mt-8 rounded-3xl p-5 rise-in">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="qs-section-label">{last ? "continue with innermate" : "the companion"}</p>
+          <p className="qs-section-label">{last ? tx(lang, "continue with innermate") : tx(lang, "the companion")}</p>
           {last ? (
             <>
               <p className="mt-2 font-serif text-[19px] font-light leading-snug line-clamp-2">
-                {last.title || "Your last conversation"}
+                {last.title || tx(lang, "Your last conversation")}
               </p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                shown because it's your most recent thread — pick it up or begin clean.
+                {tx(lang, "shown because it's your most recent thread — pick it up or begin clean.")}
               </p>
             </>
           ) : (
             <>
               <p className="mt-2 font-serif text-[19px] font-light leading-snug">
-                Someone to think alongside — never to judge.
+                {tx(lang, "Someone to think alongside — never to judge.")}
               </p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                Whatever arrived with you today, you don't have to sort it alone.
+                {tx(lang, "Whatever arrived with you today, you don't have to sort it alone.")}
               </p>
             </>
           )}
@@ -430,18 +434,18 @@ function ContinueWithInnerMate() {
         {last ? (
           <>
             <Link to="/companion" search={{ open: last.id }} className="qs-pill-cta" style={{ padding: "0.6rem 1.1rem", fontSize: "13px" }}>
-              Continue
+              {tx(lang, "Continue")}
             </Link>
             <Link
               to="/companion"
               className="glass inline-flex items-center rounded-full px-4 py-2.5 text-[13px] text-muted-foreground transition hover:text-foreground"
             >
-              Start fresh
+              {tx(lang, "Start fresh")}
             </Link>
           </>
         ) : (
           <Link to="/companion" className="qs-pill-cta" style={{ padding: "0.6rem 1.1rem", fontSize: "13px" }}>
-            <MessageCircle className="h-4 w-4" strokeWidth={1.7} /> Meet InnerMate
+            <MessageCircle className="h-4 w-4" strokeWidth={1.7} /> {tx(lang, "Meet InnerMate")}
           </Link>
         )}
       </div>
@@ -450,6 +454,7 @@ function ContinueWithInnerMate() {
 }
 
 function ContinuePath() {
+  const lang = useLang();
   const fn = useServerFn(listPaths);
   const { data } = useQuery({ queryKey: ["paths"], queryFn: () => fn() });
   if (!data) return null;
@@ -475,12 +480,12 @@ function ContinuePath() {
           </span>
           <div className="min-w-0">
             <p className="qs-section-label">
-              a path you're walking · {path.title} · day {step.day}
+              {tx(lang, "a path you're walking · ")}{path.title}{tx(lang, " · day ")}{step.day}
             </p>
             <p className="mt-1.5 font-serif text-xl leading-snug">{step.title}</p>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground line-clamp-2">{step.preview}</p>
             <p className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground">
-              take today's step <ArrowRight className="h-3 w-3" />
+              {tx(lang, "take today's step")} <ArrowRight className="h-3 w-3" />
             </p>
           </div>
         </div>
@@ -490,6 +495,7 @@ function ContinuePath() {
 }
 
 function LetterWaiting({ enabled }: { enabled: boolean }) {
+  const lang = useLang();
   const navigate = useNavigate();
   const weekStartISO = currentWeekStartISO();
   const getFn = useServerFn(getCurrentLetter);
@@ -536,12 +542,12 @@ function LetterWaiting({ enabled }: { enabled: boolean }) {
               <Mail className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="qs-section-label">the moon cycle</p>
+              <p className="qs-section-label">{tx(lang, "the moon cycle")}</p>
               <p className="mt-1.5 font-serif text-xl leading-snug">
-                A letter from your week, written back to you.
+                {tx(lang, "A letter from your week, written back to you.")}
               </p>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                It's ready. Open it when you have a quiet minute.
+                {tx(lang, "It's ready. Open it when you have a quiet minute.")}
               </p>
             </div>
           </div>
@@ -558,28 +564,28 @@ function LetterWaiting({ enabled }: { enabled: boolean }) {
             <Mail className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="qs-section-label">the moon cycle</p>
+            <p className="qs-section-label">{tx(lang, "the moon cycle")}</p>
             <p className="mt-1.5 font-serif text-xl leading-snug">
-              A letter from your week, written back to you.
+              {tx(lang, "A letter from your week, written back to you.")}
             </p>
             {!expanded ? (
               <>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  Woven from this week's check-ins and reflections. It's written the moment you open it.
+                  {tx(lang, "Woven from this week's check-ins and reflections. It's written the moment you open it.")}
                 </p>
                 <button onClick={() => setExpanded(true)} className="mt-4 soft-arrow">
-                  Begin the check-in <ArrowRight className="h-4 w-4" />
+                  {tx(lang, "Begin the check-in")} <ArrowRight className="h-4 w-4" />
                 </button>
               </>
             ) : (
               <div className="mt-3">
                 <label className="font-serif text-[15px] italic text-foreground/80">
-                  What's on your heart this week?
+                  {tx(lang, "What's on your heart this week?")}
                 </label>
                 <Textarea
                   value={checkIn}
                   onChange={(e) => setCheckIn(e.target.value)}
-                  placeholder="A sentence or two. Or leave it empty — that's allowed."
+                  placeholder={tx(lang, "A sentence or two. Or leave it empty — that's allowed.")}
                   maxLength={500}
                   rows={3}
                   className="mt-2 rounded-2xl border-border/60 bg-background/60 font-serif text-[15px] leading-relaxed"
@@ -587,10 +593,10 @@ function LetterWaiting({ enabled }: { enabled: boolean }) {
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
                   <Button variant="ghost" className="rounded-full text-muted-foreground" disabled={opening} onClick={writeLetter}>
-                    Skip and open
+                    {tx(lang, "Skip and open")}
                   </Button>
                   <Button variant="outline" className="rounded-full" disabled={opening} onClick={writeLetter}>
-                    {opening ? "Writing your letter…" : "Write the letter"}
+                    {opening ? tx(lang, "Writing your letter…") : tx(lang, "Write the letter")}
                   </Button>
                 </div>
               </div>
@@ -603,6 +609,7 @@ function LetterWaiting({ enabled }: { enabled: boolean }) {
 }
 
 function OnThisDay() {
+  const lang = useLang();
   const fn = useServerFn(getOnThisDay);
   const [todayKey, setTodayKey] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
@@ -622,13 +629,13 @@ function OnThisDay() {
   const kind = (data as { kind?: string }).kind;
   const preview = (data as { preview?: string }).preview;
   const when = yearsAgo >= 1
-    ? `${yearsAgo} year${yearsAgo > 1 ? "s" : ""} ago today`
+    ? <>{yearsAgo} {tx(lang, yearsAgo > 1 ? "years ago today" : "year ago today")}</>
     : monthsAgo >= 1
-      ? `${monthsAgo} month${monthsAgo > 1 ? "s" : ""} ago today`
-      : "earlier today, in another week";
-  const kindLabel = kind === "journal" ? "you wrote"
-                  : kind === "memory" ? "you kept a memory"
-                  : "you checked in";
+      ? <>{monthsAgo} {tx(lang, monthsAgo > 1 ? "months ago today" : "month ago today")}</>
+      : tx(lang, "earlier today, in another week");
+  const kindLabel = kind === "journal" ? tx(lang, "you wrote")
+                  : kind === "memory" ? tx(lang, "you kept a memory")
+                  : tx(lang, "you checked in");
   const dismiss = () => {
     try { if (todayKey) localStorage.setItem("onthisday-dismissed", todayKey); } catch { /* ignore */ }
     setDismissed(true);
@@ -638,7 +645,7 @@ function OnThisDay() {
     <div className="mt-8">
       <TactileCard tint="amber" className="relative">
         <button
-          aria-label="Let this star rest for today"
+          aria-label={tx(lang, "Let this star rest for today")}
           onClick={dismiss}
           className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background/60 hover:text-foreground"
         >
@@ -649,12 +656,12 @@ function OnThisDay() {
             <Clock className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <p className="qs-section-label">a star from your sky · {when}</p>
+            <p className="qs-section-label">{tx(lang, "a star from your sky · ")}{when}</p>
             <p className="mt-1.5 font-serif text-[17px] leading-snug italic text-foreground/85">
               {kindLabel} — {preview}
             </p>
             <Link to={to} className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-              revisit it <ArrowRight className="h-3 w-3" />
+              {tx(lang, "revisit it")} <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </div>
@@ -718,7 +725,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
           | undefined;
         setMoodLogId(res?.id ?? null);
         qc.invalidateQueries({ queryKey: ["moods"] });
-        toast.success("Kept.", { duration: 1500 });
+        toast.success(tx(lang, "Kept."), { duration: 1500 });
       } catch (e) {
         toast.error((e as Error).message);
       } finally {
@@ -781,7 +788,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
       <p className="qs-section-label">{tx(lang, "how are you arriving today?")}</p>
       {/* THE LAMP-DIAL — five stops on one brass hairline, heavy to bright.
           Same 5-point logMood contract, same AI follow-up questions. */}
-      <div className="relative mt-5" role="radiogroup" aria-label="How are you arriving today">
+      <div className="relative mt-5" role="radiogroup" aria-label={tx(lang, "How are you arriving today")}>
         <span
           aria-hidden
           className="absolute left-[10%] right-[10%] top-[21px] h-px"
@@ -841,7 +848,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
           <span className="qs-typing-dot" style={{ animationDelay: "0.18s" }} />
           <span className="qs-typing-dot" style={{ animationDelay: "0.36s" }} />
           <span className="font-serif text-[12px] italic text-muted-foreground">
-            finding today's questions…
+            {tx(lang, "finding today's questions…")}
           </span>
         </div>
       )}
@@ -883,7 +890,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
           <span className="qs-typing-dot" style={{ animationDelay: "0.18s" }} />
           <span className="qs-typing-dot" style={{ animationDelay: "0.36s" }} />
           <span className="font-serif text-[12px] italic text-muted-foreground">
-            taking that in…
+            {tx(lang, "taking that in…")}
           </span>
         </div>
       )}
@@ -904,7 +911,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
               onClick={() => { setQStep(0); setAnswers([]); setRead(null); }}
               className="mt-1.5 font-serif text-[11px] italic text-muted-foreground transition hover:text-foreground"
             >
-              ask me again
+              {tx(lang, "ask me again")}
             </button>
           </div>
         </div>
@@ -914,6 +921,7 @@ function MoodOrbs({ alreadyLogged }: { alreadyLogged: boolean }) {
 }
 
 function ReflectionStar() {
+  const lang = useLang();
   // Day-of-year computed client-side, mirroring the todayKey pattern, so SSR and client agree.
   const [idx, setIdx] = useState<number | null>(null);
   useEffect(() => {
@@ -933,19 +941,20 @@ function ReflectionStar() {
       }}
     >
       <p className="qs-section-label flex items-center gap-1.5">
-        <Sparkles className="h-3 w-3" strokeWidth={1.7} /> one reflection star
+        <Sparkles className="h-3 w-3" strokeWidth={1.7} /> {tx(lang, "one reflection star")}
       </p>
       <p className="mt-2.5 font-serif text-[19px] font-light leading-snug">
-        {REFLECTION_STARS[idx]}
+        {tx(lang, REFLECTION_STARS[idx])}
       </p>
       <Link to="/journal" className="qs-chip mt-4">
-        write from this <ArrowRight className="h-3 w-3" />
+        {tx(lang, "write from this")} <ArrowRight className="h-3 w-3" />
       </Link>
     </div>
   );
 }
 
 function HeavyOnMind() {
+  const lang = useLang();
   const qc = useQueryClient();
   const saveFn = useServerFn(saveJournal);
   const [value, setValue] = useState("");
@@ -978,28 +987,28 @@ function HeavyOnMind() {
           "linear-gradient(150deg, color-mix(in oklab, var(--dawn) 14%, var(--card)), var(--card))",
       }}
     >
-      <p className="font-serif text-[19px] leading-snug">What is heavy on your mind?</p>
+      <p className="font-serif text-[19px] leading-snug">{tx(lang, "What is heavy on your mind?")}</p>
       <textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Say it plainly — no one is reading but you…"
+        placeholder={tx(lang, "Say it plainly — no one is reading but you…")}
         rows={3}
         maxLength={2000}
         className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-background/40 px-4 py-3 font-serif text-[15px] italic leading-relaxed text-foreground/90 placeholder:text-muted-foreground focus:border-white/25 focus:outline-none"
       />
       <div className="mt-3">
         {kept ? (
-          <span className="quiet-kept text-[12px] italic text-muted-foreground">Kept in your journal.</span>
+          <span className="quiet-kept text-[12px] italic text-muted-foreground">{tx(lang, "Kept in your journal.")}</span>
         ) : hasText ? (
           <div className="fade-in">
-            <p className="qs-section-label">how would you like to be met?</p>
+            <p className="qs-section-label">{tx(lang, "how would you like to be met?")}</p>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               <Link
                 to="/companion"
                 search={{ seed: value.trim().slice(0, 500) }}
                 className="qs-chip"
               >
-                <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> talk it through with InnerMate
+                <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} /> {tx(lang, "talk it through with InnerMate")}
               </Link>
               <button
                 type="button"
@@ -1007,12 +1016,12 @@ function HeavyOnMind() {
                 disabled={saving}
                 className="qs-chip disabled:cursor-not-allowed disabled:opacity-55"
               >
-                <PenLine className="h-3.5 w-3.5" strokeWidth={1.7} /> {saving ? "keeping…" : "just keep it here"}
+                <PenLine className="h-3.5 w-3.5" strokeWidth={1.7} /> {saving ? tx(lang, "keeping…") : tx(lang, "just keep it here")}
               </button>
             </div>
           </div>
         ) : (
-          <span className="text-[11px] text-muted-foreground">Saves quietly to your journal, whenever you're ready.</span>
+          <span className="text-[11px] text-muted-foreground">{tx(lang, "Saves quietly to your journal, whenever you're ready.")}</span>
         )}
       </div>
     </div>

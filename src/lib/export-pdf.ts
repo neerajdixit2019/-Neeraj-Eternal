@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import type { Lang } from "./i18n";
 import { anyDevanagari, devanagariFontFor } from "./pdf-devanagari.ts";
 
 type Letter = {
@@ -31,11 +32,93 @@ const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 
-function formatDate(iso: string | null) {
+function formatDate(iso: string | null, lang: Lang = "en") {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { year: "numeric", month: "long", day: "numeric" });
+}
+
+/* The private-archive chrome, in the app's own voice (second person, gender-
+ * neutral respectful आप). The brand "My Quiet Space" stays Latin; user and
+ * AI content (letter bodies, notes, tags, tone) is printed as-is. Same source
+ * for every fixed phrase, so an EN and HI archive stay structurally identical. */
+type ArchiveCopy = {
+  coverEyebrow: string;
+  title: string;
+  keptFor: (name: string) => string;
+  exported: (date: string) => string;
+  counts: (letters: number, checkIns: number) => string;
+  noteFromLast: (date: string) => string;
+  snapshotFromLast: (date: string) => string;
+  mood: (score: number) => string;
+  lettersTitle: string;
+  noLetters: string;
+  weekOf: (date: string) => string;
+  writtenOn: (date: string) => string;
+  ritual: (text: string) => string;
+  checkinsTitle: string;
+  grouped: string;
+  noCheckins: string;
+  weekSummary: (count: number, avg: string | null, feelings: string | null) => string;
+  footer: string;
+};
+
+export const ARCHIVE_COPY: Record<Lang, ArchiveCopy> = {
+  en: {
+    coverEyebrow: "Private archive — for you alone",
+    title: "My Quiet Space",
+    keptFor: (name) => `Kept for ${name}`,
+    exported: (date) => `Exported ${date}`,
+    counts: (l, c) => `${l} letter${l === 1 ? "" : "s"} · ${c} check-in${c === 1 ? "" : "s"}`,
+    noteFromLast: (date) => `A note from your last check-in${date ? ` (${date})` : ""}:`,
+    snapshotFromLast: (date) => `A snapshot from your last check-in${date ? ` (${date})` : ""}:`,
+    mood: (score) => `Mood: ${score}/10`,
+    lettersTitle: "Sunday Letters",
+    noLetters: "No letters yet.",
+    weekOf: (date) => `Week of ${date}`,
+    writtenOn: (date) => `written ${date}`,
+    ritual: (text) => `Ritual: ${text}`,
+    checkinsTitle: "Check-in Summaries",
+    grouped: "Grouped by week, most recent first.",
+    noCheckins: "No check-ins yet.",
+    weekSummary: (count, avg, feelings) =>
+      [
+        `${count} check-in${count === 1 ? "" : "s"}`,
+        avg !== null ? `average mood ${avg}/10` : null,
+        feelings ? `feelings: ${feelings}` : null,
+      ].filter(Boolean).join(" · "),
+    footer: "Private — My Quiet Space",
+  },
+  hi: {
+    coverEyebrow: "निजी संग्रह — सिर्फ़ आपके लिए",
+    title: "My Quiet Space",
+    keptFor: (name) => `${name} के लिए रखा गया`,
+    exported: (date) => `${date} को एक्सपोर्ट किया गया`,
+    counts: (l, c) => `${l} ख़त · ${c} चेक-इन`,
+    noteFromLast: (date) => `आपके पिछले चेक-इन से एक बात${date ? ` (${date})` : ""}:`,
+    snapshotFromLast: (date) => `आपके पिछले चेक-इन की एक झलक${date ? ` (${date})` : ""}:`,
+    mood: (score) => `मूड: ${score}/10`,
+    lettersTitle: "इतवार के ख़त",
+    noLetters: "अभी कोई ख़त नहीं।",
+    weekOf: (date) => `${date} का हफ़्ता`,
+    writtenOn: (date) => `${date} को लिखा गया`,
+    ritual: (text) => `रस्म: ${text}`,
+    checkinsTitle: "चेक-इन का सार",
+    grouped: "हफ़्ते के हिसाब से, सबसे नया पहले।",
+    noCheckins: "अभी कोई चेक-इन नहीं।",
+    weekSummary: (count, avg, feelings) =>
+      [
+        `${count} चेक-इन`,
+        avg !== null ? `औसत मूड ${avg}/10` : null,
+        feelings ? `भावनाएँ: ${feelings}` : null,
+      ].filter(Boolean).join(" · "),
+    footer: "निजी — My Quiet Space",
+  },
+};
+
+function archiveCopy(lang: Lang = "en"): ArchiveCopy {
+  return ARCHIVE_COPY[lang] ?? ARCHIVE_COPY.en;
 }
 
 function bucketCheckIns(items: CheckIn[]) {
@@ -61,7 +144,7 @@ export type CoverOptions = {
   includeLastMoodCheckin?: boolean;
 };
 
-function computeDateRange(archive: Archive): string | null {
+function computeDateRange(archive: Archive, lang: Lang = "en"): string | null {
   const dates: number[] = [];
   for (const l of archive.letters) {
     const t = l.week_start ? new Date(l.week_start).getTime() : NaN;
@@ -74,18 +157,21 @@ function computeDateRange(archive: Archive): string | null {
   if (!dates.length) return null;
   const min = new Date(Math.min(...dates));
   const max = new Date(Math.max(...dates));
-  return `${formatDate(min.toISOString())} \u2014 ${formatDate(max.toISOString())}`;
+  return `${formatDate(min.toISOString(), lang)} \u2014 ${formatDate(max.toISOString(), lang)}`;
 }
 
-export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {}): Blob {
+export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {}, lang: Lang = "en"): Blob {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   let y = MARGIN;
+  const A = archiveCopy(lang);
 
   // Hindi check-in notes, Hinglish letters, a Devanagari name or tagline —
   // all legible now (with the same shaping caveat the letter page discloses).
   const fontFor = devanagariFontFor(
     doc,
-    anyDevanagari([
+    // Hindi chrome (lang === "hi") needs the font even for an English archive,
+    // otherwise the section titles print as tofu.
+    lang === "hi" || anyDevanagari([
       archive.display_name, cover.tagline,
       ...archive.letters.flatMap((l) => [l.body, l.ritual, l.check_in_echo, l.tone]),
       ...archive.check_ins.flatMap((c) => [c.note, ...(c.emotion_tags ?? []), ...(c.trigger_tags ?? [])]),
@@ -118,23 +204,23 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
   doc.setFont("times", "italic");
   doc.setFontSize(10);
   doc.setTextColor(120, 120, 130);
-  doc.text("Private archive \u2014 for you alone", MARGIN, y);
+  doc.text(A.coverEyebrow, MARGIN, y);
   y += 28;
 
   doc.setFont("times", "bold");
   doc.setFontSize(28);
   doc.setTextColor(30, 30, 40);
-  doc.text("My Quiet Space", MARGIN, y);
+  doc.text(A.title, MARGIN, y);
   y += 28;
 
   if (archive.display_name) {
-    writeBlock(`Kept for ${archive.display_name}`, { size: 12, font: "italic", color: [90, 90, 100], gap: 4 });
+    writeBlock(A.keptFor(archive.display_name), { size: 12, font: "italic", color: [90, 90, 100], gap: 4 });
   }
-  writeBlock(`Exported ${formatDate(archive.exported_at)}`, { size: 10, color: [120, 120, 130], gap: 18 });
-  writeBlock(`${archive.letters.length} letter${archive.letters.length === 1 ? "" : "s"} \u00b7 ${archive.check_ins.length} check-in${archive.check_ins.length === 1 ? "" : "s"}`, { size: 10, color: [120, 120, 130], gap: 30 });
+  writeBlock(A.exported(formatDate(archive.exported_at, lang)), { size: 10, color: [120, 120, 130], gap: 18 });
+  writeBlock(A.counts(archive.letters.length, archive.check_ins.length), { size: 10, color: [120, 120, 130], gap: 30 });
 
   if (cover.includeDateRange) {
-    const range = computeDateRange(archive);
+    const range = computeDateRange(archive, lang);
     if (range) {
       writeBlock(range, { size: 11, font: "italic", color: [100, 100, 115], gap: 12 });
     }
@@ -147,8 +233,8 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
   if (cover.includeLastReflection) {
     const last = archive.check_ins.find((c) => c.note && c.note.trim());
     if (last) {
-      const date = formatDate(last.created_at);
-      writeBlock(`A note from your last check-in${date ? ` (${date})` : ""}:`, { size: 10, font: "italic", color: [100, 100, 115], gap: 4 });
+      const date = formatDate(last.created_at, lang);
+      writeBlock(A.noteFromLast(date), { size: 10, font: "italic", color: [100, 100, 115], gap: 4 });
       writeBlock(last.note!.trim(), { size: 11, font: "italic", color: [60, 60, 75], gap: 18 });
     }
   }
@@ -158,11 +244,11 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
       .slice()
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
     if (last && (typeof last.mood_score === "number" || (last.emotion_tags && last.emotion_tags.length))) {
-      const date = formatDate(last.created_at);
-      const score = typeof last.mood_score === "number" ? `Mood: ${last.mood_score}/10` : "";
+      const date = formatDate(last.created_at, lang);
+      const score = typeof last.mood_score === "number" ? A.mood(last.mood_score) : "";
       const tags = (last.emotion_tags ?? []).join(", ");
       const line = [score, tags].filter(Boolean).join(" · ");
-      writeBlock(`A snapshot from your last check-in${date ? ` (${date})` : ""}:`, { size: 10, font: "italic", color: [100, 100, 115], gap: 4 });
+      writeBlock(A.snapshotFromLast(date), { size: 10, font: "italic", color: [100, 100, 115], gap: 4 });
       writeBlock(line, { size: 11, font: "italic", color: [60, 60, 75], gap: 18 });
     }
   }
@@ -173,19 +259,19 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
   doc.setFont("times", "bold");
   doc.setFontSize(20);
   doc.setTextColor(30, 30, 40);
-  doc.text("Sunday Letters", MARGIN, y);
+  doc.text(A.lettersTitle, MARGIN, y);
   y += 24;
 
   if (archive.letters.length === 0) {
-    writeBlock("No letters yet.", { font: "italic", color: [120, 120, 130] });
+    writeBlock(A.noLetters, { font: "italic", color: [120, 120, 130] });
   }
 
   for (const letter of archive.letters) {
     ensureSpace(60);
-    writeBlock(`Week of ${formatDate(letter.week_start)}`, { size: 14, font: "bold", color: [30, 30, 40], gap: 2 });
+    writeBlock(A.weekOf(formatDate(letter.week_start, lang)), { size: 14, font: "bold", color: [30, 30, 40], gap: 2 });
     const meta: string[] = [];
     if (letter.tone) meta.push(letter.tone);
-    if (letter.generated_at) meta.push(`written ${formatDate(letter.generated_at)}`);
+    if (letter.generated_at) meta.push(A.writtenOn(formatDate(letter.generated_at, lang)));
     if (meta.length) writeBlock(meta.join(" \u00b7 "), { size: 9, font: "italic", color: [140, 140, 150], gap: 8 });
     if (letter.check_in_echo) {
       writeBlock(letter.check_in_echo, { size: 10, font: "italic", color: [110, 110, 130], gap: 10 });
@@ -195,7 +281,7 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
       for (const p of paras) writeBlock(p, { size: 11, gap: 8 });
     }
     if (letter.ritual) {
-      writeBlock(`Ritual: ${letter.ritual}`, { size: 10, font: "italic", color: [110, 110, 130], gap: 16 });
+      writeBlock(A.ritual(letter.ritual), { size: 10, font: "italic", color: [110, 110, 130], gap: 16 });
     }
     // divider
     ensureSpace(20);
@@ -210,31 +296,27 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
   doc.setFont("times", "bold");
   doc.setFontSize(20);
   doc.setTextColor(30, 30, 40);
-  doc.text("Check-in Summaries", MARGIN, y);
+  doc.text(A.checkinsTitle, MARGIN, y);
   y += 10;
-  writeBlock("Grouped by week, most recent first.", { size: 10, font: "italic", color: [140, 140, 150], gap: 18 });
+  writeBlock(A.grouped, { size: 10, font: "italic", color: [140, 140, 150], gap: 18 });
 
   const weeks = bucketCheckIns(archive.check_ins);
   if (weeks.length === 0) {
-    writeBlock("No check-ins yet.", { font: "italic", color: [120, 120, 130] });
+    writeBlock(A.noCheckins, { font: "italic", color: [120, 120, 130] });
   }
 
   for (const [weekStart, items] of weeks) {
     ensureSpace(40);
-    writeBlock(`Week of ${formatDate(weekStart)}`, { size: 13, font: "bold", color: [30, 30, 40], gap: 2 });
+    writeBlock(A.weekOf(formatDate(weekStart, lang)), { size: 13, font: "bold", color: [30, 30, 40], gap: 2 });
     const scores = items.map((i) => i.mood_score).filter((n): n is number => typeof n === "number");
     const avg = scores.length ? scores.reduce((s, n) => s + n, 0) / scores.length : null;
     const tagCounts: Record<string, number> = {};
     for (const c of items) for (const t of c.emotion_tags ?? []) tagCounts[t] = (tagCounts[t] ?? 0) + 1;
     const topTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([t]) => t);
-    const summary = [
-      `${items.length} check-in${items.length === 1 ? "" : "s"}`,
-      avg !== null ? `average mood ${avg.toFixed(1)}/10` : null,
-      topTags.length ? `feelings: ${topTags.join(", ")}` : null,
-    ].filter(Boolean).join(" \u00b7 ");
+    const summary = A.weekSummary(items.length, avg !== null ? avg.toFixed(1) : null, topTags.length ? topTags.join(", ") : null);
     writeBlock(summary, { size: 10, color: [90, 90, 110], gap: 8 });
     for (const c of items) {
-      const date = formatDate(c.created_at);
+      const date = formatDate(c.created_at, lang);
       const score = typeof c.mood_score === "number" ? `${c.mood_score}/10` : "\u2014";
       const tags = (c.emotion_tags ?? []).join(", ");
       const head = `${date} \u00b7 ${score}${tags ? ` \u00b7 ${tags}` : ""}`;
@@ -255,7 +337,7 @@ export function buildPrivateArchivePdf(archive: Archive, cover: CoverOptions = {
     doc.setFont("times", "italic");
     doc.setFontSize(8);
     doc.setTextColor(160, 160, 170);
-    doc.text("Private \u2014 My Quiet Space", MARGIN, PAGE_H - 24);
+    doc.text(A.footer, MARGIN, PAGE_H - 24);
     doc.text(`${i} / ${pageCount}`, PAGE_W - MARGIN, PAGE_H - 24, { align: "right" });
   }
 

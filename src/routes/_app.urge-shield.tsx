@@ -74,14 +74,14 @@ function UrgeShield() {
     setSaving(true);
     try {
       const body = [
-        target ? `Urge: ${target}` : "Urge Shield session",
-        cost ? `Cost tomorrow: ${cost}` : "",
-        `The urge passed. I stayed.`,
+        target ? `${tx(lang, "Urge: ")}${target}` : tx(lang, "Urge Shield session"),
+        cost ? `${tx(lang, "Cost tomorrow: ")}${cost}` : "",
+        tx(lang, "The urge passed. I stayed."),
       ].filter(Boolean).join("\n");
       await save({
         data: {
           id: null,
-          title: "Urge Shield · a small pause",
+          title: tx(lang, "Urge Shield · a small pause"),
           body,
           emotion_tags: ["urge_shield"],
           entry_type: "urge_shield",

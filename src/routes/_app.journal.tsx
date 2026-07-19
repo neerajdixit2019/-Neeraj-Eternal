@@ -133,7 +133,7 @@ function Journal() {
   const shufflePrompt = () =>
     setPromptIndex(i => (i + 1 + Math.floor(Math.random() * (PROMPTS.length - 1))) % PROMPTS.length);
   const writeFromPrompt = () => {
-    const p = PROMPTS[promptIndex];
+    const p = tx(lang, PROMPTS[promptIndex]);
     setEditing(e => e ? { ...e, body: (e.body ? e.body + "\n\n" : "") + p + "\n\n" } : e);
   };
 
@@ -302,7 +302,7 @@ function Journal() {
           <p className="mt-1 font-serif italic text-[13px]" style={{ color: "color-mix(in oklab, var(--ink) 66%, var(--paper))" }}>{tx(lang, editing.mode.whisper)}</p>
         )}
         <Input
-          aria-label="Journal entry title"
+          aria-label={tx(lang, "Journal entry title")}
           className="mt-3 h-12 rounded-md border-transparent bg-transparent font-serif text-xl text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
           placeholder={tx(lang, "a title, if you'd like…")}
           value={editing.title}
@@ -310,7 +310,7 @@ function Journal() {
         />
         <Textarea
           ref={bodyRef}
-          aria-label="Journal entry body"
+          aria-label={tx(lang, "Journal entry body")}
           className="font-reading reading-text [--reading-px:17px] mt-2 min-h-[420px] rounded-md border-transparent bg-transparent leading-[1.75] text-[color:var(--ink)] placeholder:text-[color:color-mix(in_oklab,var(--ink)_66%,var(--paper))] focus-visible:border-[color:var(--paper-shadow)]"
           placeholder={tx(lang, editing.mode.placeholder)}
           value={editing.body}
@@ -334,7 +334,7 @@ function Journal() {
                 type="button"
                 onClick={dictation.toggle}
                 aria-pressed={dictation.listening}
-                aria-label={dictation.listening ? "Stop voice writing" : "Start voice writing"}
+                aria-label={dictation.listening ? tx(lang, "Stop voice writing") : tx(lang, "Start voice writing")}
                 className="inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium transition hover:brightness-95"
                 style={dictation.listening
                   ? { borderColor: "color-mix(in oklab, var(--deodar) 55%, transparent)", background: "color-mix(in oklab, var(--deodar) 14%, var(--paper))", color: "color-mix(in oklab, var(--deodar) 70%, var(--ink))" }
@@ -356,12 +356,12 @@ function Journal() {
                 )}
               </button>
               <label className="inline-flex min-h-11 items-center gap-1.5 text-[12px]" style={{ color: "color-mix(in oklab, var(--ink) 70%, var(--paper))" }}>
-                <span className="sr-only">Voice language</span>
+                <span className="sr-only">{tx(lang, "Voice language")}</span>
                 <select
                   value={dictation.lang}
                   onChange={(e) => dictation.setLang(e.target.value)}
                   disabled={dictation.listening}
-                  aria-label="Voice language"
+                  aria-label={tx(lang, "Voice language")}
                   className="rounded-md border bg-transparent px-2 py-1.5 text-[12px] outline-none disabled:opacity-50"
                   style={{ borderColor: "color-mix(in oklab, var(--ink) 22%, transparent)", color: "inherit" }}
                 >
@@ -466,7 +466,7 @@ function Journal() {
       <div className="mt-10">
         {entries?.length ? (
           <>
-            <p className="qs-section-label">pages you've kept</p>
+            <p className="qs-section-label">{tx(lang, "pages you've kept")}</p>
             {/* THE LEDGER — ruled rows, date hung in the margin, "let it go"
                 always visible (hover-only delete fails on touch). */}
             <ol className="mt-4 space-y-8">
@@ -490,8 +490,8 @@ function Journal() {
                             onClick={() => { start(mode ?? FREE_MODE, e.id, e.title ?? "", e.body); setSavedAt(Date.now()); }}
                           >
                             <p className={`font-serif text-base leading-snug ${privacy ? "blur-sm select-none" : ""}`}>
-                              {e.title || (e.body.split("\n")[0].slice(0, 60) || "untitled")}
-                              {mode && <span className="ml-2 align-middle text-[11px] font-sans italic text-muted-foreground">· {mode.label.toLowerCase()}</span>}
+                              {e.title || (e.body.split("\n")[0].slice(0, 60) || tx(lang, "untitled"))}
+                              {mode && <span className="ml-2 align-middle text-[11px] font-sans italic text-muted-foreground">· {lang === "hi" ? tx(lang, mode.label) : mode.label.toLowerCase()}</span>}
                             </p>
                             <p className={`mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground line-clamp-1 ${privacy ? "blur-sm select-none" : ""}`}>
                               {e.body}
@@ -499,14 +499,14 @@ function Journal() {
                           </button>
                           <button
                             onClick={async () => {
-                              if (!window.confirm("let this entry go? you can always write another.")) return;
+                              if (!window.confirm(tx(lang, "let this entry go? you can always write another."))) return;
                               await del({ data: { id: e.id } });
                               qc.invalidateQueries({ queryKey: ["journal"] });
                             }}
                             className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] italic text-muted-foreground/80 transition hover:text-foreground"
-                            aria-label={`Let go of entry: ${e.title || "untitled"}`}
+                            aria-label={`${tx(lang, "Let go of entry:")} ${e.title || tx(lang, "untitled")}`}
                           >
-                            <Trash2 className="h-3 w-3" strokeWidth={1.7} /> let it go
+                            <Trash2 className="h-3 w-3" strokeWidth={1.7} /> {tx(lang, "let it go")}
                           </button>
                         </li>
                       );
@@ -518,14 +518,14 @@ function Journal() {
           </>
         ) : (
           <div className="mt-2 px-6 py-8 text-center">
-            <p className="font-serif text-xl font-light leading-snug">no pages yet — the desk is ready.</p>
-            <p className="mt-2 font-serif italic text-sm text-muted-foreground">one honest line is a whole beginning.</p>
+            <p className="font-serif text-xl font-light leading-snug">{tx(lang, "no pages yet — the desk is ready.")}</p>
+            <p className="mt-2 font-serif italic text-sm text-muted-foreground">{tx(lang, "one honest line is a whole beginning.")}</p>
           </div>
         )}
       </div>
 
       <p className="mt-12 text-center font-serif text-[13px] italic text-muted-foreground">
-        writing it down isn't committing to it. it's just letting it breathe.
+        {tx(lang, "writing it down isn't committing to it. it's just letting it breathe.")}
       </p>
     </div>
   );
