@@ -18,6 +18,8 @@
  *    conversation within a 90-minute window count once, not twenty times
  */
 
+import type { Lang } from "./i18n"; // type-only — erased at build; keeps this module React-free for node:test
+
 export type InsightSource = "daily_checkin" | "journal" | "memory" | "innermate_chat";
 
 export const SOURCE_LABEL: Record<InsightSource, string> = {
@@ -26,6 +28,18 @@ export const SOURCE_LABEL: Record<InsightSource, string> = {
   memory: "memories",
   innermate_chat: "chats",
 };
+
+const SOURCE_LABEL_HI: Record<InsightSource, string> = {
+  daily_checkin: "चेक-इन",
+  journal: "जर्नल",
+  memory: "यादें",
+  innermate_chat: "बातचीत",
+};
+
+/** Display label for an evidence source — English by default, Hindi on request. */
+export function sourceLabel(source: InsightSource, lang: Lang = "en"): string {
+  return lang === "hi" ? SOURCE_LABEL_HI[source] : SOURCE_LABEL[source];
+}
 
 export type InsightEvent = {
   /** stable id derived from the source record (idempotent by construction) */
@@ -221,11 +235,11 @@ export function sourceMixFor(events: InsightEvent[], tag: string): SourceMix {
   return mix;
 }
 
-export function describeMix(mix: SourceMix): string {
+export function describeMix(mix: SourceMix, lang: Lang = "en"): string {
   const order: InsightSource[] = ["daily_checkin", "innermate_chat", "journal", "memory"];
   return order
     .filter((s) => (mix[s] ?? 0) > 0)
-    .map((s) => `${mix[s]} ${SOURCE_LABEL[s]}`)
+    .map((s) => `${mix[s]} ${sourceLabel(s, lang)}`)
     .join(" · ");
 }
 
@@ -271,7 +285,15 @@ export type SkyReading = {
   sources: InsightEvent[];
 };
 
-export function skyReading(events: InsightEvent[], now = Date.now()): SkyReading {
+export function skyReading(
+  events: InsightEvent[],
+  now = Date.now(),
+  lang: Lang = "en",
+  // Tag → display label. Default lowercases (English house style); the route
+  // passes tagLabel(_, "hi") for Hindi so tag names in the reading are Hindi.
+  labelFn: (t: string) => string = (t) => t.toLowerCase(),
+): SkyReading {
+  const hi = lang === "hi";
   const todayKey = new Date(now).toDateString();
   const scored = events.filter((e) => e.weight != null);
   const today = scored.find((e) => new Date(e.created_at).toDateString() === todayKey) ?? null;
@@ -289,14 +311,18 @@ export function skyReading(events: InsightEvent[], now = Date.now()): SkyReading
   }
 
   if (events.length === 0) {
-    return { headline: "A sky waiting to be read.", reading: "Check in once and tonight's sky will have something true to say.", sources: [] };
+    return hi
+      ? { headline: "पढ़े जाने का इंतज़ार करता एक आसमान।", reading: "एक बार चेक-इन करें, और आज रात के आसमान के पास कहने को कुछ सच्चा होगा।", sources: [] }
+      : { headline: "A sky waiting to be read.", reading: "Check in once and tonight's sky will have something true to say.", sources: [] };
   }
   if (!today) {
     return {
-      headline: "Tonight's sky, still unread.",
+      headline: hi ? "आज रात का आसमान, अब भी अनपढ़ा।" : "Tonight's sky, still unread.",
       reading: weekMean != null
-        ? `Your week has been resting near ${weekMean.toFixed(1)}. A check-in tonight would tell the sky where you are now.`
-        : "A check-in tonight would tell the sky where you are now.",
+        ? (hi
+            ? `आपका हफ़्ता ${weekMean.toFixed(1)} के आस-पास ठहरा है। आज रात एक चेक-इन आसमान को बताएगा कि आप अभी कहाँ हैं।`
+            : `Your week has been resting near ${weekMean.toFixed(1)}. A check-in tonight would tell the sky where you are now.`)
+        : (hi ? "आज रात एक चेक-इन आसमान को बताएगा कि आप अभी कहाँ हैं।" : "A check-in tonight would tell the sky where you are now."),
       sources,
     };
   }
@@ -306,27 +332,47 @@ export function skyReading(events: InsightEvent[], now = Date.now()): SkyReading
   const trend: "lighter" | "heavier" | "steady" =
     delta == null ? "steady" : delta >= 1 ? "lighter" : delta <= -1 ? "heavier" : "steady";
 
-  const headline =
-    w <= 4
-      ? trend === "lighter" ? "Soft clouds, slowly thinning."
-        : trend === "heavier" ? "Clouds gathering low."
-        : "Low clouds, sitting still."
-      : w <= 7
-        ? trend === "lighter" ? "Patches of light, widening."
-          : trend === "heavier" ? "A few clouds drifting in."
-          : "A settled, even sky."
-        : trend === "heavier" ? "Bright, with a passing cloud."
-          : "A clear stretch of sky.";
+  const headline = hi
+    ? (w <= 4
+        ? trend === "lighter" ? "नरम बादल, धीरे-धीरे छँटते हुए।"
+          : trend === "heavier" ? "बादल नीचे घिरते हुए।"
+          : "नीचे बादल, ठहरे हुए।"
+        : w <= 7
+          ? trend === "lighter" ? "रौशनी के टुकड़े, फैलते हुए।"
+            : trend === "heavier" ? "कुछ बादल भीतर आते हुए।"
+            : "एक ठहरा, सम आसमान।"
+          : trend === "heavier" ? "उजला, एक गुज़रते बादल के साथ।"
+            : "आसमान का एक साफ़ हिस्सा।")
+    : (w <= 4
+        ? trend === "lighter" ? "Soft clouds, slowly thinning."
+          : trend === "heavier" ? "Clouds gathering low."
+          : "Low clouds, sitting still."
+        : w <= 7
+          ? trend === "lighter" ? "Patches of light, widening."
+            : trend === "heavier" ? "A few clouds drifting in."
+            : "A settled, even sky."
+          : trend === "heavier" ? "Bright, with a passing cloud."
+            : "A clear stretch of sky.");
 
   const named = [...today.emotions, ...today.triggers].slice(0, 3);
   const parts: string[] = [];
-  parts.push(
-    `Today you named ${named.length ? named.join(", ").toLowerCase() : `a ${w <= 4 ? "heavy" : w <= 7 ? "settled" : "light"} moment`}.`,
-  );
-  if (delta != null && trend !== "steady") {
-    parts.push(trend === "lighter" ? "That's lighter than your week has been." : "That sits heavier than your week has been.");
-  } else if (weekMean != null && week.length >= 3) {
-    parts.push("About where your week has been resting.");
+  if (hi) {
+    const namedHi = named.length ? named.map(labelFn).join(", ") : `एक ${w <= 4 ? "भारी" : w <= 7 ? "ठहरा" : "हल्का"} पल`;
+    parts.push(`आज आपने ${namedHi} नाम दिया।`);
+    if (delta != null && trend !== "steady") {
+      parts.push(trend === "lighter" ? "यह आपके हफ़्ते से हल्का है।" : "यह आपके हफ़्ते से भारी बैठता है।");
+    } else if (weekMean != null && week.length >= 3) {
+      parts.push("क़रीब वहीं, जहाँ आपका हफ़्ता ठहरा है।");
+    }
+  } else {
+    parts.push(
+      `Today you named ${named.length ? named.join(", ").toLowerCase() : `a ${w <= 4 ? "heavy" : w <= 7 ? "settled" : "light"} moment`}.`,
+    );
+    if (delta != null && trend !== "steady") {
+      parts.push(trend === "lighter" ? "That's lighter than your week has been." : "That sits heavier than your week has been.");
+    } else if (weekMean != null && week.length >= 3) {
+      parts.push("About where your week has been resting.");
+    }
   }
   return { headline, reading: parts.join(" "), sources };
 }
@@ -339,7 +385,8 @@ export type ChangeSignal = { text: string; evidence: string };
  * Only signals with real evidence: weight trend needs ≥3 scored events per
  * half; practice cadence compares distinct active days. No claims of "helped".
  */
-export function changeSignals(events: InsightEvent[], now = Date.now()): ChangeSignal[] {
+export function changeSignals(events: InsightEvent[], now = Date.now(), lang: Lang = "en"): ChangeSignal[] {
+  const hi = lang === "hi";
   const out: ChangeSignal[] = [];
   const scored = events.filter((e) => e.weight != null).sort((a, b) => a.created_at.localeCompare(b.created_at));
   if (scored.length >= 6) {
@@ -347,10 +394,15 @@ export function changeSignals(events: InsightEvent[], now = Date.now()): ChangeS
     const mean = (xs: InsightEvent[]) => xs.reduce((a, e) => a + (e.weight as number), 0) / xs.length;
     const delta = mean(scored.slice(half)) - mean(scored.slice(0, half));
     if (delta >= 0.8) {
-      out.push({
-        text: "Your check-ins have been arriving lighter than they did earlier in this period.",
-        evidence: `mean weight moved from ${mean(scored.slice(0, half)).toFixed(1)} to ${mean(scored.slice(half)).toFixed(1)} across ${scored.length} check-ins`,
-      });
+      out.push(hi
+        ? {
+            text: "आपके चेक-इन इस दौर की शुरुआत से हल्के होकर आ रहे हैं।",
+            evidence: `औसत भार ${mean(scored.slice(0, half)).toFixed(1)} से ${mean(scored.slice(half)).toFixed(1)} तक गया — ${scored.length} चेक-इन में`,
+          }
+        : {
+            text: "Your check-ins have been arriving lighter than they did earlier in this period.",
+            evidence: `mean weight moved from ${mean(scored.slice(0, half)).toFixed(1)} to ${mean(scored.slice(half)).toFixed(1)} across ${scored.length} check-ins`,
+          });
     }
   }
   const weekAgo = now - 7 * 86400000;
@@ -361,19 +413,29 @@ export function changeSignals(events: InsightEvent[], now = Date.now()): ChangeS
   const thisWeek = days(weekAgo, now + 1);
   const lastWeek = days(prevWeek, weekAgo);
   if (thisWeek >= lastWeek + 2 && thisWeek >= 3) {
-    out.push({
-      text: "You've been showing up for yourself more often this week.",
-      evidence: `${thisWeek} active days this week vs ${lastWeek} the week before`,
-    });
+    out.push(hi
+      ? {
+          text: "इस हफ़्ते आपकी हाज़िरी पहले से ज़्यादा रही है।",
+          evidence: `इस हफ़्ते ${thisWeek} सक्रिय दिन, पिछले हफ़्ते ${lastWeek}`,
+        }
+      : {
+          text: "You've been showing up for yourself more often this week.",
+          evidence: `${thisWeek} active days this week vs ${lastWeek} the week before`,
+        });
   }
   const grate = events.filter((e) => e.emotions.some((x) => x === "Grateful" || x === "Hopeful"));
   if (grate.length >= 3) {
     const recent = grate.filter((e) => new Date(e.created_at).getTime() >= now - 14 * 86400000).length;
     if (recent >= 2) {
-      out.push({
-        text: "Gratitude and hope have kept appearing in what you've named recently.",
-        evidence: `${recent} moments in the last two weeks`,
-      });
+      out.push(hi
+        ? {
+            text: "आपने हाल में जो नाम दिया, उसमें आभार और उम्मीद बार-बार दिखे हैं।",
+            evidence: `पिछले दो हफ़्तों में ${recent} पल`,
+          }
+        : {
+            text: "Gratitude and hope have kept appearing in what you've named recently.",
+            evidence: `${recent} moments in the last two weeks`,
+          });
     }
   }
   return out;

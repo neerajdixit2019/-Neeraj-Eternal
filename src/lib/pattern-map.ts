@@ -9,6 +9,8 @@
  * tests in __tests__/pattern-map.test.ts.
  */
 
+import type { Lang } from "./i18n"; // type-only — erased at build; keeps this module React-free for node:test
+
 export type MoodEntry = {
   created_at: string;
   mood_score: number | null;
@@ -33,6 +35,18 @@ export const PERIOD_LABEL: Record<Period, string> = {
   all: "All history",
 };
 
+const PERIOD_LABEL_HI: Record<Period, string> = {
+  week: "इस हफ़्ते",
+  month: "पिछले 30 दिन",
+  quarter: "पिछले 90 दिन",
+  all: "पूरा इतिहास",
+};
+
+/** Period label — English by default, Hindi on request (display-only). */
+export function periodLabel(period: Period, lang: Lang = "en"): string {
+  return lang === "hi" ? PERIOD_LABEL_HI[period] : PERIOD_LABEL[period];
+}
+
 /** Check-ins inside the selected period, newest first. */
 export function filterByPeriod(moods: MoodEntry[], period: Period, now = Date.now()): MoodEntry[] {
   const days = PERIOD_DAYS[period];
@@ -47,12 +61,13 @@ export type Confidence =
   | { level: "insufficient"; label: string; needed: number }
   | { level: "early" | "tentative" | "emerging" | "established"; label: string; needed: 0 };
 
-export function confidenceFor(checkinCount: number): Confidence {
-  if (checkinCount < 3) return { level: "insufficient", label: "Just beginning", needed: 3 - checkinCount };
-  if (checkinCount <= 5) return { level: "early", label: "Early signal", needed: 0 };
-  if (checkinCount <= 10) return { level: "tentative", label: "Tentative pattern", needed: 0 };
-  if (checkinCount <= 20) return { level: "emerging", label: "Emerging pattern", needed: 0 };
-  return { level: "established", label: "Recurring pattern", needed: 0 };
+export function confidenceFor(checkinCount: number, lang: Lang = "en"): Confidence {
+  const hi = lang === "hi";
+  if (checkinCount < 3) return { level: "insufficient", label: hi ? "अभी शुरुआत" : "Just beginning", needed: 3 - checkinCount };
+  if (checkinCount <= 5) return { level: "early", label: hi ? "शुरुआती संकेत" : "Early signal", needed: 0 };
+  if (checkinCount <= 10) return { level: "tentative", label: hi ? "प्रारंभिक पैटर्न" : "Tentative pattern", needed: 0 };
+  if (checkinCount <= 20) return { level: "emerging", label: hi ? "उभरता पैटर्न" : "Emerging pattern", needed: 0 };
+  return { level: "established", label: hi ? "बार-बार आता पैटर्न" : "Recurring pattern", needed: 0 };
 }
 
 /* ── Frequency status (no vague Low/Medium/High) ── */
@@ -61,6 +76,13 @@ export function statusFor(count: number): "Frequent" | "Occasional" | "Emerging"
   if (count >= 4) return "Frequent";
   if (count >= 2) return "Occasional";
   return "Emerging";
+}
+
+/** Display label for a frequency status — statusFor stays English (the value is
+ * compared in logic); this translates it for the screen only. */
+export function statusLabel(status: "Frequent" | "Occasional" | "Emerging", lang: Lang = "en"): string {
+  if (lang !== "hi") return status;
+  return status === "Frequent" ? "बार-बार" : status === "Occasional" ? "कभी-कभी" : "उभरता";
 }
 
 /* ── Tag counting + co-occurrence ── */
@@ -159,7 +181,7 @@ function hashStr(s: string): number {
  */
 export function buildConstellation(
   moods: MoodEntry[],
-  opts: { hidden?: string[]; ringSize?: number; now?: number } = {},
+  opts: { hidden?: string[]; ringSize?: number; now?: number; lang?: Lang } = {},
 ): Constellation {
   const now = opts.now ?? Date.now();
   const hidden = new Set((opts.hidden ?? []).map((h) => h.toLowerCase()));
@@ -168,7 +190,7 @@ export function buildConstellation(
   const stats = tagStats(moods, now).filter((t) => !hidden.has(t.label.toLowerCase()));
   const co = cooccurrence(moods);
   const checkinCount = moods.length;
-  const confidence = confidenceFor(checkinCount);
+  const confidence = confidenceFor(checkinCount, opts.lang ?? "en");
 
   if (stats.length === 0 || confidence.level === "insufficient") {
     return { center: null, ring: [], edges: [], checkinCount, confidence };
@@ -245,6 +267,15 @@ export function buildConstellation(
 export const TOD_LABELS = ["Morning", "Midday", "Evening", "Night"] as const;
 export type TodLabel = (typeof TOD_LABELS)[number];
 
+const TOD_LABELS_HI: Record<TodLabel, string> = {
+  Morning: "सुबह", Midday: "दोपहर", Evening: "शाम", Night: "रात",
+};
+
+/** Time-of-day display label — English by default, Hindi on request. */
+export function todLabel(tod: TodLabel, lang: Lang = "en"): string {
+  return lang === "hi" ? TOD_LABELS_HI[tod] : tod;
+}
+
 export function todOf(iso: string): TodLabel {
   const h = new Date(iso).getHours();
   if (h < 6) return "Night";
@@ -303,22 +334,33 @@ export function timelinePoints(moods: MoodEntry[], filterTag?: string): Timeline
  * the first and second half (needs ≥4 points to say anything directional) and
  * names the heaviest time of day when one exists. Never fills gaps.
  */
-export function timelineSummary(points: TimelinePoint[], moods: MoodEntry[]): string {
-  if (points.length === 0) return "No check-ins in this period yet.";
+export function timelineSummary(points: TimelinePoint[], moods: MoodEntry[], lang: Lang = "en"): string {
+  const hi = lang === "hi";
+  if (points.length === 0) return hi ? "इस दौर में अभी कोई चेक-इन नहीं।" : "No check-ins in this period yet.";
   if (points.length < 4) {
-    return `${points.length} ${points.length === 1 ? "moment" : "moments"} in this period — a few more and a direction may appear.`;
+    return hi
+      ? `इस दौर में ${points.length} ${points.length === 1 ? "पल" : "पल"} — कुछ और, और कोई दिशा दिख सकती है।`
+      : `${points.length} ${points.length === 1 ? "moment" : "moments"} in this period — a few more and a direction may appear.`;
   }
   const half = Math.floor(points.length / 2);
   const mean = (xs: TimelinePoint[]) => xs.reduce((a, p) => a + p.score, 0) / xs.length;
   const first = mean(points.slice(0, half));
   const second = mean(points.slice(half));
   const delta = second - first;
+  const heavy = moods.filter((m) => (m.mood_score ?? 10) <= 4);
+  const peak = peakTod(timeOfDayFor(heavy));
+  if (hi) {
+    const direction =
+      delta > 0.7 ? "इस दौर में आपके हाल के चेक-इन हल्के होते गए"
+      : delta < -0.7 ? "इस दौर में आपके हाल के चेक-इन भारी होते गए"
+      : "इस दौर में आपके चेक-इन काफ़ी हद तक स्थिर रहे";
+    const todPart = peak ? `, और भारी पल अक्सर ${todLabel(peak.label, "hi")} के आस-पास रहे` : "";
+    return `${direction}${todPart}।`;
+  }
   const direction =
     delta > 0.7 ? "Your recent check-ins became lighter over this period"
     : delta < -0.7 ? "Your recent check-ins grew heavier over this period"
     : "Your check-ins held fairly steady over this period";
-  const heavy = moods.filter((m) => (m.mood_score ?? 10) <= 4);
-  const peak = peakTod(timeOfDayFor(heavy));
   const todPart = peak ? `, with the heavier moments most often around ${peak.label.toLowerCase()}` : "";
   return `${direction}${todPart}.`;
 }
@@ -341,8 +383,10 @@ export type WeekdayRhythm = {
 };
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAY_NAMES_HI = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
 
-export function weekdayRhythm(moods: MoodEntry[]): WeekdayRhythm | null {
+export function weekdayRhythm(moods: MoodEntry[], lang: Lang = "en"): WeekdayRhythm | null {
+  const hi = lang === "hi";
   const scored = moods.filter((m) => m.mood_score != null);
   if (scored.length < 12) return null;
 
@@ -367,16 +411,22 @@ export function weekdayRhythm(moods: MoodEntry[]): WeekdayRhythm | null {
     const above = days.filter((v) => v.sum / v.n > overall + 0.5).length;
     const consider = (hits: number, direction: "heavier" | "lighter") => {
       if (hits / days.length < 0.6) return;
+      const wdHi = WEEKDAY_NAMES_HI[wd];
       const cand: WeekdayRhythm = {
         weekday: WEEKDAY_NAMES[wd],
         hits,
         total: days.length,
         direction,
-        statement:
-          direction === "heavier"
-            ? `${WEEKDAY_NAMES[wd]}s have tended to sit heavier — in ${hits} of your last ${days.length}, your check-ins dipped below your usual.`
-            : `${WEEKDAY_NAMES[wd]}s have tended to sit lighter — in ${hits} of your last ${days.length}, your check-ins rose above your usual.`,
-        evidence: `based on ${scored.length} check-ins across ${dayMeans.size} days`,
+        statement: hi
+          ? (direction === "heavier"
+              ? `${wdHi} अक्सर भारी बैठे हैं — आपके पिछले ${days.length} में से ${hits} बार, आपके चेक-इन आपके सामान्य से नीचे गिरे।`
+              : `${wdHi} अक्सर हल्के बैठे हैं — आपके पिछले ${days.length} में से ${hits} बार, आपके चेक-इन आपके सामान्य से ऊपर उठे।`)
+          : (direction === "heavier"
+              ? `${WEEKDAY_NAMES[wd]}s have tended to sit heavier — in ${hits} of your last ${days.length}, your check-ins dipped below your usual.`
+              : `${WEEKDAY_NAMES[wd]}s have tended to sit lighter — in ${hits} of your last ${days.length}, your check-ins rose above your usual.`),
+        evidence: hi
+          ? `${scored.length} चेक-इन, ${dayMeans.size} दिनों के आधार पर`
+          : `based on ${scored.length} check-ins across ${dayMeans.size} days`,
       };
       if (!best || cand.hits / cand.total > best.hits / best.total) best = cand;
     };
@@ -388,13 +438,33 @@ export function weekdayRhythm(moods: MoodEntry[]): WeekdayRhythm | null {
 
 /* ── Structured InnerMate handoff ── */
 
-export function innermateContext(c: Constellation, moods: MoodEntry[], periodLabel: string): string {
-  if (!c.center) return "I'd like to look at my check-in patterns together.";
+export function innermateContext(
+  c: Constellation,
+  moods: MoodEntry[],
+  periodLabel: string,
+  lang: Lang = "en",
+  labelFn: (t: string) => string = (t) => t.toLowerCase(),
+): string {
+  const hi = lang === "hi";
+  if (!c.center) {
+    return hi
+      ? "मुझे अपने चेक-इन पैटर्न को साथ मिलकर देखना है।"
+      : "I'd like to look at my check-in patterns together.";
+  }
   const linked = c.ring.filter((n) => n.linkToCenter > 0).slice(0, 2);
+  const peak = peakTod(timeOfDayFor(moods, c.center.label));
+  if (hi) {
+    const alongside = linked.length ? ` इसके साथ ${linked.map((n) => labelFn(n.label)).join(" और ")} भी दिखे।` : "";
+    const when = peak ? ` यह अक्सर ${todLabel(peak.label, "hi")} के आस-पास होता रहा।` : "";
+    return (
+      `मेरे पैटर्न पर एक नज़र (${periodLabel}, ${c.checkinCount} चेक-इन — ${c.confidence.label})। ` +
+      `${labelFn(c.center.label)}, ${c.center.count} बार।${alongside}${when} ` +
+      `क्या आप मुझे समझने में मदद करेंगे कि उन पलों में आम तौर पर क्या होता है, या आगे क्या मदद कर सकता है?`
+    );
+  }
   const alongside = linked.length
     ? ` It appeared alongside ${linked.map((n) => n.label.toLowerCase()).join(" and ")}.`
     : "";
-  const peak = peakTod(timeOfDayFor(moods, c.center.label));
   const when = peak ? ` It tended to occur in the ${peak.label.toLowerCase()}.` : "";
   return (
     `I've been looking at my patterns (${periodLabel.toLowerCase()}, ${c.checkinCount} check-ins — ${c.confidence.label.toLowerCase()}). ` +
