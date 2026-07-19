@@ -305,15 +305,23 @@ async function callOpenAI(opts: {
   isFinalReply: boolean;
   risk: RiskLevel;
   safetyId: string;
+  lang: string;
   signal: AbortSignal;
 }) {
   const calmer = opts.risk === "elevated";
+  // Only the human-facing string VALUES turn Hindi; JSON keys + enum values stay
+  // English so the schema/UI still match. Gender-neutral, never a phone number.
+  const hindiDirective =
+    opts.lang === "hi"
+      ? `\nLANGUAGE: Write every human-facing string VALUE (reply, gentle_question, micro_action.title, micro_action.instructions, closing_note) in natural, warm, gender-neutral Hindi (Devanagari), without gender-marked verbs addressing the reader. Keep all JSON keys and the enum values of risk_level, response_mode, micro_action.type in English. Never write phone numbers.\n`
+      : "";
   const sessionContext =
     `Emotional category: ${opts.category}\n` +
     `Intensity (1-10): ${opts.intensity}\n` +
     `Risk level (from screening): ${opts.risk}\n` +
     (opts.isFinalReply ? "This is the FINAL allowed reply in the bounded session. Follow the closing rules.\n" : "") +
     (calmer ? "Keep the reply especially short and grounding, and set encourage_human_support to true.\n" : "") +
+    hindiDirective +
     `\nThe person's initial writing in this session:\n"""${opts.initialMessage}"""\n`;
 
   const input: Array<{ role: string; content: string }> = [
@@ -390,6 +398,9 @@ Deno.serve(async (req) => {
   try { payload = await req.json(); } catch { return jsonResponse(400, { error: "invalid_json" }); }
 
   const save_mode = payload?.save_mode;
+  // Reply language — English default; "hi" makes the model write string values
+  // in Hindi. Never touches crisis routing or stored data. (NEEDS Supabase deploy.)
+  const lang = payload?.lang === "hi" ? "hi" : "en";
   if (save_mode !== "private" && save_mode !== "ephemeral") {
     return jsonResponse(400, { error: "invalid_save_mode" });
   }
@@ -529,7 +540,7 @@ Deno.serve(async (req) => {
       ai = await callOpenAI({
         category, intensity, initialMessage,
         priorAi, priorUser, latestUser: message,
-        isFinalReply, risk, safetyId, signal: ac.signal,
+        isFinalReply, risk, safetyId, lang, signal: ac.signal,
       });
     } catch (e) {
       console.error("openai_error", String(e));

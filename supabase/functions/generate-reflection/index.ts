@@ -265,15 +265,24 @@ async function callOpenAIReflection(opts: {
   message: string;
   risk: RiskLevel;
   safetyId: string;
+  lang: string;
   signal: AbortSignal;
 }) {
   const calmer = opts.risk === "elevated";
+  // Language directive: keep the JSON KEYS and enum values (risk_level,
+  // response_mode, micro_action.type) in English so the schema/UI still match;
+  // only the human-facing string VALUES turn Hindi. Gender-neutral, no numbers.
+  const hindiDirective =
+    opts.lang === "hi"
+      ? `\n\nIMPORTANT — LANGUAGE: Write every human-facing string VALUE (title, what_i_hear, each possible_underneath item, gentle_question, micro_action.title, micro_action.instructions) in natural, warm, gender-neutral Hindi (Devanagari). Do NOT address the reader with gender-marked verbs. Keep all JSON keys and the enum values of risk_level, response_mode, and micro_action.type in English. Never write phone numbers.`
+      : "";
   const userPrompt =
     `Emotional category: ${opts.category}\n` +
     `Intensity (1-10): ${opts.intensity}\n` +
     `Risk level (from screening): ${opts.risk}\n` +
     (calmer ? "Please keep what_i_hear especially short and grounding, and set encourage_human_support to true.\n" : "") +
-    `\nThe person wrote:\n"""${opts.message}"""\n\nReturn ONLY the structured JSON object.`;
+    `\nThe person wrote:\n"""${opts.message}"""\n\nReturn ONLY the structured JSON object.` +
+    hindiDirective;
 
   const body = {
     model: OPENAI_MODEL,
@@ -354,6 +363,10 @@ Deno.serve(async (req) => {
   const category = typeof payload?.category === "string" ? payload.category : "";
   const intensity = Number(payload?.intensity);
   const save_mode = payload?.save_mode;
+  // Reply language — English by default; "hi" makes the model write the JSON
+  // string values in Hindi. Never affects moderation, crisis routing, or the
+  // stored English category. (Client sends lang; NEEDS a Supabase deploy.)
+  const lang = payload?.lang === "hi" ? "hi" : "en";
   const session_id = payload?.session_id ?? null;
   const message = typeof payload?.message === "string" ? payload.message.trim() : "";
 
@@ -423,6 +436,7 @@ Deno.serve(async (req) => {
         message,
         risk,
         safetyId,
+        lang,
         signal: ac.signal,
       });
     } catch (e) {

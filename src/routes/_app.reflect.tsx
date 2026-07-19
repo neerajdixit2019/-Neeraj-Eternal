@@ -26,6 +26,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { submitReflectionFeedback } from "@/lib/reflect.functions";
 import { VerseQuote } from "@/components/VerseQuote";
 import { randomVerse } from "@/lib/verses";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 
 type ResponseMode = "listen" | "clarity" | "grounding" | "decision" | "celebration";
 type FeedbackRating = "yes" | "a_little" | "not_really";
@@ -151,6 +153,7 @@ function Reflect() {
 
   const sendFeedback = useServerFn(submitReflectionFeedback);
   const navigate = useNavigate();
+  const uiLang = useLang();
 
   const sessionComplete =
     aiReplyCount >= MAX_REPLIES ||
@@ -183,7 +186,7 @@ function Reflect() {
   const onSubmitWriting = async () => {
     const trimmed = entry.trim();
     if (trimmed.length === 0) {
-      toast("Write as little or as much as you need before continuing.");
+      toast(tx(uiLang, "Write as little or as much as you need before continuing."));
       return;
     }
     setStep("loading");
@@ -196,6 +199,7 @@ function Reflect() {
           message: trimmed,
           save_mode: saveMode,
           conversation_turn_number: 1,
+          lang: uiLang,
         },
       });
       if (error || !data?.reflection) {
@@ -236,9 +240,9 @@ function Reflect() {
           intensity,
         },
       });
-      toast("Thank you — this helps Quiet Guide listen better.");
+      toast(tx(uiLang, "Thank you — this helps Quiet Guide listen better."));
     } catch {
-      toast("Could not send feedback. Please try again later.");
+      toast(tx(uiLang, "Could not send feedback. Please try again later."));
     }
   };
 
@@ -251,7 +255,7 @@ function Reflect() {
   const onSubmitFollowup = async () => {
     const trimmed = followupText.trim();
     if (!trimmed) {
-      toast("Write what comes up. A few honest words are enough.");
+      toast(tx(uiLang, "Write what comes up. A few honest words are enough."));
       return;
     }
     if (aiReplyCount >= MAX_REPLIES) return;
@@ -262,6 +266,7 @@ function Reflect() {
         session_id: sessionId,
         save_mode: saveMode,
         message: trimmed,
+        lang: uiLang,
         ephemeral_session_token: saveMode === "ephemeral" ? ephemeralToken : null,
         ephemeral_context:
           saveMode === "ephemeral" && reflection
@@ -305,7 +310,7 @@ function Reflect() {
           onClick={back}
           className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> back
+          <ArrowLeft className="h-4 w-4" /> {tx(uiLang, "back")}
         </button>
       )}
 
@@ -383,11 +388,12 @@ function CheckIn({
   setIntensity: (n: number) => void;
   onContinue: () => void;
 }) {
+  const lang = useLang();
   return (
     <div className="fade-in">
-      <h1 className="font-serif text-3xl leading-snug sm:text-4xl">What feels heaviest right now?</h1>
+      <h1 className="font-serif text-3xl leading-snug sm:text-4xl">{tx(lang, "What feels heaviest right now?")}</h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Choose what is closest. It does not need to explain everything.
+        {tx(lang, "Choose what is closest. It does not need to explain everything.")}
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -410,7 +416,7 @@ function CheckIn({
               >
                 <Icon className="h-5 w-5" />
               </span>
-              <span className={`text-base ${active ? "font-medium text-foreground" : "text-muted-foreground"}`}>{label}</span>
+              <span className={`text-base ${active ? "font-medium text-foreground" : "text-muted-foreground"}`}>{tx(lang, label)}</span>
             </button>
           );
         })}
@@ -418,20 +424,20 @@ function CheckIn({
 
       {category && (
         <div className="fade-in mt-8 rounded-3xl border border-border bg-card/50 p-6">
-          <p className="text-sm text-muted-foreground">How heavy does it feel right now?</p>
+          <p className="text-sm text-muted-foreground">{tx(lang, "How heavy does it feel right now?")}</p>
           <div className="mt-6">
             <Slider value={[intensity]} min={1} max={10} step={1} onValueChange={(v) => setIntensity(v[0])} />
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-            <span>1 · a quiet weight</span>
+            <span>{tx(lang, "1 · a quiet weight")}</span>
             <span className="font-serif text-2xl text-foreground">{intensity}</span>
-            <span>10 · difficult to carry</span>
+            <span>{tx(lang, "10 · difficult to carry")}</span>
           </div>
         </div>
       )}
 
       <Button onClick={onContinue} disabled={!category} className="mt-8 h-14 w-full rounded-full text-base shadow-sm">
-        Continue
+        {tx(lang, "Continue")}
       </Button>
     </div>
   );
@@ -452,27 +458,28 @@ function Write({
   setSaveMode: (m: SaveMode) => void;
   onSubmit: () => void;
 }) {
+  const lang = useLang();
   const insertPrompt = (p: string) => {
     if (entry.trim().length === 0) setEntry(p + " ");
   };
 
   return (
     <div className="fade-in">
-      <h1 className="font-serif text-2xl leading-snug sm:text-3xl">You do not need to make it sound perfect.</h1>
+      <h1 className="font-serif text-2xl leading-snug sm:text-3xl">{tx(lang, "You do not need to make it sound perfect.")}</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Write what happened, what you feel, or what your mind keeps replaying.
+        {tx(lang, "Write what happened, what you feel, or what your mind keeps replaying.")}
       </p>
 
       <div className="mt-6 space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">Optional prompts</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">{tx(lang, "Optional prompts")}</p>
         <div className="flex flex-wrap gap-2">
           {PROMPTS.map((p) => (
             <button
               key={p}
-              onClick={() => insertPrompt(p)}
+              onClick={() => insertPrompt(tx(lang, p))}
               className="rounded-full border border-border bg-card/60 px-4 py-2 text-sm text-muted-foreground transition hover:border-muted-foreground/30 hover:bg-card hover:text-foreground"
             >
-              {p}
+              {tx(lang, p)}
             </button>
           ))}
         </div>
@@ -481,12 +488,12 @@ function Write({
       <Textarea
         value={entry}
         onChange={(e) => setEntry(e.target.value.slice(0, MAX_CHARS))}
-        placeholder="Start anywhere…"
+        placeholder={tx(lang, "Start anywhere…")}
         className="mt-4 min-h-[280px] resize-none rounded-[1.75rem] border-border bg-card/40 p-6 text-base leading-relaxed shadow-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20"
       />
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground/70">
         <span className="inline-flex items-center gap-1.5">
-          <Lock className="h-3 w-3" /> Your writing is private. You choose whether it is saved.
+          <Lock className="h-3 w-3" /> {tx(lang, "Your writing is private. You choose whether it is saved.")}
         </span>
         <span>
           {entry.length}/{MAX_CHARS}
@@ -494,23 +501,23 @@ function Write({
       </div>
 
       <div className="mt-6 space-y-3">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">After you continue</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">{tx(lang, "After you continue")}</p>
         <PrivacyOption
           active={saveMode === "ephemeral"}
           onClick={() => setSaveMode("ephemeral")}
-          title="Just for this moment"
-          desc="Use this writing only for the current reflection. Nothing is stored — not the writing, not the reflection."
+          title={tx(lang, "Just for this moment")}
+          desc={tx(lang, "Use this writing only for the current reflection. Nothing is stored — not the writing, not the reflection.")}
         />
         <PrivacyOption
           active={saveMode === "private"}
           onClick={() => setSaveMode("private")}
-          title="Save privately"
-          desc="Keep this entry and the reflection in your personal space so you can return to them later."
+          title={tx(lang, "Save privately")}
+          desc={tx(lang, "Keep this entry and the reflection in your personal space so you can return to them later.")}
         />
       </div>
 
       <Button onClick={onSubmit} className="mt-8 h-14 w-full rounded-full text-base shadow-sm">
-        Receive a Quiet Reflection
+        {tx(lang, "Receive a Quiet Reflection")}
       </Button>
     </div>
   );
@@ -552,31 +559,33 @@ function PrivacyOption({
 }
 
 function Loading() {
+  const lang = useLang();
   return (
     <div className="fade-in flex min-h-[60vh] flex-col items-center justify-center text-center">
       <div className="relative h-14 w-14">
         <span className="absolute inset-0 motion-safe:animate-ping rounded-full bg-primary/20" />
         <span className="absolute inset-2 rounded-full bg-primary/40" />
       </div>
-      <p className="mt-6 font-serif text-xl text-foreground/90">Creating a quiet reflection…</p>
-      <p className="mt-2 text-sm text-muted-foreground">This usually takes a few seconds.</p>
+      <p className="mt-6 font-serif text-xl text-foreground/90">{tx(lang, "Creating a quiet reflection…")}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{tx(lang, "This usually takes a few seconds.")}</p>
     </div>
   );
 }
 
 function ErrorView({ onRetry, onHome }: { onRetry: () => void; onHome: () => void }) {
+  const lang = useLang();
   return (
     <div className="fade-in mt-10">
-      <h1 className="font-serif text-2xl text-foreground">Something interrupted the reflection.</h1>
+      <h1 className="font-serif text-2xl text-foreground">{tx(lang, "Something interrupted the reflection.")}</h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Your writing has not been lost. Please try again in a moment.
+        {tx(lang, "Your writing has not been lost. Please try again in a moment.")}
       </p>
       <div className="mt-8 flex flex-col gap-3">
         <Button onClick={onRetry} className="h-12 rounded-full">
-          Try again
+          {tx(lang, "Try again")}
         </Button>
         <Button onClick={onHome} variant="ghost" className="h-12 rounded-full">
-          <HomeIcon className="h-4 w-4" /> Return Home
+          <HomeIcon className="h-4 w-4" /> {tx(lang, "Return Home")}
         </Button>
       </div>
     </div>
@@ -584,38 +593,44 @@ function ErrorView({ onRetry, onHome }: { onRetry: () => void; onHome: () => voi
 }
 
 function CrisisView({ reflection, onCalm }: { reflection: Reflection; onCalm: () => void }) {
+  const lang = useLang();
   const callTeleManas = () => {
     window.location.href = "tel:14416";
   };
   return (
     <div className="fade-in">
       <p className="inline-flex items-center gap-2 rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive">
-        <LifeBuoy className="h-3.5 w-3.5" /> Your safety comes first
+        <LifeBuoy className="h-3.5 w-3.5" /> {tx(lang, "Your safety comes first")}
       </p>
       <h1 className="mt-4 font-serif text-3xl leading-snug">{reflection.title}</h1>
       <p className="mt-4 text-base leading-relaxed text-foreground/90">{reflection.what_i_hear}</p>
 
       <div className="mt-6 rounded-3xl border border-destructive/30 bg-destructive/[0.04] p-6">
-        <p className="text-sm font-medium text-foreground">If you are in immediate danger</p>
+        <p className="text-sm font-medium text-foreground">{tx(lang, "If you are in immediate danger")}</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Please contact your local emergency services right now. In India, you can also reach{" "}
-          <span className="font-medium text-foreground">Tele-MANAS at 14416</span> — free, confidential, available any time.
+          {lang === "hi" ? (
+            <>कृपया अभी अपनी स्थानीय आपातकालीन सेवाओं से संपर्क करें। भारत में,{" "}
+            <span className="font-medium text-foreground">Tele-MANAS at 14416</span> से भी संपर्क किया जा सकता है — मुफ़्त, गोपनीय, किसी भी समय उपलब्ध।</>
+          ) : (
+            <>Please contact your local emergency services right now. In India, you can also reach{" "}
+            <span className="font-medium text-foreground">Tele-MANAS at 14416</span> — free, confidential, available any time.</>
+          )}
         </p>
       </div>
 
       <div className="mt-8 flex flex-col gap-3">
         <Button onClick={callTeleManas} className="h-12 rounded-full">
-          <Phone className="h-4 w-4" /> Call Tele-MANAS (14416)
+          <Phone className="h-4 w-4" /> {tx(lang, "Call Tele-MANAS")} (14416)
         </Button>
         <Button
-          onClick={() => toast("Open your contacts and reach out to someone you trust — even a single sentence is enough.")}
+          onClick={() => toast(tx(lang, "Open your contacts and reach out to someone you trust — even a single sentence is enough."))}
           variant="outline"
           className="h-12 rounded-full"
         >
-          Contact Someone I Trust
+          {tx(lang, "Contact Someone I Trust")}
         </Button>
         <Button onClick={onCalm} variant="ghost" className="h-12 rounded-full">
-          Return to Calm Tools
+          {tx(lang, "Return to Calm Tools")}
         </Button>
       </div>
     </div>
@@ -644,6 +659,7 @@ function Result({
   canContinue: boolean;
   onContinue: () => void;
 }) {
+  const lang = useLang();
   const elevated = reflection.risk_level === "elevated";
   const mode: ResponseMode = (reflection.response_mode ?? "listen") as ResponseMode;
   const isGrounding = mode === "grounding";
@@ -652,7 +668,7 @@ function Result({
   const isCelebration = mode === "celebration";
   return (
     <div className="fade-in">
-      <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">a quiet reflection</p>
+      <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{tx(lang, "a quiet reflection")}</p>
       <h1 className="mt-3 font-serif text-3xl sm:text-4xl">{reflection.title}</h1>
 
       <div className="mt-6">
@@ -661,20 +677,19 @@ function Result({
 
       {(elevated || reflection.encourage_human_support) && (
         <div className="mt-5 rounded-2xl border border-border bg-card/50 p-4 text-sm leading-relaxed text-muted-foreground">
-          What you wrote sounds heavy. Alongside this reflection, please consider reaching out to a person you trust or a
-          qualified professional. You do not have to carry this alone.
+          {tx(lang, "What you wrote sounds heavy. Alongside this reflection, please consider reaching out to a person you trust or a qualified professional. You do not have to carry this alone.")}
         </div>
       )}
 
       <div className="mt-8 space-y-4">
-        <Card heading={isGrounding ? "A grounding pause" : "What I hear"}>
+        <Card heading={isGrounding ? tx(lang, "A grounding pause") : tx(lang, "What I hear")}>
           <p className={`font-serif leading-relaxed text-foreground/90 ${isGrounding ? "text-lg" : "text-base"}`}>
             {reflection.what_i_hear}
           </p>
         </Card>
 
         {!isGrounding && !isCelebration && reflection.possible_underneath.length > 0 && (
-          <Card heading="What may be underneath">
+          <Card heading={tx(lang, "What may be underneath")}>
             <ul className="space-y-2.5">
               {reflection.possible_underneath.map((item) => (
                 <li key={item} className="flex gap-3 text-sm leading-relaxed text-foreground/90">
@@ -687,15 +702,15 @@ function Result({
         )}
 
         {isDecision && (
-          <Card heading="Before you act">
+          <Card heading={tx(lang, "Before you act")}>
             <p className="font-serif text-base leading-relaxed text-foreground/90">
-              Before acting, separate what you know from what you are assuming.
+              {tx(lang, "Before acting, separate what you know from what you are assuming.")}
             </p>
           </Card>
         )}
 
         {reflection.gentle_question && !isGrounding && (
-          <Card heading="One gentle question">
+          <Card heading={tx(lang, "One gentle question")}>
             <p className="font-serif text-base leading-relaxed text-foreground/90">{reflection.gentle_question}</p>
           </Card>
         )}
@@ -712,14 +727,14 @@ function Result({
       <div className="mt-8 flex flex-col gap-3">
         {canContinue && (
           <Button onClick={onContinue} className="h-12 rounded-full">
-            Continue Gently
+            {tx(lang, "Continue Gently")}
           </Button>
         )}
         <Button onClick={onCalm} variant="outline" className="h-12 rounded-full">
-          Try a Calming Tool
+          {tx(lang, "Try a Calming Tool")}
         </Button>
         <Button onClick={onHome} variant="ghost" className="h-12 rounded-full">
-          <HomeIcon className="h-4 w-4" /> Return Home
+          <HomeIcon className="h-4 w-4" /> {tx(lang, "Return Home")}
         </Button>
       </div>
     </div>
@@ -744,14 +759,15 @@ function MicroActionCard({
   emphasized?: boolean;
   soft?: boolean;
 }) {
+  const lang = useLang();
   if (emphasized) {
     return (
       <div className="rounded-3xl border-2 border-primary/40 bg-primary/[0.08] p-6 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wider text-primary/80">Try this now</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-primary/80">{tx(lang, "Try this now")}</p>
         <p className="mt-3 font-serif text-xl leading-snug text-foreground">{action.title}</p>
         <p className="mt-3 text-base leading-relaxed text-foreground/90">{action.instructions}</p>
         <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[11px] text-muted-foreground">
-          <Sparkles className="h-3 w-3" /> {action.duration_minutes} min
+          <Sparkles className="h-3 w-3" /> {action.duration_minutes} {tx(lang, "min")}
         </p>
       </div>
     );
@@ -759,7 +775,7 @@ function MicroActionCard({
   if (soft) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground/70">If you want, later</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground/70">{tx(lang, "If you want, later")}</p>
         <p className="mt-2 text-sm leading-relaxed text-foreground/80">
           <span className="font-medium">{action.title}.</span> {action.instructions}
         </p>
@@ -767,11 +783,11 @@ function MicroActionCard({
     );
   }
   return (
-    <Card heading="A small next step">
+    <Card heading={tx(lang, "A small next step")}>
       <p className="text-sm font-medium text-foreground/90">{action.title}</p>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{action.instructions}</p>
       <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-3 py-1 text-[11px] text-muted-foreground">
-        <Sparkles className="h-3 w-3" /> {action.duration_minutes} min · {action.type.replace("_", " ")}
+        <Sparkles className="h-3 w-3" /> {action.duration_minutes} {tx(lang, "min")} · {tx(lang, action.type.replace("_", " "))}
       </p>
     </Card>
   );
@@ -784,6 +800,7 @@ function FeedbackBlock({
   onSubmit: (rating: FeedbackRating, reasons: FeedbackReason[]) => void;
   compact?: boolean;
 }) {
+  const lang = useLang();
   const [rating, setRating] = useState<FeedbackRating | null>(null);
   const [reasons, setReasons] = useState<FeedbackReason[]>([]);
   const [sent, setSent] = useState(false);
@@ -808,7 +825,7 @@ function FeedbackBlock({
   if (sent) {
     return (
       <div className={`flex items-center justify-center gap-2 text-xs text-muted-foreground ${compact ? "mt-4" : "mt-6"}`}>
-        <Check className="h-3.5 w-3.5" /> Thank you for the feedback.
+        <Check className="h-3.5 w-3.5" /> {tx(lang, "Thank you for the feedback.")}
       </div>
     );
   }
@@ -816,7 +833,7 @@ function FeedbackBlock({
   return (
     <div className={compact ? "mt-4" : "mt-6"}>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <span className="text-xs text-muted-foreground">Was this helpful?</span>
+        <span className="text-xs text-muted-foreground">{tx(lang, "Was this helpful?")}</span>
         {(
           [
             { id: "yes", label: "Yes" },
@@ -831,14 +848,14 @@ function FeedbackBlock({
             size="sm"
             className="h-8 rounded-full text-xs"
           >
-            {opt.label}
+            {tx(lang, opt.label)}
           </Button>
         ))}
       </div>
 
       {rating && rating !== "yes" && (
         <div className="fade-in mt-4 rounded-2xl border border-border bg-card/40 p-4">
-          <p className="text-xs text-muted-foreground">Optional — what made it feel that way?</p>
+          <p className="text-xs text-muted-foreground">{tx(lang, "Optional — what made it feel that way?")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {REASON_OPTIONS.map((r) => {
               const active = reasons.includes(r.id);
@@ -852,14 +869,14 @@ function FeedbackBlock({
                       : "border-border bg-background/60 text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground"
                   }`}
                 >
-                  {r.label}
+                  {tx(lang, r.label)}
                 </button>
               );
             })}
           </div>
           <div className="mt-3 flex justify-end">
             <Button onClick={submitWithReasons} size="sm" className="h-8 rounded-full text-xs">
-              Send
+              {tx(lang, "Send")}
             </Button>
           </div>
         </div>
@@ -910,6 +927,7 @@ function Guided({
   }) => void;
   reflectionId: string | null;
 }) {
+  const lang = useLang();
   // The "current" gentle question is the last AI reply's question, or the initial one.
   const currentQuestion =
     turns.length > 0
@@ -926,20 +944,24 @@ function Guided({
   return (
     <div className="fade-in">
       <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-        {sessionComplete ? "guided reflection complete" : `Guided reflection ${nextReplyNumber} of ${MAX_REPLIES}`}
+        {sessionComplete
+          ? tx(lang, "guided reflection complete")
+          : lang === "hi"
+            ? `निर्देशित चिंतन ${nextReplyNumber}/${MAX_REPLIES}`
+            : `Guided reflection ${nextReplyNumber} of ${MAX_REPLIES}`}
       </p>
-      <h1 className="mt-3 font-serif text-2xl leading-snug sm:text-3xl">A quiet follow-up</h1>
+      <h1 className="mt-3 font-serif text-2xl leading-snug sm:text-3xl">{tx(lang, "A quiet follow-up")}</h1>
 
       {/* Prior turns rendered as calm reflection cards (no chat bubbles) */}
       <div className="mt-8 space-y-6">
         {turns.map((t, i) => (
           <div key={i} className="space-y-3">
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 p-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">You wrote</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">{tx(lang, "You wrote")}</p>
               <p className="mt-2 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{t.user}</p>
             </div>
             <div className="rounded-3xl border border-border bg-card/60 p-6">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">A quiet reflection</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">{tx(lang, "A quiet reflection")}</p>
               <p
                 className={`mt-3 font-serif leading-relaxed text-foreground/90 ${
                   t.ai.response_mode === "grounding" ? "text-lg" : "text-base"
@@ -949,7 +971,7 @@ function Guided({
               </p>
               {t.ai.response_mode === "decision" && (
                 <p className="mt-4 rounded-2xl bg-muted/50 px-4 py-3 text-sm leading-relaxed text-foreground/80">
-                  Before acting, separate what you know from what you are assuming.
+                  {tx(lang, "Before acting, separate what you know from what you are assuming.")}
                 </p>
               )}
               {t.ai.gentle_question && t.ai.response_mode !== "grounding" && (
@@ -984,12 +1006,12 @@ function Guided({
         <div className="mt-10">
           {closingNote && (
             <div className="rounded-3xl border border-border bg-card/60 p-6">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">A closing note</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">{tx(lang, "A closing note")}</p>
               <p className="mt-3 font-serif text-base leading-relaxed text-foreground/90">{closingNote}</p>
             </div>
           )}
           <p className="mt-6 font-serif text-lg leading-relaxed text-foreground/90">
-            You have given this feeling some space. Let the next step happen away from the screen.
+            {tx(lang, "You have given this feeling some space. Let the next step happen away from the screen.")}
           </p>
           {closingAction && (
             <div className="mt-5 rounded-2xl border border-primary/30 bg-primary/[0.05] p-5">
@@ -1000,14 +1022,14 @@ function Guided({
 
           <div className="mt-8 flex flex-col gap-3">
             <Button onClick={onCalm} variant="outline" className="h-12 rounded-full">
-              Try a Calming Tool
+              {tx(lang, "Try a Calming Tool")}
             </Button>
             <Button onClick={onHome} variant="ghost" className="h-12 rounded-full">
-              <HomeIcon className="h-4 w-4" /> Return Home
+              <HomeIcon className="h-4 w-4" /> {tx(lang, "Return Home")}
             </Button>
             {savedPrivately && (
               <Button onClick={onJournal} variant="ghost" className="h-12 rounded-full">
-                <BookOpen className="h-4 w-4" /> View My Journal
+                <BookOpen className="h-4 w-4" /> {tx(lang, "View My Journal")}
               </Button>
             )}
           </div>
@@ -1016,20 +1038,20 @@ function Guided({
         <>
           {/* Current gentle question + writing area */}
           <div className="mt-10 rounded-3xl border border-border bg-card/60 p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">One gentle question</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">{tx(lang, "One gentle question")}</p>
             <p className="mt-3 font-serif text-lg leading-relaxed text-foreground/90">“{currentQuestion}”</p>
           </div>
 
           <Textarea
             value={followupText}
             onChange={(e) => setFollowupText(e.target.value.slice(0, FOLLOWUP_MAX))}
-            placeholder="Write what comes up. A few honest words are enough."
+            placeholder={tx(lang, "Write what comes up. A few honest words are enough.")}
             disabled={loading}
             className="mt-4 min-h-[200px] resize-none rounded-[1.75rem] border-border bg-card/40 p-6 text-base leading-relaxed shadow-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20"
           />
           <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground/70">
             <span className="inline-flex items-center gap-1.5">
-              <Lock className="h-3 w-3" /> {savedPrivately ? "Saved privately." : "Kept only for this moment."}
+              <Lock className="h-3 w-3" /> {savedPrivately ? tx(lang, "Saved privately.") : tx(lang, "Kept only for this moment.")}
             </span>
             <span>
               {followupText.length}/{FOLLOWUP_MAX}
@@ -1037,20 +1059,20 @@ function Guided({
           </div>
 
           {loading && (
-            <p className="mt-6 text-center text-sm text-muted-foreground">Taking a quiet moment to reflect...</p>
+            <p className="mt-6 text-center text-sm text-muted-foreground">{tx(lang, "Taking a quiet moment to reflect...")}</p>
           )}
           {error && !loading && (
             <p className="mt-6 text-center text-sm text-destructive">
-              Something interrupted the reflection. Your writing has not been saved unless you chose Save privately. Please try again.
+              {tx(lang, "Something interrupted the reflection. Your writing has not been saved unless you chose Save privately. Please try again.")}
             </p>
           )}
 
           <div className="mt-6 flex flex-col gap-3">
             <Button onClick={onSubmit} disabled={loading} className="h-12 rounded-full">
-              Reflect on This
+              {tx(lang, "Reflect on This")}
             </Button>
             <Button onClick={onPause} variant="ghost" disabled={loading} className="h-12 rounded-full">
-              Pause Here
+              {tx(lang, "Pause Here")}
             </Button>
           </div>
         </>
