@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { logMood } from "@/lib/data.functions";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { Textarea } from "@/components/ui/textarea";
 import { CompanionCloud } from "@/components/CompanionCloud";
 import { HelpfulnessPrompt } from "@/components/HelpfulnessPrompt";
@@ -22,6 +24,13 @@ import {
  *     sessionStorage reflect handoff
  *   · every destination on the personalized path is a real screen
  * Adaptive: light arrivals skip the dig-deeper step; everything is skippable.
+ *
+ * Bilingual (Phase 19): every DISPLAYED string renders through tx(lang, …),
+ * but what is STORED stays English — emotion_tags / trigger_tags hold the raw
+ * English labels, `need` holds a language-independent key, and the composed
+ * note keeps its English scaffolding. This is load-bearing: room-state.ts and
+ * the Insights constellation key off those English tags (lower-cased), so the
+ * room that responds must never see a translated value.
  */
 export const Route = createFileRoute("/_app/checkin")({
   component: CheckinJourney,
@@ -35,7 +44,8 @@ export const Route = createFileRoute("/_app/checkin")({
 });
 
 /* Emotion vocabulary — identical to the constellation's tag map so every
-   check-in keeps feeding the same patterns. Score = how heavy it lands. */
+   check-in keeps feeding the same patterns. Score = how heavy it lands.
+   Labels are the STORED English tags; Hindi is display-only via tx(). */
 const STATES: { label: string; score: number; heavy: boolean; icon: typeof Heart }[] = [
   { label: "Overwhelmed", score: 2, heavy: true, icon: CloudRain },
   { label: "Anxious", score: 3, heavy: true, icon: Zap },
@@ -63,7 +73,8 @@ const HEART_BY_EMOTION: Record<string, string[]> = {
 };
 const HEART_DEFAULT = ["Uncertainty", "Guilt or regret", "Need for reassurance", "Fear of losing someone", "Low self-worth", "Something else"];
 
-/* Core needs — each explains itself and routes somewhere real. */
+/* Core needs — each explains itself and routes somewhere real. `key` is stored
+   and drives routing; label + line are display-only. */
 const NEEDS: { key: string; label: string; line: string; icon: typeof Wind }[] = [
   { key: "calm", label: "Calm", line: "help my body settle first", icon: Wind },
   { key: "clarity", label: "Clarity", line: "help me think this through", icon: Sparkles },
@@ -79,6 +90,7 @@ function CheckinJourney() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const log = useServerFn(logMood);
+  const lang = useLang();
 
   const [step, setStep] = useState<StepId>("landing");
   const [emotions, setEmotions] = useState<string[]>([]);
@@ -117,6 +129,8 @@ function CheckinJourney() {
     return scores.length ? Math.min(...scores) : 5;
   }, [emotions]);
 
+  // The note keeps English scaffolding on purpose: it is stored and read by the
+  // AI layer (is_ai_readable), which reasons in English over the same tags.
   const composedNote = useMemo(() => {
     const parts: string[] = [];
     if (mind.trim()) parts.push(mind.trim());
@@ -169,36 +183,36 @@ function CheckinJourney() {
     return (
       <div className="mx-auto flex min-h-[80vh] max-w-md flex-col items-center justify-center px-6 py-12 text-center fade-in">
         <CompanionCloud size={110} state="calm" />
-        <p className="qs-section-label mt-6">check-in complete</p>
+        <p className="qs-section-label mt-6">{tx(lang, "check-in complete")}</p>
         <h1 className="mt-3 font-serif text-[1.7rem] font-light leading-snug">
-          You showed up for yourself.
+          {tx(lang, "You showed up for yourself.")}
         </h1>
         <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-muted-foreground">
-          It's saved to your sky — the patterns on Insights already know.
-          {commitment.trim() ? ` And you chose one small thing: “${commitment.trim()}”.` : ""}
+          {tx(lang, "It's saved to your sky — the patterns on Insights already know.")}
+          {commitment.trim() ? ` ${tx(lang, "And you chose one small thing:")} “${commitment.trim()}”.` : ""}
         </p>
         <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
           {primary ? (
-            <Link to={primary.to} className="qs-pill-cta w-full">{primary.label}</Link>
+            <Link to={primary.to} className="qs-pill-cta w-full">{tx(lang, primary.label)}</Link>
           ) : (
             <button type="button" onClick={talkItOut} className="qs-pill-cta w-full">
               <MessageCircle className="h-4 w-4" strokeWidth={1.7} />
-              Talk it out with InnerMate
+              {tx(lang, "Talk it out with InnerMate")}
             </button>
           )}
           {!primary && need !== "space" && (
             <Link to="/home" className="glass inline-flex h-11 w-full items-center justify-center rounded-full text-[13.5px] text-muted-foreground transition hover:text-foreground">
-              Return to Today
+              {tx(lang, "Return to Today")}
             </Link>
           )}
           {primary && primary.to !== "/home" && (
             <button type="button" onClick={talkItOut} className="glass inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-[13.5px] text-muted-foreground transition hover:text-foreground">
               <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.7} />
-              or talk it out with InnerMate
+              {tx(lang, "or talk it out with InnerMate")}
             </button>
           )}
           <Link to="/insights" className="mt-1 text-[12.5px] text-muted-foreground transition hover:text-foreground">
-            view my journey
+            {tx(lang, "view my journey")}
           </Link>
         </div>
         <HelpfulnessPrompt category="checkin" className="mt-8 w-full max-w-xs justify-center" />
@@ -213,8 +227,8 @@ function CheckinJourney() {
         <span aria-hidden className="qs-firefly pointer-events-none" style={{ top: "12%", left: "78%" }} />
         <span aria-hidden className="qs-firefly pointer-events-none" style={{ top: "30%", left: "12%", animationDelay: "-5s" }} />
         <div className="flex items-center justify-between">
-          <p className="qs-section-label">check-in</p>
-          <Link to="/home" className="text-[12px] text-muted-foreground transition hover:text-foreground">not now</Link>
+          <p className="qs-section-label">{tx(lang, "check-in")}</p>
+          <Link to="/home" className="text-[12px] text-muted-foreground transition hover:text-foreground">{tx(lang, "not now")}</Link>
         </div>
         <div className="relative mt-10 flex flex-col items-center text-center">
           {/* soft rising-moon glow behind the companion */}
@@ -227,28 +241,30 @@ function CheckinJourney() {
         </div>
         <div className="mt-auto pt-10">
           <h1 className="font-serif text-[2rem] font-light leading-[1.15] tracking-tight">
-            Let's pause.<br />You matter.
+            {tx(lang, "Let's pause.")}<br />{tx(lang, "You matter.")}
           </h1>
           <p className="mt-3 max-w-[34ch] text-[14.5px] leading-relaxed text-muted-foreground">
-            A few mindful steps to help you understand what's happening inside you.
+            {tx(lang, "A few mindful steps to help you understand what's happening inside you.")}
           </p>
           <button type="button" onClick={() => setStep("mood")} className="qs-pill-cta mt-7 w-full">
-            Start check-in
+            {tx(lang, "Start check-in")}
           </button>
           <div className="mt-4 flex items-center justify-center gap-4 text-[11.5px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><Clock className="h-3 w-3" /> takes ~3 minutes</span>
-            <span className="inline-flex items-center gap-1.5"><Lock className="h-3 w-3" /> private to you</span>
+            <span className="inline-flex items-center gap-1.5"><Clock className="h-3 w-3" /> {tx(lang, "takes ~3 minutes")}</span>
+            <span className="inline-flex items-center gap-1.5"><Lock className="h-3 w-3" /> {tx(lang, "private to you")}</span>
           </div>
         </div>
       </div>
     );
   }
 
+  // The sheet is display-only: prefixes and values both translate, but the
+  // underlying arrays stay English. toLowerCase() is a no-op on Devanagari.
   const sheetLines: string[] = [
-    emotions.length ? `feeling: ${emotions.join(", ").toLowerCase()}` : "",
-    triggers.length || hearts.length ? `around: ${[...triggers, ...hearts.map((h) => h.toLowerCase())].join(", ").toLowerCase()}` : "",
-    mind.trim() ? `on my mind: ${mind.trim().slice(0, 60)}${mind.trim().length > 60 ? "…" : ""}` : "",
-    need ? `needing: ${NEEDS.find((n) => n.key === need)?.label.toLowerCase() ?? need}` : "",
+    emotions.length ? `${tx(lang, "feeling")}: ${emotions.map((e) => tx(lang, e).toLowerCase()).join(", ")}` : "",
+    triggers.length || hearts.length ? `${tx(lang, "around")}: ${[...triggers, ...hearts].map((t) => tx(lang, t).toLowerCase()).join(", ")}` : "",
+    mind.trim() ? `${tx(lang, "on my mind")}: ${mind.trim().slice(0, 60)}${mind.trim().length > 60 ? "…" : ""}` : "",
+    need ? `${tx(lang, "needing")}: ${tx(lang, NEEDS.find((n) => n.key === need)?.label ?? need).toLowerCase()}` : "",
   ].filter(Boolean);
 
   return (
@@ -262,15 +278,15 @@ function CheckinJourney() {
       {/* Header: back + adaptive progress */}
       <div className="flex items-center gap-3">
         {stepIndex > 0 ? (
-          <button type="button" onClick={goBack} aria-label="Back" className="glass flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
+          <button type="button" onClick={goBack} aria-label={tx(lang, "Back")} className="glass flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
             <ArrowLeft className="h-4 w-4" strokeWidth={1.7} />
           </button>
         ) : (
-          <button type="button" onClick={() => setStep("landing")} aria-label="Back" className="glass flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
+          <button type="button" onClick={() => setStep("landing")} aria-label={tx(lang, "Back")} className="glass flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground">
             <ArrowLeft className="h-4 w-4" strokeWidth={1.7} />
           </button>
         )}
-        <div className="flex flex-1 gap-1.5" role="progressbar" aria-valuenow={stepIndex + 1} aria-valuemax={path.length} aria-label="Check-in progress">
+        <div className="flex flex-1 gap-1.5" role="progressbar" aria-valuenow={stepIndex + 1} aria-valuemax={path.length} aria-label={tx(lang, "Check-in progress")}>
           {path.map((p, i) => (
             <span
               key={p}
@@ -279,7 +295,7 @@ function CheckinJourney() {
             />
           ))}
         </div>
-        <Link to="/home" className="text-[12px] text-muted-foreground transition hover:text-foreground">exit</Link>
+        <Link to="/home" className="text-[12px] text-muted-foreground transition hover:text-foreground">{tx(lang, "exit")}</Link>
       </div>
 
       {/* THE SHEET — each step writes its line onto one page, pinned here.
@@ -288,7 +304,7 @@ function CheckinJourney() {
         <div
           className="mt-5 rounded-[4px] px-4 py-3 fade-in"
           style={{ background: "var(--paper)", color: "var(--ink)", boxShadow: "0 10px 30px rgba(10, 8, 4, 0.4)" }}
-          aria-label="Your check-in so far"
+          aria-label={tx(lang, "Your check-in so far")}
         >
           {sheetLines.map((line) => (
             <p key={line} className="font-reading text-[13.5px] leading-[1.7]" style={{ color: "color-mix(in oklab, var(--ink) 82%, var(--paper))" }}>
@@ -301,9 +317,9 @@ function CheckinJourney() {
       {/* ── Step: mood ── */}
       {step === "mood" && (
         <section className="mt-8 fade-in" aria-labelledby="ci-mood">
-          <h1 id="ci-mood" className="font-serif text-[1.65rem] font-light leading-snug">How are you feeling right now?</h1>
+          <h1 id="ci-mood" className="font-serif text-[1.65rem] font-light leading-snug">{tx(lang, "How are you feeling right now?")}</h1>
           <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
-            There's no right or wrong way to feel. Pick up to three.
+            {tx(lang, "There's no right or wrong way to feel. Pick up to three.")}
           </p>
           <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {STATES.map((s) => {
@@ -321,7 +337,7 @@ function CheckinJourney() {
                     : { background: "color-mix(in oklab, var(--card) 55%, transparent)", borderColor: "var(--border-subtle)", color: "var(--text-secondary)" }}
                 >
                   <Icon className="h-5 w-5" strokeWidth={1.6} style={{ color: on ? "var(--accent-primary)" : "var(--text-secondary)" }} />
-                  {s.label}
+                  {tx(lang, s.label)}
                 </button>
               );
             })}
@@ -329,14 +345,14 @@ function CheckinJourney() {
           <div className="glass mt-5 flex items-center gap-3 rounded-2xl p-3.5">
             <CompanionCloud size={40} state="listening" glow={false} />
             <p className="text-[12.5px] leading-relaxed text-muted-foreground">
-              It's okay to not be okay. Naming it is the first step.
+              {tx(lang, "It's okay to not be okay. Naming it is the first step.")}
             </p>
           </div>
           <button type="button" onClick={goNext} disabled={emotions.length === 0} className="qs-pill-cta mt-6 w-full disabled:opacity-50">
-            Continue
+            {tx(lang, "Continue")}
           </button>
           <button type="button" onClick={() => setStep("mind")} className="mt-3 w-full text-center text-[13px] text-muted-foreground transition hover:text-foreground">
-            skip for now
+            {tx(lang, "skip for now")}
           </button>
         </section>
       )}
@@ -344,36 +360,36 @@ function CheckinJourney() {
       {/* ── Step: dig deeper (heavy arrivals only) ── */}
       {step === "deeper" && (
         <section className="mt-8 fade-in" aria-labelledby="ci-deeper">
-          <h1 id="ci-deeper" className="font-serif text-[1.65rem] font-light leading-snug">Let's understand it better</h1>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">Optional — pick what fits, skip what doesn't.</p>
+          <h1 id="ci-deeper" className="font-serif text-[1.65rem] font-light leading-snug">{tx(lang, "Let's understand it better")}</h1>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{tx(lang, "Optional — pick what fits, skip what doesn't.")}</p>
 
-          <p className="qs-section-label mt-6">what set it off?</p>
+          <p className="qs-section-label mt-6">{tx(lang, "what set it off?")}</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {TRIGGERS.map((t) => {
               const on = triggers.includes(t);
               return (
                 <button key={t} type="button" aria-pressed={on} onClick={() => toggle(triggers, setTriggers, t)} className={`qs-chip ${on ? "qs-chip--active" : ""}`}>
-                  {t}
+                  {tx(lang, t)}
                 </button>
               );
             })}
           </div>
 
-          <p className="qs-section-label mt-6">what's at the heart of it?</p>
+          <p className="qs-section-label mt-6">{tx(lang, "what's at the heart of it?")}</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {heartOptions.map((h) => {
               const on = hearts.includes(h);
               return (
                 <button key={h} type="button" aria-pressed={on} onClick={() => toggle(hearts, setHearts, h, 2)} className={`qs-chip ${on ? "qs-chip--active" : ""}`}>
-                  {h}
+                  {tx(lang, h)}
                 </button>
               );
             })}
           </div>
 
-          <button type="button" onClick={goNext} className="qs-pill-cta mt-7 w-full">Continue</button>
+          <button type="button" onClick={goNext} className="qs-pill-cta mt-7 w-full">{tx(lang, "Continue")}</button>
           <button type="button" onClick={goNext} className="mt-3 w-full text-center text-[13px] text-muted-foreground transition hover:text-foreground">
-            skip this step
+            {tx(lang, "skip this step")}
           </button>
         </section>
       )}
@@ -381,29 +397,29 @@ function CheckinJourney() {
       {/* ── Step: what's on your mind ── */}
       {step === "mind" && (
         <section className="mt-8 fade-in" aria-labelledby="ci-mind">
-          <h1 id="ci-mind" className="font-serif text-[1.65rem] font-light leading-snug">What's on your mind?</h1>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">Write freely. No judgment here.</p>
+          <h1 id="ci-mind" className="font-serif text-[1.65rem] font-light leading-snug">{tx(lang, "What's on your mind?")}</h1>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{tx(lang, "Write freely. No judgment here.")}</p>
           <Textarea
-            aria-label="What's on your mind"
+            aria-label={tx(lang, "What's on your mind")}
             value={mind}
             onChange={(e) => setMind(e.target.value)}
             maxLength={400}
-            placeholder="Whatever's here. Or leave it empty."
+            placeholder={tx(lang, "Whatever's here. Or leave it empty.")}
             className="mt-4 min-h-36 rounded-2xl border-border/60 bg-card/50 text-[15px] leading-relaxed placeholder:text-muted-foreground"
           />
           <div className="mt-1.5 flex items-center justify-between px-1">
-            <p className="text-[11px] text-muted-foreground">saves into this check-in · private to you</p>
+            <p className="text-[11px] text-muted-foreground">{tx(lang, "saves into this check-in · private to you")}</p>
             <p className="text-[11px] tabular-nums text-muted-foreground">{mind.length}/400</p>
           </div>
-          <button type="button" onClick={goNext} className="qs-pill-cta mt-6 w-full">Continue</button>
+          <button type="button" onClick={goNext} className="qs-pill-cta mt-6 w-full">{tx(lang, "Continue")}</button>
         </section>
       )}
 
       {/* ── Step: core need ── */}
       {step === "need" && (
         <section className="mt-8 fade-in" aria-labelledby="ci-need">
-          <h1 id="ci-need" className="font-serif text-[1.65rem] font-light leading-snug">What would help most right now?</h1>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">Choose what feels right — this shapes where we go next.</p>
+          <h1 id="ci-need" className="font-serif text-[1.65rem] font-light leading-snug">{tx(lang, "What would help most right now?")}</h1>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{tx(lang, "Choose what feels right — this shapes where we go next.")}</p>
           <div className="mt-5 flex flex-col gap-2.5">
             {NEEDS.map((n) => {
               const on = need === n.key;
@@ -421,58 +437,58 @@ function CheckinJourney() {
                 >
                   <Icon className="h-4 w-4 shrink-0" strokeWidth={1.7} style={{ color: on ? "var(--accent-primary)" : "var(--text-secondary)" }} />
                   <span className="min-w-0">
-                    <span className="block text-[14.5px] font-medium" style={{ color: "var(--text-primary)" }}>{n.label}</span>
-                    <span className="block text-[12px]" style={{ color: "var(--text-secondary)" }}>{n.line}</span>
+                    <span className="block text-[14.5px] font-medium" style={{ color: "var(--text-primary)" }}>{tx(lang, n.label)}</span>
+                    <span className="block text-[12px]" style={{ color: "var(--text-secondary)" }}>{tx(lang, n.line)}</span>
                   </span>
                 </button>
               );
             })}
           </div>
-          <button type="button" onClick={goNext} className="qs-pill-cta mt-6 w-full">Continue</button>
+          <button type="button" onClick={goNext} className="qs-pill-cta mt-6 w-full">{tx(lang, "Continue")}</button>
         </section>
       )}
 
       {/* ── Step: reflection summary + commitment + save ── */}
       {step === "summary" && (
         <section className="mt-8 fade-in" aria-labelledby="ci-summary">
-          <h1 id="ci-summary" className="font-serif text-[1.65rem] font-light leading-snug">Your reflection</h1>
+          <h1 id="ci-summary" className="font-serif text-[1.65rem] font-light leading-snug">{tx(lang, "Your reflection")}</h1>
           <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
-            Based on what you shared — correct anything that doesn't fit.
+            {tx(lang, "Based on what you shared — correct anything that doesn't fit.")}
           </p>
           <div className="glass mt-5 space-y-3 rounded-2xl p-4">
             {emotions.length > 0 && (
-              <SummaryRow label="you're feeling" onEdit={() => setStep("mood")}>{emotions.join(", ")}</SummaryRow>
+              <SummaryRow label={tx(lang, "you're feeling")} onEdit={() => setStep("mood")}>{emotions.map((e) => tx(lang, e)).join(", ")}</SummaryRow>
             )}
             {(triggers.length > 0 || hearts.length > 0) && (
-              <SummaryRow label="it may be connected to" onEdit={() => setStep("deeper")}>
-                {[...triggers, ...hearts.map((h) => h.toLowerCase())].join(", ")}
+              <SummaryRow label={tx(lang, "it may be connected to")} onEdit={() => setStep("deeper")}>
+                {[...triggers.map((t) => tx(lang, t)), ...hearts.map((h) => tx(lang, h).toLowerCase())].join(", ")}
               </SummaryRow>
             )}
             {mind.trim() && (
-              <SummaryRow label="on your mind" onEdit={() => setStep("mind")}>{mind.trim()}</SummaryRow>
+              <SummaryRow label={tx(lang, "on your mind")} onEdit={() => setStep("mind")}>{mind.trim()}</SummaryRow>
             )}
             {need && (
-              <SummaryRow label="what may help" onEdit={() => setStep("need")}>
-                {NEEDS.find((n) => n.key === need)?.label} — {NEEDS.find((n) => n.key === need)?.line}
+              <SummaryRow label={tx(lang, "what may help")} onEdit={() => setStep("need")}>
+                {tx(lang, NEEDS.find((n) => n.key === need)?.label ?? need)} — {tx(lang, NEEDS.find((n) => n.key === need)?.line ?? "")}
               </SummaryRow>
             )}
             {emotions.length === 0 && !mind.trim() && !need && (
-              <p className="text-[13.5px] italic text-muted-foreground">A quiet check-in — just marking that you came. That counts too.</p>
+              <p className="text-[13.5px] italic text-muted-foreground">{tx(lang, "A quiet check-in — just marking that you came. That counts too.")}</p>
             )}
           </div>
 
-          <p className="qs-section-label mt-6">one small thing for yourself? <span className="normal-case tracking-normal">(optional)</span></p>
+          <p className="qs-section-label mt-6">{tx(lang, "one small thing for yourself?")} <span className="normal-case tracking-normal">{tx(lang, "(optional)")}</span></p>
           <Textarea
-            aria-label="One small thing you'll do for yourself"
+            aria-label={tx(lang, "One small thing you'll do for yourself")}
             value={commitment}
             onChange={(e) => setCommitment(e.target.value)}
             maxLength={120}
-            placeholder="e.g. a ten-minute walk · not texting tonight · one page of notes"
+            placeholder={tx(lang, "e.g. a ten-minute walk · not texting tonight · one page of notes")}
             className="mt-2 min-h-16 rounded-2xl border-border/60 bg-card/50 text-[14px] leading-relaxed placeholder:text-muted-foreground"
           />
 
           <button type="button" onClick={save} disabled={saving} className="qs-pill-cta mt-6 w-full disabled:opacity-60">
-            {saving ? "Saving…" : "This feels right"}
+            {saving ? tx(lang, "Saving…") : tx(lang, "This feels right")}
           </button>
         </section>
       )}
@@ -481,6 +497,7 @@ function CheckinJourney() {
 }
 
 function SummaryRow({ label, children, onEdit }: { label: string; children: React.ReactNode; onEdit: () => void }) {
+  const lang = useLang();
   return (
     <div className="flex items-start justify-between gap-3 border-b border-border/30 pb-3 last:border-0 last:pb-0">
       <div className="min-w-0">
@@ -488,7 +505,7 @@ function SummaryRow({ label, children, onEdit }: { label: string; children: Reac
         <p className="mt-1 text-[14px] leading-relaxed text-foreground/90">{children}</p>
       </div>
       <button type="button" onClick={onEdit} className="shrink-0 text-[12px] text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline">
-        edit
+        {tx(lang, "edit")}
       </button>
     </div>
   );
