@@ -2,6 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { saveJournal } from "@/lib/data.functions";
+import { releaseLineFor } from "@/lib/urge-shield";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,14 +28,17 @@ export const Route = createFileRoute("/_app/urge-shield")({
 const BREATH_SECONDS = 10;
 const WAVE_SECONDS = 90;
 
-type Phase = "breath" | "name" | "cost" | "wave" | "done";
+type Phase = "breath" | "name" | "drain" | "released" | "cost" | "wave" | "done";
 
 function UrgeShield() {
   const navigate = useNavigate();
   const save = useServerFn(saveJournal);
+  const lang = useLang();
   const [phase, setPhase] = useState<Phase>("breath");
   const [target, setTarget] = useState("");
   const [cost, setCost] = useState("");
+  const [draft, setDraft] = useState("");
+  const [releaseLine, setReleaseLine] = useState("");
   const [breathLeft, setBreathLeft] = useState(BREATH_SECONDS);
   const [waveLeft, setWaveLeft] = useState(WAVE_SECONDS);
   const [saving, setSaving] = useState(false);
@@ -56,6 +62,14 @@ function UrgeShield() {
   const waveMm = String(Math.floor(waveLeft / 60)).padStart(1, "0");
   const waveSs = String(waveLeft % 60).padStart(2, "0");
 
+  // The drain: the message leaves the body and then leaves entirely. The
+  // draft is chosen-over before it is thrown away — never saved, never sent.
+  const letItGo = () => {
+    setReleaseLine(releaseLineFor(draft || "released"));
+    setDraft("");
+    setPhase("released");
+  };
+
   const finish = async () => {
     setSaving(true);
     try {
@@ -75,25 +89,27 @@ function UrgeShield() {
       });
       track("urge_shield_completed");
       setPhase("done");
-    } catch (e) {
-      toast.error((e as Error).message || "Could not save. The pause still counted.");
+    } catch {
+      // Speak the reassurance, not a raw database error — this is exactly the
+      // moment the "it still counted" line is for.
+      toast.error(tx(lang, "Could not save. The pause still counted."));
     } finally {
       setSaving(false);
     }
   };
 
   const exit = () => {
-    toast("you paused. that counts.");
+    toast(tx(lang, "you paused. that counts."));
     navigate({ to: "/home" });
   };
 
   return (
     <div className="mx-auto max-w-xl px-5 py-10 sm:px-8 sm:py-14">
       <div className="flex items-center justify-between">
-        <Link to="/sos" className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">← SOS</Link>
+        <Link to="/sos" className="inline-flex min-h-11 items-center text-[11px] uppercase tracking-[0.22em] text-muted-foreground">← SOS</Link>
         {phase !== "done" && (
-          <button onClick={exit} className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
-            step away
+          <button onClick={exit} className="min-h-11 text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
+            {tx(lang, "step away")}
           </button>
         )}
       </div>
@@ -102,42 +118,89 @@ function UrgeShield() {
           <Shield className="h-4 w-4" strokeWidth={1.7} />
         </span>
         <div>
-          <p className="qs-section-label">the anchor</p>
-          <h1 className="mt-1 font-serif text-3xl font-light leading-tight tracking-tight">Pause before action.</h1>
+          <p className="qs-section-label">{tx(lang, "the anchor")}</p>
+          <h1 className="mt-1 font-serif text-3xl font-light leading-tight tracking-tight">{tx(lang, "Pause before action.")}</h1>
         </div>
       </div>
 
       {phase === "breath" && (
         <div className="mt-10 flex flex-col items-center text-center">
           <div aria-hidden className="qs-shield h-36 w-36 rounded-full" />
-          <p className="mt-8 font-serif text-2xl leading-snug">pause.</p>
-          <p className="mt-2 text-sm text-muted-foreground">ten slow seconds before you do anything.</p>
-          <p className="mt-6 font-serif text-6xl tabular-nums text-foreground/85">{breathLeft}</p>
+          <p className="mt-8 font-serif text-2xl leading-snug">{tx(lang, "pause.")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{tx(lang, "ten slow seconds before you do anything.")}</p>
+          <p className="mt-6 font-serif text-6xl tabular-nums text-foreground/85" aria-hidden>{breathLeft}</p>
           <button
             onClick={() => setPhase("name")}
-            className="mt-8 text-xs italic text-muted-foreground/80 hover:text-foreground"
+            className="mt-8 min-h-11 text-xs italic text-muted-foreground/80 hover:text-foreground"
           >
-            skip the breath
+            {tx(lang, "skip the breath")}
           </button>
         </div>
       )}
 
       {phase === "name" && (
         <div className="glass mt-8 rounded-[26px] p-6 sm:p-7">
-          <p className="font-serif text-xl leading-snug">what's the urge?</p>
+          <p className="font-serif text-xl leading-snug">{tx(lang, "what's the urge?")}</p>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            one short line. when you finish, this is kept in your journal — only for you.
+            {tx(lang, "one short line. when you finish, this is kept in your journal — only for you.")}
           </p>
           <Input
             value={target}
             onChange={(e) => setTarget(e.target.value)}
             maxLength={140}
-            placeholder="text them. check their profile. send it."
+            placeholder={tx(lang, "text them. check their profile. send it.")}
             className="mt-4 h-12 rounded-2xl text-base"
           />
-          <div className="mt-5 flex justify-end">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+            <button
+              onClick={() => setPhase("drain")}
+              className="min-h-11 text-[13px] italic text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              {tx(lang, "want to write what you'd say?")}
+            </button>
             <button className="qs-pill-cta" onClick={() => setPhase("cost")}>
-              continue <ArrowRight className="h-4 w-4" />
+              {tx(lang, "continue")} <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {phase === "drain" && (
+        <div className="glass mt-8 rounded-[26px] p-6 sm:p-7">
+          <p className="font-serif text-xl leading-snug">{tx(lang, "write the whole thing you'd send.")}</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            {tx(lang, "Say all of it — nothing is sent, and nothing is kept. When you let go, these words are gone.")}
+          </p>
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={5}
+            maxLength={2000}
+            aria-label={tx(lang, "the message you won't send")}
+            placeholder={tx(lang, "everything you want to say to them…")}
+            className="mt-4 rounded-2xl"
+            autoFocus
+          />
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+            <button
+              onClick={() => setPhase("name")}
+              className="min-h-11 text-[13px] text-muted-foreground hover:text-foreground"
+            >
+              {tx(lang, "back")}
+            </button>
+            <button className="qs-pill-cta" onClick={letItGo} disabled={!draft.trim()}>
+              {tx(lang, "let it go")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {phase === "released" && (
+        <div className="glass mt-8 rounded-[26px] p-6 text-center sm:p-7" role="status">
+          <p className="max-w-md font-serif text-2xl leading-snug">{tx(lang, releaseLine)}</p>
+          <div className="mt-6 flex justify-center">
+            <button className="qs-pill-cta" onClick={() => setPhase("cost")}>
+              {tx(lang, "continue")} <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -145,19 +208,19 @@ function UrgeShield() {
 
       {phase === "cost" && (
         <div className="glass mt-8 rounded-[26px] p-6 sm:p-7">
-          <p className="font-serif text-xl leading-snug">what would tomorrow-you pay for this?</p>
-          <p className="mt-1.5 text-sm text-muted-foreground">no wrong answer. even a word helps.</p>
+          <p className="font-serif text-xl leading-snug">{tx(lang, "what would tomorrow-you pay for this?")}</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">{tx(lang, "no wrong answer. even a word helps.")}</p>
           <Textarea
             value={cost}
             onChange={(e) => setCost(e.target.value)}
             rows={3}
             maxLength={400}
-            placeholder="a day of overthinking. that heavy feeling again."
+            placeholder={tx(lang, "a day of overthinking. that heavy feeling again.")}
             className="mt-4 rounded-2xl"
           />
           <div className="mt-6 flex justify-end">
             <button className="qs-pill-cta" onClick={() => { setWaveLeft(WAVE_SECONDS); setPhase("wave"); }}>
-              ride the wave
+              {tx(lang, "ride the wave")}
             </button>
           </div>
         </div>
@@ -178,24 +241,24 @@ function UrgeShield() {
               transition: "background 1s linear",
             }}
           />
-          <p className="qs-section-label relative">a wave, not a wall</p>
+          <p className="qs-section-label relative">{tx(lang, "a wave, not a wall")}</p>
           <p className="relative mt-4 text-[17px] tabular-nums text-secondary-foreground" aria-live="off">{waveMm}:{waveSs}</p>
           <div className="relative mx-auto mt-5 h-1 w-56 overflow-hidden rounded-full motion-safe:hidden" style={{ background: "color-mix(in oklab, var(--dawnline) 20%, transparent)" }}>
             <div className="h-full rounded-full" style={{ width: `${Math.round(((WAVE_SECONDS - waveLeft) / WAVE_SECONDS) * 100)}%`, background: "var(--dawnline)" }} />
           </div>
           <p className="relative mx-auto mt-8 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-            it rises, peaks, and softens. you don't have to do anything with it.
+            {tx(lang, "it rises, peaks, and softens. you don't have to do anything with it.")}
           </p>
           <div className="relative mt-8 flex flex-col items-center gap-2">
             <button className="qs-pill-cta" onClick={finish} disabled={saving}>
-              {saving ? "keeping…" : "the urge passed"}
+              {saving ? tx(lang, "keeping…") : tx(lang, "the urge passed")}
             </button>
             <button
               onClick={finish}
               disabled={saving}
-              className="text-xs text-muted-foreground/80 hover:text-foreground"
+              className="min-h-11 text-xs text-muted-foreground/80 hover:text-foreground"
             >
-              I'm ready
+              {tx(lang, "I'm ready")}
             </button>
           </div>
         </div>
@@ -203,16 +266,16 @@ function UrgeShield() {
 
       {phase === "done" && (
         <div className="glass mt-8 rounded-[26px] p-6 text-center sm:p-7">
-          <p className="font-serif text-2xl leading-snug">you stayed with yourself.</p>
+          <p className="font-serif text-2xl leading-snug">{tx(lang, "you stayed with yourself.")}</p>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            that's it. no badge, no streak. whatever you choose next, you chose it slower.
+            {tx(lang, "that's it. no badge, no streak. whatever you choose next, you chose it slower.")}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Button variant="outline" className="rounded-full" onClick={() => navigate({ to: "/home" })}>
-              back to home
+              {tx(lang, "back to home")}
             </Button>
             <Button variant="ghost" className="rounded-full" onClick={() => navigate({ to: "/journal" })}>
-              write a little more
+              {tx(lang, "write a little more")}
             </Button>
           </div>
         </div>
