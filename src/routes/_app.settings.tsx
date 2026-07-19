@@ -30,10 +30,10 @@ export const Route = createFileRoute("/_app/settings")({
       { name: "description", content: "Manage your profile, consent, data export, and account deletion." },
       { property: "og:title", content: "Settings" },
       { property: "og:description", content: "Manage your profile, consent, and data." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/settings" },
+      { property: "og:url", content: "https://innermate.lovable.app/settings" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/settings" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/settings" }],
   }),
 });
 

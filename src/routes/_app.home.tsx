@@ -48,10 +48,10 @@ export const Route = createFileRoute("/_app/home")({
       { name: "description", content: "Your quiet dashboard — pause an urge, untangle a thought, or understand your week." },
       { property: "og:title", content: "Home — My Quiet Space" },
       { property: "og:description", content: "Pause an urge, untangle a thought, or understand your week." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/home" },
+      { property: "og:url", content: "https://innermate.lovable.app/home" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/home" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/home" }],
   }),
 });
 

@@ -13,9 +13,9 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "You don't have to explain everything at once. InnerMate listens, remembers with permission, and helps you understand what is happening inside you." },
       { property: "og:title", content: "InnerMate — Enter your quiet space" },
       { property: "og:description", content: "Begin with what is here. A private companion that helps you understand your inner world." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/" },
+      { property: "og:url", content: "https://innermate.lovable.app/" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/" }],
     scripts: [
       {
         type: "application/ld+json",
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
           "@context": "https://schema.org",
           "@type": "WebSite",
           name: "InnerMate",
-          url: "https://neeraj2019.lovable.app",
+          url: "https://innermate.lovable.app",
         }),
       },
     ],

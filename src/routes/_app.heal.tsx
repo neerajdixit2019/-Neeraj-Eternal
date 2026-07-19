@@ -14,9 +14,9 @@ export const Route = createFileRoute("/_app/heal")({
       { name: "description", content: "Short, structured paths for heartbreak, overthinking, social comparison, night calm, and loneliness. One quiet step a day." },
       { property: "og:title", content: "Healing paths — gentle daily steps" },
       { property: "og:description", content: "Short paths for heartbreak, overthinking, loneliness, and more — one quiet step a day." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/heal" },
+      { property: "og:url", content: "https://innermate.lovable.app/heal" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/heal" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/heal" }],
     scripts: [
       {
         type: "application/ld+json",
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_app/heal")({
           "@type": "CollectionPage",
           name: "Healing paths",
           description: "Short structured paths to help with heartbreak, overthinking, comparison, night calm, and loneliness.",
-          url: "https://neeraj2019.lovable.app/heal",
+          url: "https://innermate.lovable.app/heal",
         }),
       },
     ],

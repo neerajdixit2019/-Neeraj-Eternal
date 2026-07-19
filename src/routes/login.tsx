@@ -23,10 +23,10 @@ export const Route = createFileRoute("/login")({
       { name: "description", content: "Sign in to your private My Quiet Space account to continue journaling and reflecting." },
       { property: "og:title", content: "Sign in — My Quiet Space" },
       { property: "og:description", content: "Sign in to your private My Quiet Space account." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/login" },
+      { property: "og:url", content: "https://innermate.lovable.app/login" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/login" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/login" }],
   }),
 });
 

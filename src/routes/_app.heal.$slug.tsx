@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_app/heal/$slug")({
   component: PathDetail,
   head: ({ params }) => {
     const name = titleFromSlug(params.slug);
-    const url = `https://neeraj2019.lovable.app/heal/${params.slug}`;
+    const url = `https://innermate.lovable.app/heal/${params.slug}`;
     return {
       meta: [
         { title: `${name} — Healing path | My Quiet Space` },

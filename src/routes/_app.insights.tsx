@@ -35,10 +35,10 @@ export const Route = createFileRoute("/_app/insights")({
       { name: "description", content: "Name what you're feeling in under a minute, then watch your patterns take shape. Private to you." },
       { property: "og:title", content: "Check-in & Insights" },
       { property: "og:description", content: "Check in gently, then see a calm, non-clinical mirror of your mood over time." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/insights" },
+      { property: "og:url", content: "https://innermate.lovable.app/insights" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/insights" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/insights" }],
   }),
 });
 

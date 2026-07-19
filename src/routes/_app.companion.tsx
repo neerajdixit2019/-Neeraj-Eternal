@@ -57,10 +57,10 @@ export const Route = createFileRoute("/_app/companion")({
       { name: "description", content: "A private companion for emotional clarity, habits, and quiet healing. Not a therapist. Crisis support included." },
       { property: "og:title", content: "InnerMate — your private companion" },
       { property: "og:description", content: "A private companion for emotional clarity, habits, and quiet healing." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/companion" },
+      { property: "og:url", content: "https://innermate.lovable.app/companion" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/companion" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/companion" }],
   }),
 });
 

@@ -108,7 +108,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "Organization",
           name: "My Quiet Space",
-          url: "https://neeraj2019.lovable.app",
+          url: "https://innermate.lovable.app",
           description: "A private space to feel, write, and heal — journal, mood check-in, healing paths, and a gentle AI reflection companion.",
         }),
       },

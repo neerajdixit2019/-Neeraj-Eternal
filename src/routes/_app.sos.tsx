@@ -23,10 +23,10 @@ export const Route = createFileRoute("/_app/sos")({
       { name: "description", content: "Three guided flows for hard moments: unsafe with yourself, impulse to contact someone, or a body that needs to calm." },
       { property: "og:title", content: "SOS — Calm tools for hard moments" },
       { property: "og:description", content: "Three guided flows for hard moments. Crisis helplines included." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/sos" },
+      { property: "og:url", content: "https://innermate.lovable.app/sos" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/sos" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/sos" }],
   }),
 });
 

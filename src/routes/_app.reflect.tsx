@@ -60,10 +60,10 @@ export const Route = createFileRoute("/_app/reflect")({
       { name: "description", content: "Write what's here, get one grounded reflection back, and choose a small next step." },
       { property: "og:title", content: "Reflect — a quiet guided session" },
       { property: "og:description", content: "Write what's here and get one grounded reflection back." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/reflect" },
+      { property: "og:url", content: "https://innermate.lovable.app/reflect" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/reflect" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/reflect" }],
   }),
 });
 

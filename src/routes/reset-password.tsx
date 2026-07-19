@@ -20,7 +20,7 @@ export const Route = createFileRoute("/reset-password")({
       { name: "description", content: "Set a new password for your My Quiet Space account." },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/reset-password" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/reset-password" }],
   }),
 });
 

@@ -20,10 +20,10 @@ export const Route = createFileRoute("/_app/journal")({
       { name: "description", content: "Write freely in a private journal. Yours alone, encrypted in transit, delete any time." },
       { property: "og:title", content: "Private journal" },
       { property: "og:description", content: "Write freely in a private journal — yours alone, delete any time." },
-      { property: "og:url", content: "https://neeraj2019.lovable.app/journal" },
+      { property: "og:url", content: "https://innermate.lovable.app/journal" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://neeraj2019.lovable.app/journal" }],
+    links: [{ rel: "canonical", href: "https://innermate.lovable.app/journal" }],
   }),
 });
 
