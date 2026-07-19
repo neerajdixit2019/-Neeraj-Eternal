@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test:risk": "node src/lib/__tests__/companion-risk.test.ts",
-    "test:companion": "node --test src/lib/__tests__/companion-risk.test.ts src/lib/__tests__/companion-classification.test.ts src/lib/__tests__/companion-prompt-contracts.test.ts src/lib/__tests__/golden-library.test.ts src/lib/__tests__/companion-evaluator.test.ts src/lib/__tests__/pattern-map.test.ts src/lib/__tests__/insight-events.test.ts src/lib/__tests__/room-state.test.ts src/lib/__tests__/trusted-letter.test.ts src/lib/__tests__/offline-sanctuary.test.ts src/lib/__tests__/latch.test.ts src/lib/__tests__/export-pdf.test.ts src/lib/__tests__/reading-prefs.test.ts src/lib/__tests__/return-state.test.ts src/lib/__tests__/wind-down.test.ts src/lib/__tests__/morning.test.ts src/lib/__tests__/urge-shield.test.ts",
+    "test:companion": "node --test src/lib/__tests__/companion-risk.test.ts src/lib/__tests__/companion-classification.test.ts src/lib/__tests__/companion-prompt-contracts.test.ts src/lib/__tests__/golden-library.test.ts src/lib/__tests__/companion-evaluator.test.ts src/lib/__tests__/pattern-map.test.ts src/lib/__tests__/insight-events.test.ts src/lib/__tests__/room-state.test.ts src/lib/__tests__/trusted-letter.test.ts src/lib/__tests__/offline-sanctuary.test.ts src/lib/__tests__/latch.test.ts src/lib/__tests__/export-pdf.test.ts src/lib/__tests__/reading-prefs.test.ts src/lib/__tests__/return-state.test.ts src/lib/__tests__/wind-down.test.ts src/lib/__tests__/morning.test.ts src/lib/__tests__/urge-shield.test.ts src/lib/__tests__/onboarding-i18n.test.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
