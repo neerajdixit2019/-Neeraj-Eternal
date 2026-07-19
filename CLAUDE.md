@@ -8,7 +8,7 @@ Start/Router + Supabase (RLS) + Tailwind v4 + Lovable AI gateway.
 
 ```
 npx tsc --noEmit          # expect 0 errors
-npm run test:companion    # node:test suites, expect 495 pass
+npm run test:companion    # node:test suites, expect 549 pass
 npm run build             # production build must succeed
 ```
 

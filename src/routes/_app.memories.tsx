@@ -11,6 +11,8 @@ import { TactileCard } from "@/components/TactileCard";
 import { toast } from "sonner";
 import { listMemories, saveMemory, setMemoryReadable, deleteMemory, updateMemory } from "@/lib/data.functions";
 import { listKeptLetters } from "@/lib/letters.functions";
+import { useLang, type Lang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -36,6 +38,21 @@ const FEELINGS = [
   { value: "peaceful", label: "peaceful", tint: "mint" },
 ] as const;
 type Feeling = typeof FEELINGS[number]["value"];
+
+// Feeling VALUES stay English in storage (the DB, the star math, the filters);
+// this map is display-only, so a Hindi reader sees the feeling in Hindi while
+// the tag saved to their data is unchanged. Covers the six pickable feelings
+// plus the close cousins the star tints already know.
+const FEELING_HI: Record<string, string> = {
+  warm: "गर्माहट", bittersweet: "खट्टा-मीठा", heavy: "भारी",
+  grateful: "आभार", longing: "तड़प", peaceful: "सुकून",
+  tender: "कोमल", joyful: "खुशी", hopeful: "उम्मीद", calm: "शांत",
+};
+function feelingLabel(feeling: string | null | undefined, lang: Lang): string {
+  if (!feeling) return "";
+  if (lang === "en") return feeling;
+  return FEELING_HI[feeling] ?? feeling;
+}
 
 // Selected-chip tints from the study's own tokens — no raw palette classes.
 const FEELING_CHIP_STYLE: Record<Feeling, React.CSSProperties> = {
@@ -160,15 +177,16 @@ const FIREFLIES = [
   { left: "81%", top: "82%", delay: "7.1s" },
 ] as const;
 
-function memoryDateLabel(m: MemoryRow) {
+function memoryDateLabel(m: MemoryRow, lang: Lang) {
   return m.memory_date
-    ? new Date(m.memory_date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
-    : "undated";
+    ? new Date(m.memory_date).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "long", day: "numeric", year: "numeric" })
+    : tx(lang, "undated");
 }
 
 /* ── Page ─────────────────────────────────────────────────────────────── */
 
 function MemoriesPage() {
+  const lang = useLang();
   const qc = useQueryClient();
   const listFn = useServerFn(listMemories);
   const { data: memories, isLoading } = useQuery({
@@ -251,24 +269,24 @@ function MemoriesPage() {
   return (
     <div className="motion-calm mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14 space-y-6">
       <div>
-        <p className="qs-section-label">a sky of what stays</p>
-        <h1 className="mt-3 font-serif font-light tracking-tight text-3xl sm:text-[2.4rem] leading-tight">Your night sky</h1>
+        <p className="qs-section-label">{tx(lang, "a sky of what stays")}</p>
+        <h1 className="mt-3 font-serif font-light tracking-tight text-3xl sm:text-[2.4rem] leading-tight">{tx(lang, "Your night sky")}</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Every memory you keep becomes a star. The ones that matter most shine brightest. Tap one to step back inside it.
+          {tx(lang, "Every memory you keep becomes a star. The ones that matter most shine brightest. Tap one to step back inside it.")}
         </p>
       </div>
 
       <div className="flex gap-2">
-        <button type="button" onClick={() => setTab("memories")} aria-pressed={tab === "memories"} className={`qs-chip ${tab === "memories" ? "qs-chip--active" : ""}`}>the sky</button>
-        <button type="button" onClick={() => setTab("letters")} aria-pressed={tab === "letters"} className={`qs-chip ${tab === "letters" ? "qs-chip--active" : ""}`}>letters</button>
+        <button type="button" onClick={() => setTab("memories")} aria-pressed={tab === "memories"} className={`qs-chip ${tab === "memories" ? "qs-chip--active" : ""}`}>{tx(lang, "the sky")}</button>
+        <button type="button" onClick={() => setTab("letters")} aria-pressed={tab === "letters"} className={`qs-chip ${tab === "letters" ? "qs-chip--active" : ""}`}>{tx(lang, "letters")}</button>
       </div>
 
       {tab === "letters" ? (
         <div className="space-y-4">
           <div>
-            <p className="qs-section-label">the moon cycle</p>
+            <p className="qs-section-label">{tx(lang, "the moon cycle")}</p>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              InnerMate's weekly letters — gentle notes written back to you.
+              {tx(lang, "InnerMate's weekly letters — gentle notes written back to you.")}
             </p>
           </div>
           <LettersShelf />
@@ -283,8 +301,10 @@ function MemoriesPage() {
             role="group"
             aria-label={
               typeof n === "number"
-                ? `Your night sky — ${n} kept ${n === 1 ? "memory" : "memories"}, every star is one${dominantFeeling ? `, mostly ${dominantFeeling}` : ""}`
-                : "Your night sky — every star is a kept memory"
+                ? (lang === "hi"
+                    ? `आपका रात का आसमान — ${n} संजोई हुई ${n === 1 ? "याद" : "यादें"}, हर तारा एक है${dominantFeeling ? `, ज़्यादातर ${feelingLabel(dominantFeeling, lang)}` : ""}`
+                    : `Your night sky — ${n} kept ${n === 1 ? "memory" : "memories"}, every star is one${dominantFeeling ? `, mostly ${dominantFeeling}` : ""}`)
+                : tx(lang, "Your night sky — every star is a kept memory")
             }
           >
             {/* ambient layers */}
@@ -427,10 +447,10 @@ function MemoriesPage() {
                   className="font-serif italic text-[26px] leading-none"
                   style={{ color: "color-mix(in oklab, var(--moth) 92%, white)", textShadow: `0 0 20px ${activeTint}` }}
                 >
-                  {activeFeeling}
+                  {feelingLabel(activeFeeling, lang)}
                 </p>
                 <p className="mt-1.5 text-[9.5px] uppercase tracking-[0.24em]" style={{ color: "color-mix(in oklab, var(--moth) 74%, transparent)" }}>
-                  constellation · {activeStars.length}
+                  {tx(lang, "constellation")} · {activeStars.length}
                 </p>
               </div>
             )}
@@ -460,7 +480,7 @@ function MemoriesPage() {
               const isNewborn = s.memory.id === newbornId;
               const label = s.memory.title
                 || (s.memory.story ?? "").split("\n")[0].slice(0, 40)
-                || "an untitled moment";
+                || tx(lang, "an untitled moment");
               return (
                 <button
                   key={s.memory.id}
@@ -559,10 +579,11 @@ function MemoriesPage() {
               <div className="pointer-events-none absolute inset-0 z-[6] flex flex-col items-center justify-center gap-4 px-8">
                 <span className="qs-seed-star" aria-hidden />
                 <p className="text-center font-serif italic text-sm leading-relaxed" style={{ color: "color-mix(in oklab, var(--moth) 82%, transparent)" }}>
-                  your sky is waiting for its first star.
+                  {tx(lang, "your sky is waiting for its first star.")}
                   <br />
-                  keep a moment below, and watch it light up here.
+                  {tx(lang, "keep a moment below, and watch it light up here.")}
                 </p>
+
               </div>
             )}
 
@@ -587,11 +608,11 @@ function MemoriesPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[10px] uppercase tracking-[0.18em]" style={{ color: "color-mix(in oklab, var(--ink) 80%, transparent)" }}>
-                      {memoryDateLabel(selectedStar.memory)}
-                      {selectedStar.memory.feeling_tag ? ` · ${selectedStar.memory.feeling_tag}` : ""}
+                      {memoryDateLabel(selectedStar.memory, lang)}
+                      {selectedStar.memory.feeling_tag ? ` · ${feelingLabel(selectedStar.memory.feeling_tag, lang)}` : ""}
                     </p>
                     <p className="truncate font-serif text-[15px] leading-snug" style={{ color: "var(--ink)" }}>
-                      {selectedStar.memory.title || "an untitled moment"}
+                      {selectedStar.memory.title || tx(lang, "an untitled moment")}
                     </p>
                   </div>
                   <button
@@ -600,11 +621,11 @@ function MemoriesPage() {
                     style={{ borderColor: "color-mix(in oklab, var(--ink) 35%, transparent)", color: "var(--ink)" }}
                     onClick={() => setReliveId(selectedStar.memory.id)}
                   >
-                    relive
+                    {tx(lang, "relive")}
                   </button>
                   <button
                     type="button"
-                    aria-label="Close"
+                    aria-label={tx(lang, "Close")}
                     onClick={() => setSelectedId(null)}
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-[color-mix(in_oklab,var(--ink)_8%,transparent)]"
                   >
@@ -618,7 +639,9 @@ function MemoriesPage() {
           {/* the engraving on the sill — the sky's facts, inscribed not headlined */}
           {typeof n === "number" && n > 0 && (
             <p className="study-sill-note" aria-hidden="true">
-              {n} star{n === 1 ? "" : "s"}{dominantFeeling ? ` · mostly ${dominantFeeling}` : ""}
+              {lang === "hi"
+                ? `${n} ${n === 1 ? "तारा" : "तारे"}${dominantFeeling ? ` · ज़्यादातर ${feelingLabel(dominantFeeling, lang)}` : ""}`
+                : `${n} star${n === 1 ? "" : "s"}${dominantFeeling ? ` · mostly ${dominantFeeling}` : ""}`}
             </p>
           )}
           </div>
@@ -637,14 +660,14 @@ function MemoriesPage() {
                 }}
               >
                 <Sparkles className="h-3.5 w-3.5" strokeWidth={1.7} />
-                let the sky surprise you
+                {tx(lang, "let the sky surprise you")}
               </button>
             </div>
           )}
 
           {/* constellations — the sky, sorted by feeling */}
           {constellations.length > 0 && (
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Constellations">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label={tx(lang, "Constellations")}>
               {constellations.map(([feeling, count]) => (
                 <button
                   key={feeling}
@@ -653,7 +676,7 @@ function MemoriesPage() {
                   onClick={() => setActiveFeeling(activeFeeling === feeling ? null : feeling)}
                   className={`qs-chip shrink-0 ${activeFeeling === feeling ? "qs-chip--active" : ""}`}
                 >
-                  {feeling} · {count}
+                  {feelingLabel(feeling, lang)} · {count}
                 </button>
               ))}
             </div>
@@ -670,34 +693,34 @@ function MemoriesPage() {
               return `${m.title ?? ""} ${m.story ?? ""} ${m.feeling_tag ?? ""}`.toLowerCase().includes(q);
             });
             return (
-            <section aria-label="Walk among your memories" className="space-y-3">
+            <section aria-label={tx(lang, "Walk among your memories")} className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <p className="qs-section-label">walk among them</p>
+                <p className="qs-section-label">{tx(lang, "walk among them")}</p>
                 <label className="flex items-center gap-2 rounded-full border border-border/50 bg-card/40 px-3 py-1.5">
                   <Search className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} aria-hidden />
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="search your memories"
-                    aria-label="Search your memories"
+                    placeholder={tx(lang, "search your memories")}
+                    aria-label={tx(lang, "Search your memories")}
                     className="w-32 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground sm:w-44"
                   />
                   {query && (
-                    <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-muted-foreground transition hover:text-foreground">
+                    <button type="button" onClick={() => setQuery("")} aria-label={tx(lang, "Clear search")} className="text-muted-foreground transition hover:text-foreground">
                       <X className="h-3.5 w-3.5" strokeWidth={1.8} />
                     </button>
                   )}
                 </label>
               </div>
               {walk.length === 0 ? (
-                <p className="py-4 text-[13.5px] italic text-muted-foreground">nothing matches “{query}” yet.</p>
+                <p className="py-4 text-[13.5px] italic text-muted-foreground">{lang === "hi" ? `“${query}” से अभी कुछ मेल नहीं खाता।` : `nothing matches “${query}” yet.`}</p>
               ) : (
               <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
                 {walk.map((m) => {
-                  const label = m.title || (m.story ?? "").split("\n")[0].slice(0, 40) || "an untitled moment";
+                  const label = m.title || (m.story ?? "").split("\n")[0].slice(0, 40) || tx(lang, "an untitled moment");
                   const when = m.memory_date
-                    ? new Date(m.memory_date).toLocaleDateString(undefined, { month: "short", year: "numeric" })
-                    : "undated";
+                    ? new Date(m.memory_date).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "short", year: "numeric" })
+                    : tx(lang, "undated");
                   const tint = tintFor(m.feeling_tag);
                   const hasImage = !!m.media_url && m.media_type === "image";
                   const MediaIcon = m.media_type === "video" ? Video : m.media_type === "audio" ? Music : null;
@@ -742,7 +765,7 @@ function MemoriesPage() {
                       <div className="relative">
                         {m.feeling_tag && (
                           <p className="text-[9px] uppercase tracking-[0.16em]" style={{ color: `color-mix(in oklab, ${tint} 55%, var(--foreground))` }}>
-                            {m.feeling_tag}
+                            {feelingLabel(m.feeling_tag, lang)}
                           </p>
                         )}
                         <p className="mt-0.5 font-serif text-[13px] leading-tight line-clamp-2">{label}</p>
@@ -758,7 +781,7 @@ function MemoriesPage() {
           })()}
 
           <p className="pt-1 text-center font-serif italic text-sm text-muted-foreground">
-            what you keep here, keeps shining.
+            {tx(lang, "what you keep here, keeps shining.")}
           </p>
 
           {reliveMemory && (
@@ -784,6 +807,7 @@ type LetterRow = {
 };
 
 function LettersShelf() {
+  const lang = useLang();
   const listFn = useServerFn(listKeptLetters);
   const { data: letters, isLoading } = useQuery({
     queryKey: ["kept-letters"],
@@ -794,8 +818,8 @@ function LettersShelf() {
   if (!letters || letters.length === 0) {
     return (
       <TactileCard>
-        <p className="font-serif text-lg leading-relaxed">No letters kept yet. That's allowed.</p>
-        <p className="mt-2 text-sm text-muted-foreground">If Sunday letters are on in Settings, one will arrive at week's end.</p>
+        <p className="font-serif text-lg leading-relaxed">{tx(lang, "No letters kept yet. That's allowed.")}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{tx(lang, "If Sunday letters are on in Settings, one will arrive at week's end.")}</p>
       </TactileCard>
     );
   }
@@ -803,13 +827,13 @@ function LettersShelf() {
   return (
     <div className="space-y-4">
       {letters.map((l) => {
-        const date = new Date(l.week_start + "T00:00:00").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+        const date = new Date(l.week_start + "T00:00:00").toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "long", day: "numeric", year: "numeric" });
         const preview = l.body.split(/\n\n+/)[1]?.slice(0, 160) ?? l.body.slice(0, 160);
         return (
           <Link key={l.id} to="/letter/$id" params={{ id: l.id }} className="block">
             <TactileCard className="transition hover:-translate-y-0.5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">Week of {date}</p>
-              <p className="mt-2 font-serif text-lg leading-snug">A quiet letter</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">{lang === "hi" ? `${date} का हफ़्ता` : `Week of ${date}`}</p>
+              <p className="mt-2 font-serif text-lg leading-snug">{tx(lang, "A quiet letter")}</p>
               <p className="mt-2 text-sm italic leading-relaxed text-muted-foreground line-clamp-3">{preview}…</p>
             </TactileCard>
           </Link>
@@ -822,6 +846,7 @@ function LettersShelf() {
 /* ── hang a new star — the compose flow ───────────────────────────────── */
 
 function NewMemory({ onSaved }: { onSaved: () => void }) {
+  const lang = useLang();
   const saveFn = useServerFn(saveMemory);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -853,8 +878,8 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
   };
 
   const submit = async () => {
-    if (!file) { toast.error("Choose a photo, video, or audio clip to keep."); return; }
-    if (file.size > MAX_BYTES) { toast.error("File is over 50MB."); return; }
+    if (!file) { toast.error(tx(lang, "Choose a photo, video, or audio clip to keep.")); return; }
+    if (file.size > MAX_BYTES) { toast.error(tx(lang, "File is over 50MB.")); return; }
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -878,7 +903,7 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
             : "image",
         is_ai_readable: aiReadable,
       }});
-      toast.success("Kept. Look up — it's already shining.");
+      toast.success(tx(lang, "Kept. Look up — it's already shining."));
       reset();
       setOpen(false);
       onSaved();
@@ -894,7 +919,7 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
       <div className="flex justify-center">
         <button type="button" onClick={() => setOpen(true)} className="qs-pill-cta inline-flex items-center gap-2">
           <Plus className="h-4 w-4" strokeWidth={1.9} />
-          hang a new star
+          {tx(lang, "hang a new star")}
         </button>
       </div>
     );
@@ -902,11 +927,11 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
 
   return (
     <TactileCard>
-      <p className="qs-section-label">hang a new star</p>
-      <h2 className="mt-2 font-serif text-xl">What should this one hold?</h2>
+      <p className="qs-section-label">{tx(lang, "hang a new star")}</p>
+      <h2 className="mt-2 font-serif text-xl">{tx(lang, "What should this one hold?")}</h2>
       <div className="mt-5 space-y-4">
         <div>
-          <Label>What are you keeping? (max 50MB)</Label>
+          <Label>{tx(lang, "What are you keeping? (max 50MB)")}</Label>
           <div className="mt-2 grid grid-cols-3 gap-2">
             {([
               { k: "image", label: "Photo", Icon: ImageIcon },
@@ -930,7 +955,7 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
                   } : undefined}
                 >
                   <Icon className="h-5 w-5" strokeWidth={1.6} />
-                  {label}
+                  {tx(lang, label)}
                 </button>
               );
             })}
@@ -954,27 +979,27 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
             </p>
           ) : (
             <p className="mt-2.5 text-[12px] text-muted-foreground">
-              Tap Photo, Video, or Audio to choose from your device.
+              {tx(lang, "Tap Photo, Video, or Audio to choose from your device.")}
             </p>
           )}
         </div>
         <div>
-          <Label htmlFor="m-title">Title (optional)</Label>
+          <Label htmlFor="m-title">{tx(lang, "Title (optional)")}</Label>
           <Input id="m-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} className="mt-1.5 rounded-xl" />
         </div>
         <div>
-          <Label htmlFor="m-story">The story behind this</Label>
+          <Label htmlFor="m-story">{tx(lang, "The story behind this")}</Label>
           <Textarea
             id="m-story"
             value={story}
             onChange={(e) => setStory(e.target.value)}
             maxLength={4000}
-            placeholder="What does this moment hold?"
+            placeholder={tx(lang, "What does this moment hold?")}
             className="mt-1.5 min-h-[120px] rounded-xl"
           />
         </div>
         <div>
-          <Label>How it feels</Label>
+          <Label>{tx(lang, "How it feels")}</Label>
           <div className="mt-2 flex flex-wrap gap-2">
             {FEELINGS.map((f) => {
               const active = feeling === f.value;
@@ -987,14 +1012,14 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
                   className="rounded-full border px-3 py-1.5 text-xs transition"
                   style={active ? FEELING_CHIP_STYLE[f.value] : { background: "color-mix(in oklab, var(--muted) 50%, transparent)", color: "var(--muted-foreground)", borderColor: "transparent" }}
                 >
-                  {f.label}
+                  {feelingLabel(f.value, lang)}
                 </button>
               );
             })}
           </div>
         </div>
         <div>
-          <Label htmlFor="m-date">When did this happen?</Label>
+          <Label htmlFor="m-date">{tx(lang, "When did this happen?")}</Label>
           <Input id="m-date" type="date" value={memoryDate} onChange={(e) => setMemoryDate(e.target.value)} className="mt-1.5 rounded-xl" />
         </div>
         <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
@@ -1006,19 +1031,19 @@ function NewMemory({ onSaved }: { onSaved: () => void }) {
               className="mt-1"
             />
             <span className="text-sm">
-              <span className="font-medium">Let InnerMate know about this memory</span>
+              <span className="font-medium">{tx(lang, "Let InnerMate know about this memory")}</span>
               <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                If on, InnerMate may gently remember the story you wrote here. It never sees the photo, video, or audio itself, only your words about it.
+                {tx(lang, "If on, InnerMate may gently remember the story you wrote here. It never sees the photo, video, or audio itself, only your words about it.")}
               </span>
             </span>
           </label>
         </div>
         <div className="flex gap-2 pt-2">
           <Button onClick={submit} disabled={saving} className="rounded-full">
-            {saving ? "Hanging it…" : "Hang this star"}
+            {saving ? tx(lang, "Hanging it…") : tx(lang, "Hang this star")}
           </Button>
           <Button variant="outline" className="rounded-full" onClick={() => { reset(); setOpen(false); }}>
-            Not now
+            {tx(lang, "Not now")}
           </Button>
         </div>
       </div>
@@ -1035,6 +1060,7 @@ function ReliveDialog({
   onOpenChange: (v: boolean) => void;
   onChanged: () => void;
 }) {
+  const lang = useLang();
   const toggleFn = useServerFn(setMemoryReadable);
   const delFn = useServerFn(deleteMemory);
   const editFn = useServerFn(updateMemory);
@@ -1081,8 +1107,8 @@ function ReliveDialog({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className={`max-h-[85vh] overflow-y-auto sm:max-w-lg ${working ? "ember-burn" : ""}`}>
         <DialogHeader className="sr-only">
-          <DialogTitle>{memory.title || "A kept memory"}</DialogTitle>
-          <DialogDescription>Step back inside this memory.</DialogDescription>
+          <DialogTitle>{memory.title || tx(lang, "A kept memory")}</DialogTitle>
+          <DialogDescription>{tx(lang, "Step back inside this memory.")}</DialogDescription>
         </DialogHeader>
 
         {memory.media_url && (
@@ -1090,7 +1116,7 @@ function ReliveDialog({
             <div className="rounded-2xl border border-border/50 bg-muted/20 p-4">
               <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
                 <Music className="h-4 w-4" strokeWidth={1.7} style={{ color: tint }} />
-                a sound you kept
+                {tx(lang, "a sound you kept")}
               </div>
               <audio src={memory.media_url} controls className="w-full" />
             </div>
@@ -1107,8 +1133,8 @@ function ReliveDialog({
 
         <div>
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">
-            {memoryDateLabel(memory)}
-            {memory.feeling_tag && <span style={{ color: tint }}>{` · ${memory.feeling_tag}`}</span>}
+            {memoryDateLabel(memory, lang)}
+            {memory.feeling_tag && <span style={{ color: tint }}>{` · ${feelingLabel(memory.feeling_tag, lang)}`}</span>}
           </p>
           {editing ? (
             <div className="mt-2 space-y-2">
@@ -1116,8 +1142,8 @@ function ReliveDialog({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={200}
-                placeholder="a title (optional)"
-                aria-label="Memory title"
+                placeholder={tx(lang, "a title (optional)")}
+                aria-label={tx(lang, "Memory title")}
                 className="w-full rounded-xl border border-border/60 bg-card/50 px-3 py-2 font-serif text-lg leading-snug outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               />
               <textarea
@@ -1125,16 +1151,16 @@ function ReliveDialog({
                 onChange={(e) => setStory(e.target.value)}
                 maxLength={4000}
                 rows={5}
-                placeholder="the words you want to keep"
-                aria-label="Memory story"
+                placeholder={tx(lang, "the words you want to keep")}
+                aria-label={tx(lang, "Memory story")}
                 className="w-full resize-y rounded-xl border border-border/60 bg-card/50 px-3 py-2 text-[15px] leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               />
               <div className="flex gap-2">
                 <button type="button" onClick={saveEdits} disabled={working} className="inline-flex min-h-11 items-center rounded-full border px-4 text-[13px] font-medium transition hover:brightness-110 disabled:opacity-60" style={{ borderColor: "var(--border-active)", color: "var(--text-primary)", background: "color-mix(in oklab, var(--violet) 14%, transparent)" }}>
-                  {working ? "saving…" : "save changes"}
+                  {working ? tx(lang, "saving…") : tx(lang, "save changes")}
                 </button>
                 <button type="button" onClick={() => { setEditing(false); setTitle(memory.title ?? ""); setStory(memory.story ?? ""); }} className="rounded-full px-3 py-2 text-[13px] text-muted-foreground transition hover:text-foreground">
-                  cancel
+                  {tx(lang, "cancel")}
                 </button>
               </div>
             </div>
@@ -1158,9 +1184,9 @@ function ReliveDialog({
               className="mt-1"
             />
             <span className="text-sm">
-              <span className="font-medium">Share with InnerMate</span>
+              <span className="font-medium">{tx(lang, "Share with InnerMate")}</span>
               <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                If on, InnerMate may gently remember the story you wrote here. It never sees the photo, video, or audio itself, only your words about it.
+                {tx(lang, "If on, InnerMate may gently remember the story you wrote here. It never sees the photo, video, or audio itself, only your words about it.")}
               </span>
             </span>
           </label>
@@ -1168,7 +1194,7 @@ function ReliveDialog({
 
         <div className="flex flex-wrap items-center gap-4 pt-1">
           <button type="button" className="qs-pill-cta" onClick={() => onOpenChange(false)}>
-            Sit with this a moment
+            {tx(lang, "Sit with this a moment")}
           </button>
           {!editing && (
             <button
@@ -1177,7 +1203,7 @@ function ReliveDialog({
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
             >
               <Pencil className="h-3.5 w-3.5" strokeWidth={1.7} />
-              edit
+              {tx(lang, "edit")}
             </button>
           )}
           <button
@@ -1187,11 +1213,11 @@ function ReliveDialog({
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/80 transition hover:text-[color:oklch(0.68_0.14_38)]"
           >
             <Flame className="h-3.5 w-3.5" strokeWidth={1.7} />
-            let it go
+            {tx(lang, "let it go")}
           </button>
         </div>
         <p className="text-[11px] italic leading-relaxed text-muted-foreground">
-          letting go is a true goodbye. the memory and whatever you kept with it leave your sky for good.
+          {tx(lang, "letting go is a true goodbye. the memory and whatever you kept with it leave your sky for good.")}
         </p>
 
         <BurnRitual
@@ -1213,6 +1239,7 @@ function BurnRitual({
   title: string | null;
   onBurn: () => Promise<void>;
 }) {
+  const lang = useLang();
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [line, setLine] = useState("");
 
@@ -1234,8 +1261,8 @@ function BurnRitual({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md overflow-hidden">
         <DialogHeader className="sr-only">
-          <DialogTitle>Burn a memory</DialogTitle>
-          <DialogDescription>A small ritual for letting a memory go.</DialogDescription>
+          <DialogTitle>{tx(lang, "Burn a memory")}</DialogTitle>
+          <DialogDescription>{tx(lang, "A small ritual for letting a memory go.")}</DialogDescription>
         </DialogHeader>
 
         {/* Ember visual */}
@@ -1273,50 +1300,54 @@ function BurnRitual({
         </div>
 
         <div className="mt-3 text-center">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">A quiet ritual</p>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">{tx(lang, "A quiet ritual")}</p>
 
           {step === 0 && (
             <>
               <h3 className="mt-2 font-serif text-xl leading-snug">
-                Say goodbye to <span className="italic">{title || "this memory"}</span>?
+                {lang === "hi" ? (
+                  <><span className="italic">{title || tx(lang, "this memory")}</span> को अलविदा कहें?</>
+                ) : (
+                  <>Say goodbye to <span className="italic">{title || tx(lang, "this memory")}</span>?</>
+                )}
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Nothing is undone by burning it. But sometimes it helps to mark the moment you chose to release it.
+                {tx(lang, "Nothing is undone by burning it. But sometimes it helps to mark the moment you chose to release it.")}
               </p>
             </>
           )}
 
           {step === 1 && (
             <>
-              <h3 className="mt-2 font-serif text-xl leading-snug">Read it once, slowly.</h3>
+              <h3 className="mt-2 font-serif text-xl leading-snug">{tx(lang, "Read it once, slowly.")}</h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Give it the attention it asked for, one last time. Then come back.
+                {tx(lang, "Give it the attention it asked for, one last time. Then come back.")}
               </p>
             </>
           )}
 
           {step === 2 && (
             <>
-              <h3 className="mt-2 font-serif text-xl leading-snug">One line, if you want.</h3>
+              <h3 className="mt-2 font-serif text-xl leading-snug">{tx(lang, "One line, if you want.")}</h3>
               <Textarea
                 autoFocus
                 value={line}
                 onChange={(e) => setLine(e.target.value)}
-                placeholder="What this memory taught you, or what you're choosing now."
+                placeholder={tx(lang, "What this memory taught you, or what you're choosing now.")}
                 className="mt-3 min-h-[88px] rounded-xl text-sm leading-relaxed"
                 maxLength={280}
               />
               <p className="mt-1.5 text-[11px] italic text-muted-foreground">
-                This line isn't kept — it burns with the memory.
+                {tx(lang, "This line isn't kept — it burns with the memory.")}
               </p>
             </>
           )}
 
           {step === 3 && (
             <>
-              <h3 className="mt-2 font-serif text-xl leading-snug">Let it turn to embers.</h3>
+              <h3 className="mt-2 font-serif text-xl leading-snug">{tx(lang, "Let it turn to embers.")}</h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Warm, quiet, gone.
+                {tx(lang, "Warm, quiet, gone.")}
               </p>
             </>
           )}
@@ -1325,13 +1356,13 @@ function BurnRitual({
         {step < 3 && (
           <div className="mt-5 flex items-center justify-center gap-2">
             <Button variant="ghost" className="rounded-full" onClick={() => onOpenChange(false)}>
-              Keep it
+              {tx(lang, "Keep it")}
             </Button>
             <Button
               className="rounded-full"
               onClick={() => { void next(); }}
             >
-              {step === 0 ? "Begin" : step === 1 ? "I've read it" : "Burn it gently"}
+              {step === 0 ? tx(lang, "Begin") : step === 1 ? tx(lang, "I've read it") : tx(lang, "Burn it gently")}
             </Button>
           </div>
         )}

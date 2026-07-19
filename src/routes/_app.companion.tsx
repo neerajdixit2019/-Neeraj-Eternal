@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listConversations, getConversation, deleteConversation } from "@/lib/companion.functions";
 import { getProfile, setCompanionTone } from "@/lib/data.functions";
-import { useLang } from "@/lib/i18n";
+import { useLang, type Lang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -216,17 +216,18 @@ const PHASE_COPY: Record<Exclude<Phase, null>, string> = {
   crisis: "Holding this carefully",
 };
 
-function relTime(iso: string): string {
+function relTime(iso: string, lang: Lang): string {
   const d = new Date(iso).getTime();
   const diff = Date.now() - d;
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  const hi = lang === "hi";
+  if (m < 1) return hi ? "अभी" : "just now";
+  if (m < 60) return hi ? `${m} मिनट पहले` : `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return hi ? `${h} घंटे पहले` : `${h}h ago`;
   const days = Math.floor(h / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
+  if (days < 7) return hi ? `${days} दिन पहले` : `${days}d ago`;
+  return new Date(iso).toLocaleDateString(hi ? "hi-IN" : undefined);
 }
 
 function Companion() {
@@ -241,6 +242,11 @@ function Companion() {
   // The app UI language (distinct from `lang` below, which is the Web-Speech
   // VOICE locale). Drives chrome translation and the AI's reply language.
   const uiLang = useLang();
+  // The speech-recognition handlers are wired once (deps: []), so they'd
+  // capture the language at mount and show a stale-language error toast after a
+  // mid-session switch. Read the latest through a ref instead.
+  const uiLangRef = useRef(uiLang);
+  useEffect(() => { uiLangRef.current = uiLang; }, [uiLang]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -350,7 +356,9 @@ function Companion() {
       setListening(false);
       setInterim("");
       if (ev?.error && ev.error !== "no-speech" && ev.error !== "aborted") {
-        toast.error(ev.error === "not-allowed" ? "Microphone permission denied." : "Couldn't hear you. Try again.");
+        toast.error(ev.error === "not-allowed"
+          ? tx(uiLangRef.current, "Microphone permission denied.")
+          : tx(uiLangRef.current, "Couldn't hear you. Try again."));
       }
     };
     recognitionRef.current = rec;
@@ -438,7 +446,7 @@ function Companion() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      if (!token) throw new Error("Not signed in");
+      if (!token) throw new Error(tx(uiLang, "Not signed in"));
 
       const res = await fetch("/api/companion", {
         method: "POST",
@@ -446,7 +454,7 @@ function Companion() {
         body: JSON.stringify({ conversationId: activeId, message: text, tone: selectedTone, lang: uiLang }),
         signal: controller.signal,
       });
-      if (!res.ok || !res.body) throw new Error(`Companion error (${res.status})`);
+      if (!res.ok || !res.body) throw new Error(`${tx(uiLang, "Companion error")} (${res.status})`);
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -629,7 +637,7 @@ function Companion() {
         <Button
           size="icon"
           variant="ghost"
-          aria-label="Back to home"
+          aria-label={tx(uiLang, "Back to home")}
           className="h-9 w-9 shrink-0 rounded-full border bg-card/70 hover:bg-card"
           style={{ borderColor: "var(--border-subtle)" }}
           onClick={() => navigate({ to: "/home" })}
@@ -638,24 +646,24 @@ function Companion() {
         </Button>
         <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
           <SheetTrigger asChild>
-            <Button size="icon" variant="ghost" aria-label="Conversation history" className="h-9 w-9 rounded-full">
+            <Button size="icon" variant="ghost" aria-label={tx(uiLang, "Conversation history")} className="h-9 w-9 rounded-full">
               <History className="h-4 w-4" />
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[320px] sm:w-[360px] p-0 flex flex-col">
             <SheetHeader className="px-4 pt-5 pb-3">
-              <SheetTitle className="font-serif text-base">Conversations</SheetTitle>
+              <SheetTitle className="font-serif text-base">{tx(uiLang, "Conversations")}</SheetTitle>
             </SheetHeader>
             <div className="px-4 pb-3 space-y-2">
               <Button onClick={newConversation} className="w-full rounded-xl" variant="outline">
-                <Plus className="mr-1 h-4 w-4" />New conversation
+                <Plus className="mr-1 h-4 w-4" />{tx(uiLang, "New conversation")}
               </Button>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground/70" />
                 <Input
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
-                  placeholder="Search…"
+                  placeholder={tx(uiLang, "Search…")}
                   className="h-9 rounded-lg pl-8 text-sm"
                 />
               </div>
@@ -663,7 +671,7 @@ function Companion() {
             <div className="flex-1 overflow-y-auto px-2 pb-4">
               {(filteredConvs?.length ?? 0) === 0 ? (
                 <p className="px-3 py-6 text-center text-xs italic text-muted-foreground">
-                  {historySearch ? "Nothing matches." : "No conversations yet. Start one — it stays private."}
+                  {historySearch ? tx(uiLang, "Nothing matches.") : tx(uiLang, "No conversations yet. Start one — it stays private.")}
                 </p>
               ) : (
                 <ul className="space-y-0.5">
@@ -673,19 +681,19 @@ function Companion() {
                         onClick={() => { setActiveId(c.id); setHistoryOpen(false); }}
                         className="flex-1 min-w-0 py-2.5 text-left"
                       >
-                        <p className="truncate text-sm text-foreground">{c.title || "Untitled"}</p>
+                        <p className="truncate text-sm text-foreground">{c.title || tx(uiLang, "Untitled")}</p>
                         {c.updated_at && (
-                          <p className="text-[10px] text-muted-foreground">{relTime(c.updated_at)}</p>
+                          <p className="text-[10px] text-muted-foreground">{relTime(c.updated_at, uiLang)}</p>
                         )}
                       </button>
                       <button
                         onClick={async () => {
-                          if (!window.confirm("Let this conversation go? You can always begin another.")) return;
+                          if (!window.confirm(tx(uiLang, "Let this conversation go? You can always begin another."))) return;
                           await delFn({ data: { id: c.id } });
                           if (activeId===c.id) setActiveId(null);
                           qc.invalidateQueries({ queryKey: ["convs"] });
                         }}
-                        aria-label="Delete conversation"
+                        aria-label={tx(uiLang, "Delete conversation")}
                         className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition"
                       >
                         <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -723,7 +731,7 @@ function Companion() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button size="icon" variant="ghost" aria-label="Tone settings" className="h-9 w-9 rounded-full">
+            <Button size="icon" variant="ghost" aria-label={tx(uiLang, "Tone settings")} className="h-9 w-9 rounded-full">
               <Settings2 className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -839,7 +847,7 @@ function Companion() {
                               style={{ background: "var(--lamp)", boxShadow: "0 0 8px color-mix(in oklab, var(--lamp) 55%, transparent)" }}
                             />
                             <span className="text-[13px] italic text-muted-foreground">
-                              {(m.phase && m.phase !== "ready" ? PHASE_COPY[m.phase] : "Quietly thinking") + "…"}
+                              {tx(uiLang, m.phase && m.phase !== "ready" ? PHASE_COPY[m.phase] : "Quietly thinking") + "…"}
                             </span>
                           </span>
                         </MessageContent>
@@ -927,10 +935,10 @@ function Companion() {
                   <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-primary opacity-60" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                 </span>
-                <span className="font-medium">Listening</span>
+                <span className="font-medium">{tx(uiLang, "Listening")}</span>
                 {interim && <span className="ml-1 max-w-[220px] truncate italic text-muted-foreground">"{interim}"</span>}
               </div>
-              <Button size="sm" variant="ghost" className="h-7 rounded-full px-2 text-xs" onClick={toggleListening}>Stop</Button>
+              <Button size="sm" variant="ghost" className="h-7 rounded-full px-2 text-xs" onClick={toggleListening}>{tx(uiLang, "Stop")}</Button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -963,25 +971,25 @@ function Companion() {
                     type="button"
                     onClick={toggleListening}
                     variant={listening ? "default" : "ghost"}
-                    aria-label={listening ? "Stop voice input" : "Start voice input"}
-                    title={listening ? "Stop" : "Speak"}
+                    aria-label={listening ? tx(uiLang, "Stop voice input") : tx(uiLang, "Start voice input")}
+                    title={listening ? tx(uiLang, "Stop") : tx(uiLang, "Speak")}
                   >
                     <Mic className="h-4 w-4" />
                   </PromptInputButton>
                 ) : (
-                  <PromptInputButton type="button" disabled aria-label="Voice unavailable" title="Voice input not supported">
+                  <PromptInputButton type="button" disabled aria-label={tx(uiLang, "Voice unavailable")} title={tx(uiLang, "Voice input not supported")}>
                     <MicOff className="h-4 w-4" />
                   </PromptInputButton>
                 )}
                 {speechSupported && (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <PromptInputButton type="button" aria-label="Voice language" title="Voice language">
+                      <PromptInputButton type="button" aria-label={tx(uiLang, "Voice language")} title={tx(uiLang, "Voice language")}>
                         <Languages className="h-4 w-4" />
                       </PromptInputButton>
                     </PopoverTrigger>
                     <PopoverContent align="start" className="w-56 p-2">
-                      <p className="px-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Voice language</p>
+                      <p className="px-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">{tx(uiLang, "Voice language")}</p>
                       <Select value={lang} onValueChange={setLang}>
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue />
@@ -996,12 +1004,12 @@ function Companion() {
                   </Popover>
                 )}
                 {speechSupported && recordedAny && !listening && (
-                  <PromptInputButton type="button" onClick={reRecord} aria-label="Re-record" title="Re-record">
+                  <PromptInputButton type="button" onClick={reRecord} aria-label={tx(uiLang, "Re-record")} title={tx(uiLang, "Re-record")}>
                     <RotateCcw className="h-4 w-4" />
                   </PromptInputButton>
                 )}
                 {draft && (
-                  <PromptInputButton type="button" onClick={clearTranscript} aria-label="Clear" title="Clear">
+                  <PromptInputButton type="button" onClick={clearTranscript} aria-label={tx(uiLang, "Clear")} title={tx(uiLang, "Clear")}>
                     <X className="h-4 w-4" />
                   </PromptInputButton>
                 )}
@@ -1025,7 +1033,7 @@ function Companion() {
               color: lastMode === "safety" ? "color-mix(in oklab, var(--clay) 80%, var(--foreground))" : "var(--muted-foreground)",
             }}
           >
-            A reflection guide, not a therapist. In a crisis: <a href="tel:14416" className="underline underline-offset-2">Tele-MANAS 14416</a>.
+            {tx(uiLang, "A reflection guide, not a therapist. In a crisis:")} <a href="tel:14416" className="underline underline-offset-2">Tele-MANAS 14416</a>.
           </p>
         </div>
       </div>
