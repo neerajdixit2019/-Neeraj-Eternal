@@ -3,7 +3,7 @@
 Automated coverage lives in `src/lib/__tests__/` (`npm run test:companion`, 204 cases
 including the golden-library contracts in `docs/training/` and the room-state engine).
 This checklist covers what automation cannot reach: authentication flows, live model
-transcripts, memory UX, and UI. Run it on https://neeraj2019.lovable.app with a
+transcripts, memory UX, and UI. Run it on https://innermate.lovable.app with a
 dedicated test account before any launch-gate decision.
 
 **Report format:** for every item record `PASS / FAIL / BLOCKED` + a one-line
