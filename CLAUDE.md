@@ -8,7 +8,7 @@ Start/Router + Supabase (RLS) + Tailwind v4 + Lovable AI gateway.
 
 ```
 npx tsc --noEmit          # expect 0 errors
-npm run test:companion    # node:test suites, expect 327 pass
+npm run test:companion    # node:test suites, expect 436 pass
 npm run build             # production build must succeed
 ```
 
@@ -19,7 +19,12 @@ Tests are plain `node --test` files under `src/lib/__tests__/` — NOT vitest.
 - **Safety**: the 4-level risk classifier in `src/lib/companion-risk.ts` is pure
   and shared; L3 responses are deterministic templates, never model-generated.
   Crisis resources come ONLY from `src/lib/crisis-resources.ts` (Tele-MANAS
-  14416). The model must never write hotline numbers.
+  14416). The model must never write hotline numbers. `normalize()` folds NFD +
+  nukta + nasals (ं/ँ) and KEEPS marks (`\p{M}`) — never revert to stripping
+  marks, it mangles Devanagari. Signal vocabularies cover English + romanized
+  Hinglish + Devanagari; the Devanagari-bearing arrays are `.map(normalize)`-ed
+  so patterns fold to match. Any change to the vocab must re-pass the adversarial
+  false-positive/false-negative pins in `companion-devanagari.test.ts`.
 - **Server functions**: preserve zod shapes, react-query keys, mood scores
   2/4/6/8/10, `is_ai_readable` filters, stream frames (meta/phase/token/mode/
   done — mode includes "safety"), `risk_label` semantics.

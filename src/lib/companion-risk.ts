@@ -82,9 +82,24 @@ export interface UserContext {
 
 function normalize(text: string): string {
   return text
+    // Decompose precomposed nukta letters (ड़ → ड + ़, ज़ → ज + ़) so the fold
+    // below reaches both spellings a phone keyboard might produce.
+    .normalize("NFD")
     .toLowerCase()
     .replace(/[’']/g, "")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    // Fold the nukta so ज़/ज, ख़/ख, ड़/ड, फ़/फ read alike — users type both.
+    .replace(/़/g, "")
+    // Fold anusvara (ं) and chandrabindu (ँ) to nothing so the countless
+    // matra/nasal spellings a distressed person types fast collapse together —
+    // "जाऊँगा"/"जाऊंगा", "दूँगा"/"दूंगा", "नहीं"/"नही", "हूँ"/"हूं" all unify.
+    // The Devanagari signal vocabularies below are stored in this same folded
+    // form so both sides match. (No effect on Latin/romanized text.)
+    .replace(/[ँं]/g, "")
+    // Keep marks (\p{M}). Devanagari vowel signs (matras), virama, anusvara and
+    // chandrabindu are COMBINING MARKS, not letters — the old class stripped
+    // them and mangled every Hindi word into an unmatchable consonant skeleton
+    // ("जीना नहीं" → "जन नह"). The danda "।" is punctuation and still → space.
+    .replace(/[^\p{L}\p{N}\p{M}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -97,6 +112,20 @@ function hasAny(n: string, patterns: string[]): string | null {
 // ---------------------------------------------------------------------------
 // Signal vocabularies
 // (normalized form: lowercase, no apostrophes, no punctuation)
+//
+// Coverage is English + romanized Hinglish + Devanagari (Hindi script). The
+// Devanagari-bearing arrays are wrapped `.map(normalize)` so their patterns are
+// folded (NFD, nukta, nasals) to the same form the input takes — natural
+// spelling in source, folded at load. Phrases were generated and then
+// adversarially red-teamed against this classifier (see companion-devanagari
+// .test.ts) to curate out idiom false-positives (medication गोलियां, loyalty
+// जान दे, joy कूद, task खत्म कर) while keeping recall on real methods.
+//
+// KNOWN LIMIT (parity with English): this is a LEXICAL matcher. It catches
+// EXPLICIT risk language, not pure metaphor or behavioral leakage ("giving my
+// things away", "a permanent solution", "book a ticket out of this world") —
+// those are the model layer's job. The deterministic safety short-circuit is
+// the backstop for stated intent, not a substitute for the LLM reading subtext.
 // ---------------------------------------------------------------------------
 
 /** Level 3 — explicit intent, plan, means, or "cannot stay safe". */
@@ -109,14 +138,44 @@ const L3_SIGNALS = [
   "about to hurt myself", "hurting myself right now",
   "khatam kar lunga", "khatam kar lungi", "jaan de dunga", "jaan de dungi",
   "zindagi khatam kar",
-];
+  // Devanagari (Hindi script). Normalized form: nukta folded, matras kept.
+  "खुद को खत्म कर", "खुद को खत्म करना है", "अपने आप को खत्म",
+  "जिंदगी खत्म कर", "सब खत्म कर दूंगा", "अपनी जान दे",
+  "जान देनी है", "खुद को मार", "खुद को मार दूंगा", "खुद को मारने", "आज रात मर",
+  "आज रात जान दे", "आज रात ही खत्म", "अभी जान दे", "छत से कूद", "पुल से कूद",
+  "ट्रेन के आगे", "फांसी लगा लूंगा", "फांसी लगा", "फंदा लगा", "नस काट लूंगा", "नस काट",
+  "हाथ की नस काट", "नींद की गोलियां खा", "सारी गोलियां खा",
+  "अब नहीं बचूंगा", "खुद को नहीं संभाल", "अब खुद को नहीं रोक", "यह आखिरी मैसेज",
+  "आत्महत्या कर लूंगा", "आत्महत्या कर लूंगी", "सुसाइड कर", "जहर खा",
+  "जहर पी", "पंखे से लटक", "लटक जाऊंगा", "अब नहीं बचूंगी",
+  "जिंदा नहीं रहूंगा", "जिंदा नहीं रहूंगी", "हमेशा के लिए जा रहा",
+// Phase 20 additions (methods, spelling/roman variants).
+  "कीटनाशक", "सल्फास खा", "सल्फास की गोली", "सल्फास पी", "मिट्टी का तेल डाल", "खुद को आग लगा",
+  "आग लगा लूंगा", "गैस खोल", "तेजाब पी", "नदी में डूब", "डूब कर मर", "कुएं में कूद",
+  "ट्रेन के नीचे", "कलाई काट", "छलांग लगा", "जहर पी लिया", "जहर खा लिया", "नस काट ली",
+  "आत्महत्या कर लूं", "आत्महत्या करना चाहता", "आत्महत्या करना चाहती", "जिंदा नहीं बचूंगा",
+  "khud ko khatam", "khud ko maar", "phaasi laga", "phansi laga", "faansi laga", "nas kaat",
+  "nas kat", "zeher kha", "zahar kha", "zeher pi", "gas khol", "keetnashak", "sulfas", "sulfaas",
+  "aatmahatya", "atmahatya", "khud ko aag", "tezaab pi", "chhat se kood", "pul se kood",
+  "apni jaan de", "jaan deni hai",
+  // Phase 20 v3 (roman methods, spelling variants, stable euphemisms).
+  "सब खतम कर", "जिंदगी खतम कर", "खुद को खतम", "जिन्दा नहीं रह", "छत से कुद", "पुल से कुद",
+  "जहर पि", "भगवान बुला ले", "ऊपर बुला ले", "permanent solution", "last message", "aakhri message",
+  "pankhe se latak", "latak jaunga", "sleeping pills kha", "saari goliyan kha",
+  "neend ki goliyan kha", "nadi me doob", "train ke neeche", "gas khol ke", "khud ko aag laga",
+  "kalai kaat",
+].map(normalize);
 
 /** Words that escalate a Level-2 phrase to Level 3 when they co-occur. */
 const L3_ESCALATORS = [
   "tonight", "right now", "in an hour", "pills", "rope", "knife",
   "blade", "bridge", "roof", "railway", "train tracks", "plan to",
   "decided to", "wrote a note", "goodbye forever",
-];
+  // Devanagari escalators — only count within 60 chars of an L2 phrase.
+  "आज रात", "आज ही", "एक घंटे में", "आखिरी बार", "गोलियां", "नींद की गोलियां", "रस्सी",
+  "फांसी लगा", "चाकू", "ब्लेड", "नस काट", "छत से", "पुल से", "ट्रेन के आगे", "रेल की पटरी",
+  "तय कर लिया", "फैसला कर लिया", "नोट लिख", "अलविदा हमेशा के लिए", "जहर", "पंखे से",
+].map(normalize);
 
 /** Level 2 — passive ideation, self-harm language without plan/means. */
 const L2_SIGNALS = [
@@ -144,7 +203,29 @@ const L2_SIGNALS = [
   "like disappearing", "life has no meaning", "no meaning in life",
   "life is meaningless",
   "whats the point of anything", "what is the point of anything",
-];
+  // Devanagari — passive ideation / self-harm without plan or means.
+  "जीना नहीं चाहता", "जीना नहीं चाहती", "जीने का मन नहीं", "जीने का दिल नहीं",
+  "जीने की इच्छा नहीं", "मरना चाहता", "मरना चाहती", "मर जाना चाहता", "मर जाना चाहती",
+  "काश मैं मर जाऊं", "मरने का मन", "मरने का दिल करता", "गायब हो जाऊं", "गायब हो जाना चाहता",
+  "कहीं गायब हो जाऊं", "मिट जाऊं", "वजूद मिटा दूं", "खत्म हो जाऊं", "सब खत्म कर दूं",
+  "सब खत्म करना चाहता", "जीने का कोई मतलब नहीं", "जीने का मतलब नहीं", "कोई मतलब नहीं जीने का",
+  "जीने का कोई फायदा नहीं", "इस तरह नहीं जी सकता", "इस तरह नहीं जी सकती", "ऐसे नहीं जी सकता",
+  "ऐसे नहीं जी सकती", "हिम्मत हार गया", "हिम्मत हार गई", "मेरे बिना बेहतर",
+  "मेरे बिना सब बेहतर", "मैं न रहूं तो बेहतर", "खुद को नुकसान", "खुद को चोट", "खुद को काट",
+  "खुद को तकलीफ", "अपने साथ सुरक्षित नहीं", "खुद के साथ सुरक्षित नहीं", "थक गया जीने से",
+  "थक गई जीने से", "जीने से थक गया", "जीने से थक गई", "काश मैं पैदा न होता",
+  "काश मैं पैदा न होती", "मरने का ख्याल", "आत्महत्या का ख्याल", "और नहीं जी सकता",
+  "और नहीं जी सकती", "जीने से क्या फायदा", "पैदा ही नहीं होता",
+  "पैदा ही नहीं होती", "इस दुनिया में नहीं रहना", "जीने का हक नहीं", "मरने से किसी को फर्क",
+  "गायब हो जाना चाहती", "सब खत्म करना चाहती",
+// Phase 20 additions (methods, spelling/roman variants).
+  "कभी न उठूं", "हमेशा के लिए सो जाऊं", "इस दुनिया से चला जाऊं", "अब नहीं रहना इस दुनिया",
+  "nahi jeena", "mujhe nahi jeena", "jeena nahi chahta", "jeene ka mann nahi", "khud ko nuksan",
+  "gayab ho jaun", "marne ka mann",
+  // Phase 20 v3 (roman methods, spelling variants, stable euphemisms).
+  "नहीं जीना", "मुझे मरना है", "बस मरना है", "भगवान बुला ले", "जीने का अब कोई मतलब",
+  "khatam ho jaunga", "main khatam ho", "marna hai yaar", "ab nahi jeena",
+].map(normalize);
 
 /** Fear for someone ELSE at risk ("my friend wants to kill herself"). */
 const THIRD_PARTY_RISK_SIGNALS = [
@@ -160,7 +241,13 @@ const HARM_OTHERS_SIGNALS = [
   "make him pay", "make her pay", "destroy him", "destroy her",
   "beat him up", "beat her up", "want revenge", "hurt someone",
   "smash his", "smash her",
-];
+  // Devanagari — anger with intent toward ANOTHER person (target-prefixed so
+  // these never collide with self-harm मरना/मारना forms).
+  "उसे मार", "उसको मार", "उसको चोट", "उसे चोट", "बदला लूँगा", "बदला लूंगा",
+  "उसे बर्बाद", "पीट दूँगा", "पीट दूंगा", "गला घोंट", "उसकी जान ले",
+  "जिंदा नहीं छोड", "गोली मार", "चाकू मार", "हाथ पैर तोड", 
+  "खून कर दूँगा", "उसे खत्म कर", "उसे सबक सिखा", "उसे बर्बाद कर",
+].map(normalize);
 
 /**
  * "don't want to live HERE" is a housing complaint, not ideation.
@@ -201,7 +288,16 @@ const L1_SIGNALS = [
   "hopeless", "nobody would care", "no one would care", "nobody will care",
   "whats the point", "everything is falling apart", "cant do this anymore",
   "everything is finished", "everything is over for me",
-];
+  // Devanagari — high distress / identity pain, no self-harm language.
+  "बेकार हूँ", "किसी काम का नहीं", "किसी लायक नहीं", "खुद से नफरत", "अपने आप से नफरत",
+  "खुद से घिन", "जिंदगी बर्बाद", "सब बर्बाद हो गया", "सब खत्म हो गया", "सब कुछ खत्म",
+  "नाकाम हूँ", "हर चीज में नाकाम", "बर्दाश्त नहीं होता", "सहन नहीं होता", "अब और नहीं सह",
+  "हिम्मत टूट", "पूरी तरह टूट", "कोई परवाह नहीं करेगा", "किसी को परवाह नहीं",
+  "कोई फर्क नहीं पडता", "नाउम्मीद", "कोई उम्मीद नहीं", "सब बिखर रहा", "सब बिखर गया",
+  "अब और नहीं", "सब से थक गया", "अंदर से टूट", "मैं बोझ हूँ", "सबके लिए बोझ",
+  "मेरी कोई कीमत नहीं", "नाकारा हूँ", "बेकार हूं", "किसी काम की नहीं", "टूट गया हूं",
+  "टूट गई हूं", "कोई रास्ता नहीं", "मेरी परवाह नहीं",
+].map(normalize);
 
 /**
  * Safety-check answers (only meaningful right after a risk exchange).
@@ -217,7 +313,12 @@ const SAFE_EXACT = ["safe", "yes safe", "im safe", "i am safe"];
 const SAFE_PHRASES = [
   "i can stay safe", "im safe", "i am safe", "i wont do anything",
   "i will not do anything", "no i wont hurt myself", "i can stay safe for now",
-];
+  // Devanagari — clear "I can stay safe" answers (checked only right after a
+  // safety check; the unsafe list is tested first and wins).
+  "सुरक्षित हूँ", "सुरक्षित रहूँगा", "कुछ नहीं करूँगा", "कुछ नहीं करूँगी", "मैं ठीक हूँ अभी",
+  "संभाल लूँगा", "संभाल सकता हूँ", "बचा लूँगा", "खुद को नुकसान नहीं", "वादा करता हूँ",
+  "सुरक्षित हूं", "कुछ नहीं करूंगा", "कुछ नहीं करूंगी", "मैं ठीक हूं",
+].map(normalize);
 const NEGATION_WORDS = [
   "not", "no", "never", "cant", "cannot", "wont", "dont", "didnt",
   "nahi", "hardly", "barely", "unsure",
@@ -229,11 +330,19 @@ const UNSAFE_ANSWERS = [
   "i might hurt myself", "i may hurt myself", "i have pills",
   "alone and scared", "no im not", "cant promise", "cannot promise",
   "wont promise", "dont think i can stay safe", "dont think so",
-];
+  // Devanagari — "no / not sure / can't promise" answers to a safety check.
+  "सुरक्षित नहीं", "नहीं बचा सकता", "वादा नहीं कर सकता", "भरोसा नहीं", "पक्का नहीं",
+  "नहीं पता", "यकीन नहीं", "नहीं संभाल", "नहीं रोक", "सुरक्षित महसूस नहीं",
+  "खुद पर भरोसा नहीं", "खुद को नहीं रोक", "वादा नहीं कर सकती", "पता नहीं", "ठीक नहीं हूं",
+].map(normalize);
 /** Grounding requests that must keep the safety flow open, not exit it. */
 const GROUNDING_REQUESTS = [
   "ground me", "grounding", "breathe with me", "calm me", "calm down",
-];
+  // Devanagari — grounding requests that keep the safety flow open.
+  "शांत करो", "शांत कर दो", "मुझे शांत", "साँस दिलाओ", "साँस लेने में मदद", "साथ में साँस",
+  "साँस पर ध्यान", "ग्राउंड करो", "शांत होने में मदद", "शांति चाहिए", "मुझे संभालो",
+  "शांत कर", "साथ सांस",
+].map(normalize);
 
 // Mode signals (Level 0/1 only)
 const NO_IMPULSE_SIGNALS = [
@@ -267,7 +376,13 @@ const CALM_SIGNALS = [
   "chest is heavy", "scared of my own thoughts", "memories started attacking",
   "need peace", "want peace",
   "ground me", "calm me", "calm down", "breathe with me",
-];
+  // Devanagari — panic / acute-anxiety body cues (route to calm mode).
+  "साँस नहीं आ", "सांस नहीं आ", "दम घुट", "तेज धडक", "जोर से धडक", "धडकन बढ", "काँप रहा",
+  "कांप रहा", "हाथ काँप", "घबराहट हो रही", "घबराहट", "अटैक आ रहा", "पैनिक अटैक", "रो नहीं रुक",
+  "रोना नहीं रुक", "दिमाग रुक नहीं रहा", "सीने में भारीपन", "सीने में जकडन", "चक्कर आ रहा",
+  "बेचैनी हो रही", "सांस नहीं आ रही", "दिल तेज धडक", "पैनिक हो रहा", "घबरा रहा हूं",
+  "घबरा रही हूं",
+].map(normalize);
 const ACTION_SIGNALS = [
   "what should i do", "what do i do", "what i should do", "what now",
   "next step", "how do i fix", "help me decide", "give me a plan",
