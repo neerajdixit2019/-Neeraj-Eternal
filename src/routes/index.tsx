@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ShieldCheck } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { CompanionCloud } from "@/components/CompanionCloud";
 import { useLang, setLang } from "@/lib/i18n";
 import { tx } from "@/lib/i18n-strings";
@@ -53,20 +54,9 @@ const PREVIEW_STARS = [
   { x: 32, y: 66, r: 2.4, label: "" },
 ];
 
-function HeartMark({ size = 26 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <defs>
-        <linearGradient id="hm" x1="0" y1="0" x2="24" y2="24">
-          <stop offset="0%" stopColor="oklch(0.80 0.11 75)" />
-          <stop offset="100%" stopColor="oklch(0.63 0.105 65)" />
-        </linearGradient>
-      </defs>
-      <path d="M12 20.5c-.4 0-.8-.15-1.1-.43C6.3 15.9 3.5 13.3 3.5 9.9 3.5 7.4 5.4 5.5 7.8 5.5c1.5 0 2.9.7 3.7 1.9l.5.7.5-.7c.8-1.2 2.2-1.9 3.7-1.9 2.4 0 4.3 1.9 4.3 4.4 0 3.4-2.8 6-7.4 10.17-.3.28-.7.43-1.1.43Z" fill="url(#hm)" />
-      <circle cx="18.5" cy="6" r="1.1" fill="oklch(0.86 0.06 85)" />
-    </svg>
-  );
-}
+/* The brand mark (the lamplit doorway) lives in @/components/BrandMark —
+ * shared with /favicon.svg and the PWA icons so the door on the tab and the
+ * door on the page are the same door. */
 
 function Landing() {
   const lang = useLang();
@@ -83,8 +73,8 @@ function Landing() {
       <div className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-6 pb-16 pt-8 sm:px-8">
         {/* Top margin — the one quiet sign-in link */}
         <header className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <HeartMark />
+          <span className="flex items-center gap-2.5">
+            <BrandMark size={30} />
             <span className="text-[17px] font-semibold tracking-tight text-foreground">InnerMate</span>
           </span>
           <div className="flex items-center gap-1">

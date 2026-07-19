@@ -94,6 +94,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      // The lamplit doorway — same artwork as BrandMark and the PWA icons.
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "preload", as: "image", href: "/night-mountains.jpg", type: "image/jpeg" },
       // Fonts are bundled via @fontsource (see router.tsx) — no requests to
       // Google leave the app. Privacy-first, and faster on first paint.
