@@ -4,6 +4,7 @@
 // Never logs raw journal content.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { verifySessionOwnership } from "../_shared/session-guard.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -454,6 +455,18 @@ Deno.serve(async (req) => {
 
     if (save_mode === "private") {
       let sid = session_id as string | null;
+      // A client-supplied session_id flows into service-role (RLS-bypassing)
+      // inserts below, so it MUST be proven to belong to this caller — else a
+      // user could graft reflections onto someone else's session. A null sid
+      // means "start a new session" and is created (owned) below.
+      if (sid !== null) {
+        const guard = await verifySessionOwnership(sid, userId, async (validSid) => {
+          const { data } = await admin
+            .from("reflection_sessions").select("user_id").eq("id", validSid).maybeSingle();
+          return data ?? null;
+        });
+        if (!guard.ok) return jsonResponse(guard.status, { error: guard.error });
+      }
       if (!sid) {
         const { data: s, error: sErr } = await admin
           .from("reflection_sessions")

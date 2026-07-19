@@ -3,6 +3,7 @@
 // Uses OpenAI Responses API with store:false. Never logs raw writing.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { UUID_RE } from "../_shared/session-guard.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -430,6 +431,9 @@ Deno.serve(async (req) => {
     if (save_mode === "private") {
       sessionId = typeof payload?.session_id === "string" ? payload.session_id : null;
       if (!sessionId) return jsonResponse(400, { error: "missing_session_id" });
+      // Reject a malformed id cleanly before it reaches the uuid column, and
+      // prove ownership before any service-role write keyed on it.
+      if (!UUID_RE.test(sessionId)) return jsonResponse(400, { error: "invalid_session_id" });
 
       const { data: session, error: sErr } = await admin
         .from("reflection_sessions")

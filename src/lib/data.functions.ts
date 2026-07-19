@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { purgeAllUserData } from "@/lib/user-data-deletion";
 
 export const getProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -323,25 +324,42 @@ export const deleteMyData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    // Delete user-created emotional content. Retain consent_records,
-    // rights_requests, and safety_events as legally necessary audit trail.
-    await supabase.from("ai_messages").delete().eq("user_id", userId);
-    await supabase.from("ai_conversations").delete().eq("user_id", userId);
-    await supabase.from("journal_entries").delete().eq("user_id", userId);
-    await supabase.from("mood_logs").delete().eq("user_id", userId);
-    await supabase.from("user_path_progress").delete().eq("user_id", userId);
-    await supabase.from("memories").delete().eq("user_id", userId);
-    await supabase.from("user_story").delete().eq("user_id", userId);
-    await supabase.from("weekly_letters").delete().eq("user_id", userId);
-    await supabase.from("reflection_journal_entries").delete().eq("user_id", userId);
-    await supabase.from("reflection_turns").delete().eq("user_id", userId);
-    await supabase.from("reflection_sessions").delete().eq("user_id", userId);
-    await supabase.from("reflections").delete().eq("user_id", userId);
-    await supabase.from("user_feedback").delete().eq("user_id", userId);
-    await supabase.from("rights_requests").insert({
-      user_id: userId, request_type: "delete_data", status: "completed",
-      completed_at: new Date().toISOString(),
-    });
+    // Delete user-created emotional content AND its uploaded media. Retain
+    // consent_records, rights_requests, and safety_events as the legally
+    // necessary audit trail. The orchestrator purges Storage before rows and
+    // is retry-safe; see user-data-deletion.ts. Everything runs on the
+    // RLS-scoped user client, so a caller can only ever erase their own data.
+    await purgeAllUserData({
+      listMemoryMediaPaths: async (uid) => {
+        const { data, error } = await supabase
+          .from("memories").select("media_path").eq("user_id", uid);
+        if (error) throw new Error(error.message);
+        return (data ?? [])
+          .map((r) => r.media_path)
+          .filter((p): p is string => typeof p === "string" && p.length > 0);
+      },
+      removeMedia: async (bucket, paths) => {
+        // storage.remove is missing-file-safe (absent objects don't error) and
+        // owner-scoped by storage.objects RLS. Throw only on a real error so
+        // the rows survive for a retry.
+        const { error } = await supabase.storage.from(bucket).remove(paths);
+        if (error) throw new Error(error.message);
+      },
+      deleteOwnedRows: async (table, uid) => {
+        // Every DELETED_TABLES name is a real user-owned table; the dynamic
+        // name defeats supabase-js's literal-table typing, so cast to a
+        // representative table (all carry a user_id column).
+        const { error } = await supabase
+          .from(table as "memories").delete().eq("user_id", uid);
+        if (error) throw new Error(error.message);
+      },
+      recordDeletion: async (uid) => {
+        await supabase.from("rights_requests").insert({
+          user_id: uid, request_type: "delete_data", status: "completed",
+          completed_at: new Date().toISOString(),
+        });
+      },
+    }, userId);
     return { ok: true };
   });
 
