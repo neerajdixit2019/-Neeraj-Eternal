@@ -4,6 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
 import { listMoods, listJournal, getProfile } from "@/lib/data.functions";
 import { listMemories } from "@/lib/data.functions";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
+import { weekSentence } from "@/lib/week-sentence";
 import {
   Shield, Settings, BookHeart, Sparkles, HeartHandshake, Star, ArrowRight, Mail,
 } from "lucide-react";
@@ -38,26 +41,8 @@ function weekCounts(moods: MoodRow[], journal: JournalRow[]) {
   return { checkins, pages, daysShowedUp: days.size };
 }
 
-const SMALL_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"] as const;
-const word = (n: number) => SMALL_WORDS[n] ?? String(n);
-
-// The honest week, spoken as one sentence. Real counts only.
-function weekSentence(week: { daysShowedUp: number; checkins: number; pages: number }): string {
-  if (week.daysShowedUp === 0) {
-    return "this book is just beginning — its first page is yours whenever you're ready.";
-  }
-  const days = `you came back ${week.daysShowedUp === 1 ? "one day" : `${word(week.daysShowedUp)} days`} this week`;
-  const pages = week.pages > 0 ? ` and kept ${week.pages === 1 ? "one page" : `${word(week.pages)} pages`}` : "";
-  const felt = week.checkins === 1 ? "once" : `${word(week.checkins)} times`;
-  // With pages the check-ins ride along as a participle; without, they need
-  // their own finite verb ("…and named how it felt twice").
-  const checkins = week.checkins > 0
-    ? (pages ? `, naming how it felt ${felt}` : ` and named how it felt ${felt}`)
-    : "";
-  return `${days}${pages}${checkins}.`;
-}
-
 function YouPage() {
+  const lang = useLang();
   const profileFn = useServerFn(getProfile);
   const moodsFn = useServerFn(listMoods);
   const journalFn = useServerFn(listJournal);
@@ -73,7 +58,7 @@ function YouPage() {
     [moods, journal],
   );
   const starCount = memories?.length ?? 0;
-  const sentence = weekSentence(week);
+  const sentence = weekSentence(week, lang);
 
   const tallies: { value: string; label: string }[] = [
     { value: `${week.daysShowedUp}/7`, label: "days" },
@@ -85,12 +70,12 @@ function YouPage() {
   return (
     <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14">
       {/* The flyleaf — the reader's name, inscribed */}
-      <p className="qs-section-label">the flyleaf</p>
+      <p className="qs-section-label">{tx(lang, "the flyleaf")}</p>
       <h1 className="mt-3 font-serif text-[2.6rem] font-light leading-[1.08] tracking-tight sm:text-[3.1rem]" style={{ textWrap: "balance" }}>
-        {name || "This is your book."}
+        {name || tx(lang, "This is your book.")}
       </h1>
       <p className="mt-2 font-serif text-[14px] italic text-muted-foreground">
-        {name ? "this book is yours alone." : "it will learn your name when you offer it."}
+        {name ? tx(lang, "this book is yours alone.") : tx(lang, "it will learn your name when you offer it.")}
       </p>
 
       {/* The honest week — one sentence, with the numbers as margin tallies */}
@@ -99,49 +84,49 @@ function YouPage() {
         {tallies.map((t) => (
           <p key={t.label} className="text-[11px] text-muted-foreground">
             <span className="font-serif text-[15px] not-italic" style={{ color: "var(--accent-secondary)" }}>{t.value}</span>
-            <span className="ml-1.5 lowercase tracking-[0.08em]">{t.label}</span>
+            <span className="ml-1.5 lowercase tracking-[0.08em]">{tx(lang, t.label)}</span>
           </p>
         ))}
       </div>
       <p className="mt-2 text-[11px] italic text-muted-foreground">
-        counts, not scores — showing up is the whole metric.
+        {tx(lang, "counts, not scores — showing up is the whole metric.")}
       </p>
 
       {/* Table of contents — every doorway, one ruled list */}
-      <p className="qs-section-label mt-10">contents</p>
+      <p className="qs-section-label mt-10">{tx(lang, "contents")}</p>
       <div className="mt-2">
-        <TocRow to="/journal" icon={BookHeart} title="journal" line="your private vault" />
-        <TocRow to="/insights" icon={Sparkles} title="insights & check-in" line="your pattern constellation" />
-        <TocRow to="/heal" icon={HeartHandshake} title="tools" line="practices & gentle paths" />
-        <TocRow to="/memories" icon={Star} title="memories" line="your night sky" />
-        <TocRow to="/home" icon={Mail} title="weekly letter" line="waits on Today when it arrives" />
+        <TocRow to="/journal" icon={BookHeart} title={tx(lang, "journal")} line={tx(lang, "your private vault")} />
+        <TocRow to="/insights" icon={Sparkles} title={tx(lang, "insights & check-in")} line={tx(lang, "your pattern constellation")} />
+        <TocRow to="/heal" icon={HeartHandshake} title={tx(lang, "tools")} line={tx(lang, "practices & gentle paths")} />
+        <TocRow to="/memories" icon={Star} title={tx(lang, "memories")} line={tx(lang, "your night sky")} />
+        <TocRow to="/home" icon={Mail} title={tx(lang, "weekly letter")} line={tx(lang, "waits on Today when it arrives")} />
       </div>
 
       {/* The keeping of this place — controls, same ledger */}
-      <p className="qs-section-label mt-9">the keeping of this place</p>
+      <p className="qs-section-label mt-9">{tx(lang, "the keeping of this place")}</p>
       <div className="mt-2">
         <TocRow
           to="/trusted-letter"
           icon={Mail}
-          title="a letter for someone you trust"
-          line="a consent-first summary you download and hand over yourself"
+          title={tx(lang, "a letter for someone you trust")}
+          line={tx(lang, "a consent-first summary you download and hand over yourself")}
         />
         <TocRow
           to="/privacy"
           icon={Shield}
-          title="privacy & safety"
-          line="what InnerMate can read, and what delete keeps — in plain language"
+          title={tx(lang, "privacy & safety")}
+          line={tx(lang, "what InnerMate can read, and what delete keeps — in plain language")}
         />
         <TocRow
           to="/settings"
           icon={Settings}
-          title="the sanctuary"
-          line="settings, memory controls, tone, export & delete"
+          title={tx(lang, "the sanctuary")}
+          line={tx(lang, "settings, memory controls, tone, export & delete")}
         />
       </div>
 
       <p className="mt-10 text-center font-serif text-[13.5px] italic text-muted-foreground">
-        growth here is quiet. it counts anyway.
+        {tx(lang, "growth here is quiet. it counts anyway.")}
       </p>
     </div>
   );
