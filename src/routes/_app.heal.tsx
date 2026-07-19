@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listPaths } from "@/lib/data.functions";
+import { useLang } from "@/lib/i18n";
+import { tx } from "@/lib/i18n-strings";
 import { ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/_app/heal")({
@@ -135,6 +137,7 @@ function moodFor(theme: string): Mood {
 }
 
 function HealList() {
+  const lang = useLang();
   const fn = useServerFn(listPaths);
   const { data } = useQuery({ queryKey: ["paths"], queryFn: () => fn() });
 
@@ -151,11 +154,10 @@ function HealList() {
 
   return (
     <div className="motion-calm mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-      <p className="qs-section-label">gentle guided paths</p>
-      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight sm:text-[2.6rem]">Walk it slowly.</h1>
+      <p className="qs-section-label">{tx(lang, "gentle guided paths")}</p>
+      <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight sm:text-[2.6rem]">{tx(lang, "Walk it slowly.")}</h1>
       <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-        A few unhurried paths, one small step a day. Begin when you're ready;
-        pause whenever you need.
+        {tx(lang, "A few unhurried paths, one small step a day. Begin when you're ready; pause whenever you need.")}
       </p>
 
       {inProgress && (
@@ -167,15 +169,15 @@ function HealList() {
             boxShadow: "0 20px 50px -28px color-mix(in oklab, var(--foreground) 22%, transparent)",
           }}
         >
-          <p className="qs-section-label">where you left off</p>
-          <h2 className="mt-2 font-serif text-2xl font-light sm:text-[1.7rem]">{inProgress.path.title}</h2>
+          <p className="qs-section-label">{tx(lang, "where you left off")}</p>
+          <h2 className="mt-2 font-serif text-2xl font-light sm:text-[1.7rem]">{tx(lang, inProgress.path.title)}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Day {inProgress.current?.day ?? inProgress.done + 1} of {inProgress.path.duration_days}
-            {inProgress.current ? ` · ${inProgress.current.title}` : ""}
+            {tx(lang, "Day")} {inProgress.current?.day ?? inProgress.done + 1} {tx(lang, "of")} {inProgress.path.duration_days}
+            {inProgress.current ? ` · ${tx(lang, inProgress.current.title)}` : ""}
           </p>
           {inProgress.current && (
             <p className="mt-4 max-w-xl font-serif text-[15px] italic leading-relaxed text-foreground/85">
-              today · {inProgress.current.preview}
+              {tx(lang, "today")} · {tx(lang, inProgress.current.preview)}
             </p>
           )}
           <Link
@@ -183,19 +185,19 @@ function HealList() {
             params={{ slug: inProgress.path.slug }}
             className="qs-pill-cta mt-6"
           >
-            continue today's step <ArrowRight className="h-4 w-4" />
+            {tx(lang, "continue today's step")} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       )}
 
       {!inProgress && (
         <p className="mt-8 rounded-2xl border border-dashed border-border/70 px-5 py-4 text-sm text-muted-foreground">
-          Nothing started yet. These paths keep — begin whenever you're ready.
+          {tx(lang, "Nothing started yet. These paths keep — begin whenever you're ready.")}
         </p>
       )}
 
       <div className="mt-10 flex items-center gap-3">
-        <p className="qs-section-label">the paths</p>
+        <p className="qs-section-label">{tx(lang, "the paths")}</p>
         <div className="h-px flex-1 bg-border/60" />
       </div>
 
@@ -210,10 +212,10 @@ function HealList() {
           const current = started && !finished ? data.currentSteps?.[p.id] : null;
           const todayStep = current ?? first ?? null;
           const stateLine = finished
-            ? "finished, gently. revisit anytime."
+            ? tx(lang, "finished, gently. revisit anytime.")
             : started
-              ? `continue — day ${done + 1} of ${p.duration_days}`
-              : "begin when you're ready";
+              ? `${tx(lang, "continue — day")} ${done + 1} ${tx(lang, "of")} ${p.duration_days}`
+              : tx(lang, "begin when you're ready");
 
           return (
             <Link
@@ -225,8 +227,8 @@ function HealList() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="qs-section-label">{p.theme}</p>
-                  <h3 className="mt-2 font-serif text-2xl font-light sm:text-[1.6rem]">{p.title}</h3>
+                  <p className="qs-section-label">{tx(lang, p.theme)}</p>
+                  <h3 className="mt-2 font-serif text-2xl font-light sm:text-[1.6rem]">{tx(lang, p.title)}</h3>
                 </div>
                 {mood.glyph && (
                   <span
@@ -241,19 +243,19 @@ function HealList() {
                 )}
               </div>
 
-              <p className="mt-2 max-w-[22rem] font-serif text-sm italic text-foreground/70">{mood.teaser}</p>
+              <p className="mt-2 max-w-[22rem] font-serif text-sm italic text-foreground/70">{tx(lang, mood.teaser)}</p>
               <p className="mt-3 max-w-xl text-[14.5px] leading-relaxed text-muted-foreground">
-                {p.description}
+                {tx(lang, p.description)}
               </p>
 
               {todayStep && !finished && (
                 <p className="mt-4 font-serif text-[15px] italic leading-snug text-foreground/85">
-                  today · {todayStep.preview}
+                  {tx(lang, "today")} · {tx(lang, todayStep.preview)}
                 </p>
               )}
 
               <p className="mt-4 text-[12px] text-muted-foreground">
-                {mood.minutes} · {p.duration_days} gentle days · {mood.forWhom}
+                {tx(lang, mood.minutes)} · {p.duration_days} {tx(lang, "gentle days")} · {tx(lang, mood.forWhom)}
               </p>
 
               <div className="mt-5 flex items-center justify-between gap-4">
@@ -280,7 +282,7 @@ function HealList() {
       </div>
 
       <p className="mt-12 text-center font-serif text-[13.5px] italic text-muted-foreground">
-        missing a day is part of the path. nothing here keeps score.
+        {tx(lang, "missing a day is part of the path. nothing here keeps score.")}
       </p>
     </div>
   );
