@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { streamText, type ModelMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { Database } from "@/integrations/supabase/types";
-import {
-  createLovableAiGatewayProvider,
-  COMPANION_SYSTEM_PROMPT,
-} from "@/lib/ai-gateway.server";
+import { COMPANION_SYSTEM_PROMPT } from "@/lib/ai-gateway.server";
 import {
   AI_RATE_LIMITS,
   consumeAiRateLimit,
@@ -19,10 +17,12 @@ import { classifyInnerMateMessage, toWireMode } from "@/lib/companion-risk";
 import { istTimeOfDay, istWeekday } from "@/lib/ist";
 import { buildActiveDangerReply, buildSafetyCheckFallback } from "@/lib/crisis-resources";
 import { wisdomGroundingBlock } from "@/lib/wisdom";
+import { aiFallbackMessage, classifyAiError, logAiKeyIssue } from "@/lib/ai-error";
 
 // One companion, one mind: the facets (steadying, building, the page,
 // deeper water) live inside the system prompt, not in separate sub-agents.
-const COMPANION_MODEL = "openai/gpt-5.5";
+// Google AI Studio direct route (bypasses Lovable AI Gateway for runtime cost).
+const COMPANION_MODEL = "gemini-3-flash-preview";
 const COMPANION_ROUTE = "companion.stream";
 
 /**
@@ -531,8 +531,9 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
           })),
         ];
 
-        const key = process.env.LOVABLE_API_KEY;
+        const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
         if (!key) {
+          logAiKeyIssue(COMPANION_ROUTE, "missing");
           await logInvocation({
             userId,
             route: COMPANION_ROUTE,
@@ -545,9 +546,7 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
             async start(controller) {
               writeFrame(controller, "meta", JSON.stringify({ conversationId: convId, crisis: false }));
               writeFrame(controller, "phase", "ready");
-              const msg = lang === "hi"
-                ? "मैं यहीं हूँ, चुपचाप। (AI अभी सेट नहीं है — आपके शब्द सुरक्षित सहेज लिए गए हैं।)"
-                : "I'm here, quietly. (AI is not configured yet — your words are safely saved.)";
+              const msg = aiFallbackMessage("no_key", lang);
               for (const ch of msg) {
                 writeFrame(controller, "token", JSON.stringify(ch));
                 await new Promise((r) => setTimeout(r, 10));
@@ -561,7 +560,7 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
           });
         }
 
-        const gateway = createLovableAiGatewayProvider(key);
+        const google = createGoogleGenerativeAI({ apiKey: key });
 
         // Register the exact system prompt + model combo we're about to use,
         // so the invocation log can point back to a stable version row.
@@ -574,7 +573,7 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
         const invocationStart = Date.now();
 
         const result = streamText({
-          model: gateway(COMPANION_MODEL),
+          model: google(COMPANION_MODEL),
           system: systemFinal,
           messages,
         });
@@ -599,9 +598,9 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
             } catch (err) {
               console.error("Companion stream error:", err);
               streamError = err;
-              const fallback = lang === "hi"
-                ? "मैं आपके साथ हूँ, पर अभी शब्द नहीं मिल रहे। एक पल बाद फिर कोशिश कीजिए।"
-                : "I'm here with you, but I'm having trouble finding my words right now. Try again in a moment.";
+              const kind = classifyAiError(err);
+              if (kind === "invalid_key") logAiKeyIssue(COMPANION_ROUTE, "invalid", err);
+              const fallback = aiFallbackMessage(kind, lang);
               if (!full) {
                 full = fallback;
                 writeFrame(controller, "token", JSON.stringify(fallback));
@@ -654,7 +653,11 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
               promptVersionId,
               model: COMPANION_MODEL,
               status: streamError ? "error" : "ok",
-              errorCode: streamError ? String((streamError as { name?: string })?.name ?? "stream_error") : null,
+              errorCode: streamError
+                ? (classifyAiError(streamError) === "invalid_key"
+                    ? "invalid_api_key"
+                    : String((streamError as { name?: string })?.name ?? "stream_error"))
+                : null,
               latencyMs: Date.now() - invocationStart,
               inputChars: body.message.length,
               outputChars: full.length,

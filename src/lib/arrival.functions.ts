@@ -16,13 +16,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateText } from "ai";
-import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { AI_RATE_LIMITS, consumeAiRateLimit } from "@/lib/ai-rate-limit.server";
 import { istTimeOfDay } from "@/lib/ist";
 import { registerPromptVersion, logInvocation } from "@/lib/ai-prompt-registry.server";
 import { parseArrivalQuestions, parseArrivalRead, type ArrivalQuestion } from "@/lib/arrival-schema";
+import { classifyAiError, logAiKeyIssue } from "@/lib/ai-error";
 
-const ARRIVAL_MODEL = "google/gemini-3-flash-preview";
+// Direct Google AI Studio call (bypasses Lovable AI Gateway).
+const ARRIVAL_MODEL = "gemini-3-flash-preview";
 const ARRIVAL_ROUTE = "arrival.generate";
 
 const QUESTIONS_SYSTEM = `You write two tiny check-in questions for a calm mental-wellness app, shown right after the user picked a mood word. Your questions help them (and their companion) understand how they are arriving today.
@@ -54,8 +56,9 @@ export const generateArrivalQuestions = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }): Promise<{ questions: ArrivalQuestion[] | null }> => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!key) {
+      logAiKeyIssue(ARRIVAL_ROUTE, "missing");
       await logInvocation({
         userId: context.userId, route: ARRIVAL_ROUTE, promptVersionId: null,
         model: ARRIVAL_MODEL, status: "no_key", metadata: { phase: "questions" },
@@ -96,9 +99,9 @@ export const generateArrivalQuestions = createServerFn({ method: "POST" })
     });
     const startedAt = Date.now();
     try {
-      const gateway = createLovableAiGatewayProvider(key);
+      const google = createGoogleGenerativeAI({ apiKey: key });
       const result = await generateText({
-        model: gateway(ARRIVAL_MODEL),
+        model: google(ARRIVAL_MODEL),
         system: QUESTIONS_SYSTEM,
         messages: [{ role: "user", content: brief }],
       });
@@ -113,10 +116,14 @@ export const generateArrivalQuestions = createServerFn({ method: "POST" })
       });
       return { questions };
     } catch (err) {
+      const kind = classifyAiError(err);
+      if (kind === "invalid_key") logAiKeyIssue(ARRIVAL_ROUTE, "invalid", err);
       await logInvocation({
         userId: context.userId, route: ARRIVAL_ROUTE, promptVersionId,
         model: ARRIVAL_MODEL, status: "error",
-        errorCode: String((err as { name?: string })?.name ?? "generate_error"),
+        errorCode: kind === "invalid_key"
+          ? "invalid_api_key"
+          : String((err as { name?: string })?.name ?? "generate_error"),
         latencyMs: Date.now() - startedAt, metadata: { phase: "questions" },
       });
       return { questions: null };
@@ -132,8 +139,11 @@ export const generateArrivalRead = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }): Promise<{ read: string | null }> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) return { read: null };
+    const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!key) {
+      logAiKeyIssue(ARRIVAL_ROUTE, "missing");
+      return { read: null };
+    }
 
     const rl = await consumeAiRateLimit(context.userId, ARRIVAL_ROUTE, AI_RATE_LIMITS[ARRIVAL_ROUTE]);
     if (!rl.allowed) return { read: null };
@@ -147,9 +157,9 @@ export const generateArrivalRead = createServerFn({ method: "POST" })
     });
     const startedAt = Date.now();
     try {
-      const gateway = createLovableAiGatewayProvider(key);
+      const google = createGoogleGenerativeAI({ apiKey: key });
       const result = await generateText({
-        model: gateway(ARRIVAL_MODEL),
+        model: google(ARRIVAL_MODEL),
         system: READ_SYSTEM,
         messages: [{ role: "user", content: brief }],
       });
@@ -164,10 +174,14 @@ export const generateArrivalRead = createServerFn({ method: "POST" })
       });
       return { read };
     } catch (err) {
+      const kind = classifyAiError(err);
+      if (kind === "invalid_key") logAiKeyIssue(ARRIVAL_ROUTE, "invalid", err);
       await logInvocation({
         userId: context.userId, route: ARRIVAL_ROUTE, promptVersionId,
         model: ARRIVAL_MODEL, status: "error",
-        errorCode: String((err as { name?: string })?.name ?? "generate_error"),
+        errorCode: kind === "invalid_key"
+          ? "invalid_api_key"
+          : String((err as { name?: string })?.name ?? "generate_error"),
         latencyMs: Date.now() - startedAt, metadata: { phase: "read" },
       });
       return { read: null };

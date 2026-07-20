@@ -14,6 +14,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.18",
     "@ai-sdk/openai-compatible": "^2.0.48",
     "@ai-sdk/react": "^3.0.193",
     "@cloudflare/vite-plugin": "^1.42.2",
@@ -60,7 +61,7 @@
     "@tanstack/react-router": "1.170.16",
     "@tanstack/react-start": "^1.168.26",
     "@tanstack/router-plugin": "1.168.18",
-    "ai": "^6.0.208",
+    "ai": "^7.0.31",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

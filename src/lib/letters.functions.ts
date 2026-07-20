@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateText } from "ai";
-import { createLovableAiGatewayProvider, WEEKLY_LETTER_SYSTEM_PROMPT } from "@/lib/ai-gateway.server";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { WEEKLY_LETTER_SYSTEM_PROMPT } from "@/lib/ai-gateway.server";
 import {
   AI_RATE_LIMITS,
   consumeAiRateLimit,
@@ -11,8 +12,10 @@ import {
   registerPromptVersion,
   logInvocation,
 } from "@/lib/ai-prompt-registry.server";
+import { classifyAiError, logAiKeyIssue } from "@/lib/ai-error";
 
-const WEEKLY_LETTER_MODEL = "google/gemini-3-flash-preview";
+// Direct Google AI Studio call (bypasses Lovable AI Gateway).
+const WEEKLY_LETTER_MODEL = "gemini-3-flash-preview";
 const WEEKLY_LETTER_ROUTE = "weekly_letter.generate";
 
 function isMondayISO(iso: string) {
@@ -276,12 +279,13 @@ export const generateWeeklyLetter = createServerFn({ method: "POST" })
       memoryLine,
     ].filter(Boolean).join("\n\n");
 
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     let body: string;
     let ritual: string | null = null;
     let checkInEcho: string | null = null;
 
     if (!key) {
+      logAiKeyIssue(WEEKLY_LETTER_ROUTE, "missing");
       await logInvocation({
         userId,
         route: WEEKLY_LETTER_ROUTE,
@@ -294,7 +298,7 @@ export const generateWeeklyLetter = createServerFn({ method: "POST" })
         ? `Dear you,\n\nThis week asked a lot. You don't have to make sense of it tonight. Just being here, in this quiet page, counts as something.\n\nIf anything feels too heavy to hold, Tele-MANAS 14416 is there, and so is the SOS button in this app.`
         : `Dear you,\n\nA quiet letter, for a quiet week. Whatever this week held, you carried it through to its end, and that's enough for now.\n\nFor the week ahead — one slow walk, with no destination, would be a small kindness.`;
     } else {
-      const gateway = createLovableAiGatewayProvider(key);
+      const google = createGoogleGenerativeAI({ apiKey: key });
       const promptVersionId = await registerPromptVersion({
         promptName: "weekly_letter.system",
         model: WEEKLY_LETTER_MODEL,
@@ -306,7 +310,7 @@ export const generateWeeklyLetter = createServerFn({ method: "POST" })
       let errorCode: string | null = null;
       try {
       const result = await generateText({
-        model: gateway("google/gemini-3-flash-preview"),
+        model: google(WEEKLY_LETTER_MODEL),
         system: WEEKLY_LETTER_SYSTEM_PROMPT,
         prompt: brief,
       });
@@ -316,7 +320,11 @@ export const generateWeeklyLetter = createServerFn({ method: "POST" })
       }
       } catch (err) {
         status = "error";
-        errorCode = String((err as { name?: string })?.name ?? "generate_error");
+        const kind = classifyAiError(err);
+        if (kind === "invalid_key") logAiKeyIssue(WEEKLY_LETTER_ROUTE, "invalid", err);
+        errorCode = kind === "invalid_key"
+          ? "invalid_api_key"
+          : String((err as { name?: string })?.name ?? "generate_error");
         console.error("[weekly_letter] generate failed", err);
         body = tone === "tender"
           ? `Dear you,\n\nThis week asked a lot. You don't have to make sense of it tonight. Just being here counts as something.\n\nIf anything feels too heavy to hold, Tele-MANAS 14416 is there, and so is the SOS button in this app.`
@@ -338,7 +346,7 @@ export const generateWeeklyLetter = createServerFn({ method: "POST" })
       if (checkIn) {
         try {
           const echoResult = await generateText({
-            model: gateway("google/gemini-3-flash-preview"),
+            model: google(WEEKLY_LETTER_MODEL),
             system:
               "You write one short, gentle sentence (max 22 words) describing how the user's pre-letter check-in shaped the letter's opening. " +
               "Never quote or repeat their words verbatim. Never use quotation marks. " +

@@ -2,11 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateText, type ModelMessage } from "ai";
-import { createLovableAiGatewayProvider, COMPANION_SYSTEM_PROMPT } from "@/lib/ai-gateway.server";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { COMPANION_SYSTEM_PROMPT } from "@/lib/ai-gateway.server";
 import { AI_RATE_LIMITS, consumeAiRateLimit } from "@/lib/ai-rate-limit.server";
 import { registerPromptVersion, logInvocation } from "@/lib/ai-prompt-registry.server";
+import { aiFallbackMessage, classifyAiError, logAiKeyIssue } from "@/lib/ai-error";
 
-const FALLBACK_MODEL = "openai/gpt-5.5";
+// Legacy fallback now uses Google AI Studio directly (bypasses Lovable AI Gateway).
+const FALLBACK_MODEL = "gemini-3-flash-preview";
 const FALLBACK_ROUTE = "companion.fallback";
 
 const CRISIS_KEYWORDS = [
@@ -105,23 +108,21 @@ export const sendCompanionMessage = createServerFn({ method: "POST" })
       .limit(20);
     const history = (historyDesc ?? []).slice().reverse();
 
-    const messages: ModelMessage[] = [
-      { role: "system", content: COMPANION_SYSTEM_PROMPT },
-      ...history.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-    ];
+    const messages: ModelMessage[] = history.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
 
-    // 5. Call AI gateway, with safe fallback if key missing
-    const key = process.env.LOVABLE_API_KEY;
+    // 5. Call Google AI Studio directly, with safe fallback if key missing
+    const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     let reply: string;
     if (!key) {
+      logAiKeyIssue(FALLBACK_ROUTE, "missing");
       await logInvocation({
         userId, route: FALLBACK_ROUTE, promptVersionId: null, model: FALLBACK_MODEL,
         status: "no_key", metadata: { conversation_id: conversationId },
       });
-      reply = "Thank you for naming that. I'm here, quietly. (AI is not configured yet — your words are safely saved.)";
+      reply = aiFallbackMessage("no_key");
     } else {
       const promptVersionId = await registerPromptVersion({
         promptName: "companion.system",
@@ -130,9 +131,10 @@ export const sendCompanionMessage = createServerFn({ method: "POST" })
       });
       const invocationStart = Date.now();
       try {
-        const gateway = createLovableAiGatewayProvider(key);
+        const google = createGoogleGenerativeAI({ apiKey: key });
         const result = await generateText({
-          model: gateway("openai/gpt-5.5"),
+          model: google(FALLBACK_MODEL),
+          system: COMPANION_SYSTEM_PROMPT,
           messages,
         });
         reply = result.text.trim() || "I'm here. Tell me a little more, if you'd like.";
@@ -146,15 +148,19 @@ export const sendCompanionMessage = createServerFn({ method: "POST" })
         });
       } catch (e) {
         console.error("Companion AI error:", e);
+        const kind = classifyAiError(e);
+        if (kind === "invalid_key") logAiKeyIssue(FALLBACK_ROUTE, "invalid", e);
         await logInvocation({
           userId, route: FALLBACK_ROUTE, promptVersionId, model: FALLBACK_MODEL,
           status: "error",
-          errorCode: String((e as { name?: string })?.name ?? "generate_error"),
+          errorCode: kind === "invalid_key"
+            ? "invalid_api_key"
+            : String((e as { name?: string })?.name ?? "generate_error"),
           latencyMs: Date.now() - invocationStart,
           inputChars: data.message.length,
           metadata: { conversation_id: conversationId },
         });
-        reply = "I'm here with you, but I'm having trouble finding my words right now. Try again in a moment — or write what's on your heart in the Journal.";
+        reply = aiFallbackMessage(kind);
       }
     }
 
