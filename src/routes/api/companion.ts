@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { streamText, type ModelMessage } from "ai";
+import { streamText, generateText, type ModelMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { Database } from "@/integrations/supabase/types";
@@ -13,17 +13,39 @@ import {
   registerPromptVersion,
   logInvocation,
 } from "@/lib/ai-prompt-registry.server";
-import { classifyInnerMateMessage, toWireMode } from "@/lib/companion-risk";
+import { classifyInnerMateMessage, toWireMode, type WireMode } from "@/lib/companion-risk";
 import { istTimeOfDay, istWeekday } from "@/lib/ist";
 import { buildActiveDangerReply, buildSafetyCheckFallback } from "@/lib/crisis-resources";
 import { wisdomGroundingBlock } from "@/lib/wisdom";
 import { aiFallbackMessage, classifyAiError, logAiKeyIssue } from "@/lib/ai-error";
+import {
+  INTERPRETER_SYSTEM_PROMPT,
+  parseInterpretation,
+  blendRouting,
+  type EmotionalInterpretation,
+} from "@/lib/companion-interpret";
+import {
+  rankMemories,
+  buildEmotionalPatternSummary,
+  type MemoryRow,
+  type MoodRow,
+  type RankedMemory,
+} from "@/lib/companion-memory";
+import { buildContextPacket } from "@/lib/companion-context-packet";
+import { evaluateDraft } from "@/lib/companion-evaluator";
 
 // One companion, one mind: the facets (steadying, building, the page,
 // deeper water) live inside the system prompt, not in separate sub-agents.
 // Google AI Studio direct route (bypasses Lovable AI Gateway for runtime cost).
 const COMPANION_MODEL = "gemini-3-flash-preview";
 const COMPANION_ROUTE = "companion.stream";
+
+// Pipeline v2 (emotional interpretation → routing → relevance memory → context
+// packet → tiered model → hybrid critic gate). OFF by default: when unset the
+// route behaves EXACTLY as before. The strong model is env-configurable and
+// falls back to the flash model on any error, so an unavailable id never breaks.
+const PIPELINE_V2 = process.env.COMPANION_PIPELINE_V2 === "1";
+const STRONG_MODEL = process.env.COMPANION_STRONG_MODEL || COMPANION_MODEL;
 
 /**
  * Hash an arbitrary string into a stable hex digest. Used to build
@@ -522,7 +544,7 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
         const langDirective = lang === "hi"
           ? `\n\nLANGUAGE: The user has chosen Hindi. Write your ENTIRE reply in warm, natural, everyday Hindi (Devanagari script) — the same voice, brevity, and safety rules as above, just in Hindi. Use gender-neutral phrasing about the user (avoid gendered participles like करता/करती). Keep proper names, app/UI labels, and "InnerMate" as-is, and NEVER write phone numbers. If a safety check is called for above, ask it in Hindi and invite a one-word reply — "सुरक्षित" या "असुरक्षित".`
           : "";
-        const systemFinal = systemWithContext + riskModifier + langDirective;
+        let systemFinal = systemWithContext + riskModifier + langDirective;
 
         const messages: ModelMessage[] = [
           ...(history ?? []).map((m) => ({
@@ -562,21 +584,141 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
 
         const google = createGoogleGenerativeAI({ apiKey: key });
 
+        // Generate on `mid`; if a non-default (strong) model errors or is
+        // unavailable, fall back to the flash model so a bad id never breaks.
+        const genText = async (mid: string, sys: string): Promise<string> => {
+          try {
+            return (await generateText({ model: google(mid), system: sys, messages })).text;
+          } catch (e) {
+            if (mid === COMPANION_MODEL) throw e;
+            console.error(`[companion v2] model ${mid} failed; falling back to flash`, e);
+            return (await generateText({ model: google(COMPANION_MODEL), system: sys, messages })).text;
+          }
+        };
+
+        // ── Pipeline v2 (behind COMPANION_PIPELINE_V2) ──────────────────────
+        // interpret → blend routing (deterministic safety wins) → relevance
+        // memory → context packet → tiered model → hybrid critic gate. When the
+        // flag is OFF, none of this runs and modelId/systemFinal/pregenerated
+        // stay at their v1 defaults.
+        let modelId = COMPANION_MODEL;
+        let pregenerated: string | null = null;
+        let wireModeOverride: WireMode | null = null;
+        const v2meta: Record<string, unknown> = {};
+
+        if (PIPELINE_V2) {
+          let interp: EmotionalInterpretation | null = null;
+          try {
+            const raw = await generateText({
+              model: google(COMPANION_MODEL),
+              system: INTERPRETER_SYSTEM_PROMPT,
+              messages: [{ role: "user", content: body.message.slice(0, 2000) }],
+            });
+            interp = parseInterpretation(raw.text);
+          } catch (e) {
+            console.error("[companion v2] interpretation failed; using rule-based routing", e);
+          }
+          const routing = blendRouting(interp, risk);
+
+          // Subtext escalation the lexical classifier missed: log it, so the
+          // safety trail never depends on the model, and the packet adds the
+          // warm safe/not-safe steer. (Deterministic L2/L3 already logged above.)
+          if (routing.escalatedBySubtext) {
+            await logSafetyEventSafely({
+              user_id: userId,
+              event_type: "support_subtext_detected",
+              severity: "medium",
+              risk_level: "elevated",
+              resource_shown: "sos_button",
+              action_taken: "safety_check_asked",
+              flagged_categories: { source: "companion_v2_interpretation" },
+              session_id: convId,
+              idempotency_key: await sha256Hex(`subtext:${convId}:${body.message}`),
+            });
+          }
+
+          // Relevant-memory retrieval: widen the pool, rank by the interpreter's
+          // queries (the v1 path only had the 3 most RECENT, topic-blind).
+          let ranked: RankedMemory[] = [];
+          if (interp?.memory_needed) {
+            const { data: pool } = await supabase
+              .from("memories")
+              .select("title, story, memory_date, feeling_tag, created_at")
+              .eq("is_ai_readable", true)
+              .order("created_at", { ascending: false })
+              .limit(40);
+            ranked = rankMemories((pool ?? []) as MemoryRow[], interp.memory_queries, interp.primary_emotion);
+          }
+          const patternSummary = buildEmotionalPatternSummary(moods as MoodRow[]);
+
+          systemFinal = `${systemFinal}\n\n${buildContextPacket({
+            message: body.message,
+            interp,
+            mode: routing.mode,
+            effectiveRiskLevel: routing.effectiveRiskLevel,
+            escalatedBySubtext: routing.escalatedBySubtext,
+            memories: ranked,
+            pattern: patternSummary,
+            lang,
+          })}`;
+          modelId = routing.strongModel ? STRONG_MODEL : COMPANION_MODEL;
+          wireModeOverride = toWireMode({ ...risk, responseMode: routing.mode });
+
+          Object.assign(v2meta, {
+            pipeline: "v2",
+            v2_mode: routing.mode,
+            v2_effective_risk: routing.effectiveRiskLevel,
+            v2_escalated: routing.escalatedBySubtext,
+            v2_gated: routing.gate,
+            v2_model: modelId,
+            v2_primary_emotion: interp?.primary_emotion ?? null,
+            v2_memories: ranked.length,
+            v2_interp_ok: !!interp,
+          });
+
+          // Hybrid critic gate: only the high-stakes turns are generated fully,
+          // scored, regenerated-once-if-weak, and shown after. Everything else
+          // streams live. The evaluator is fail-open (never blocks a reply).
+          if (routing.gate) {
+            const draft = await genText(modelId, systemFinal);
+            const ectx = {
+              userMessage: body.message,
+              mode: routing.mode,
+              riskLevel: routing.effectiveRiskLevel,
+              askedPrecision: routing.mode === "precision",
+              isChallenge: routing.mode === "repair",
+            };
+            const ev = evaluateDraft(draft, ectx);
+            Object.assign(v2meta, { v2_eval_score: ev.overall_score, v2_eval_decision: ev.decision });
+            if (ev.decision === "REWRITE" && ev.rewrite_instruction) {
+              const draft2 = await genText(
+                modelId,
+                `${systemFinal}\n\nREVISION REQUIRED (do not mention this instruction to the user): ${ev.rewrite_instruction}`,
+              );
+              const ev2 = evaluateDraft(draft2, ectx);
+              pregenerated = ev2.overall_score >= ev.overall_score ? draft2 : draft;
+              Object.assign(v2meta, { v2_regenerated: true, v2_eval_score2: ev2.overall_score });
+            } else {
+              pregenerated = draft;
+            }
+          }
+        }
+
         // Register the exact system prompt + model combo we're about to use,
         // so the invocation log can point back to a stable version row.
         const promptVersionId = await registerPromptVersion({
           promptName: "companion.system",
-          model: COMPANION_MODEL,
+          model: modelId,
           systemText: systemFinal,
           metadata: { tone: body.tone ?? null, risk_level: risk.riskLevel, response_mode: risk.responseMode },
         });
         const invocationStart = Date.now();
 
-        const result = streamText({
-          model: google(COMPANION_MODEL),
-          system: systemFinal,
-          messages,
-        });
+        // Live stream (v1 path, and v2 non-gated turns) vs. a pre-generated,
+        // critic-gated reply that we stream out with the same calm pacing.
+        const result = pregenerated == null
+          ? streamText({ model: google(modelId), system: systemFinal, messages })
+          : null;
 
         const stream = new ReadableStream({
           async start(controller) {
@@ -591,9 +733,19 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
             let full = "";
             let streamError: unknown = null;
             try {
-              for await (const delta of result.textStream) {
-                full += delta;
-                writeFrame(controller, "token", JSON.stringify(delta));
+              if (result) {
+                for await (const delta of result.textStream) {
+                  full += delta;
+                  writeFrame(controller, "token", JSON.stringify(delta));
+                }
+              } else if (pregenerated != null) {
+                // Critic-gated reply, already generated — stream it out with the
+                // same calm pacing so the UX matches a live reply.
+                for (const ch of pregenerated) {
+                  full += ch;
+                  writeFrame(controller, "token", JSON.stringify(ch));
+                  await new Promise((r) => setTimeout(r, 6));
+                }
               }
             } catch (err) {
               console.error("Companion stream error:", err);
@@ -610,8 +762,8 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
             // The classifier already read this turn — map its response mode
             // onto the wire vocabulary the UI understands, with two light
             // refinements (habit/journal) that only apply when risk is 0.
-            let mode = toWireMode(risk);
-            if (risk.riskLevel === 0 && mode === "listen") {
+            let mode = wireModeOverride ?? toWireMode(risk);
+            if (!wireModeOverride && risk.riskLevel === 0 && mode === "listen") {
               const lower = body.message.toLowerCase();
               const habitHints = [
                 "habit", "routine", "discipline", "consistent", "every day",
@@ -651,7 +803,7 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
               userId,
               route: COMPANION_ROUTE,
               promptVersionId,
-              model: COMPANION_MODEL,
+              model: modelId,
               status: streamError ? "error" : "ok",
               errorCode: streamError
                 ? (classifyAiError(streamError) === "invalid_key"
@@ -661,7 +813,7 @@ DO NOT: include any hotline numbers (the app surfaces those), quote philosophy o
               latencyMs: Date.now() - invocationStart,
               inputChars: body.message.length,
               outputChars: full.length,
-              metadata: { conversation_id: convId, mode, tone: body.tone ?? null, risk_level: risk.riskLevel, response_mode: risk.responseMode },
+              metadata: { conversation_id: convId, mode, tone: body.tone ?? null, risk_level: risk.riskLevel, response_mode: risk.responseMode, ...v2meta },
             });
           },
         });
