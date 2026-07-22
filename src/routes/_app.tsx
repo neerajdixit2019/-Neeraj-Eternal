@@ -392,7 +392,12 @@ function AppLayout() {
         </button>
       )}
       <main id="main-content" tabIndex={-1} className={`flex-1 outline-none ${path.startsWith("/companion") ? "" : "pb-24"} md:pb-0`}>
-        <Outlet />
+        {/* Keyed on the route path so the gentle cross-fade replays on every
+            navigation. Opacity-only (see .page-enter) — layout-safe for the
+            full-height companion screen and any position:fixed children. */}
+        <div key={path} className="page-enter">
+          <Outlet />
+        </div>
       </main>
 
       {!path.startsWith("/companion") && (

@@ -728,6 +728,24 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
+  /* Page transition — a gentle cross-fade as one screen replaces another. The
+     wrapper is keyed on the route path, so it replays on every navigation
+     (today nav is a hard cut). Opacity ONLY, no transform, so it never becomes
+     a containing block for position:fixed descendants (the chat composer, the
+     SOS button). Honours reduced motion three ways: the OS media query, the
+     in-app body.motion-reduced toggle, and the panic room's freeze (which makes
+     it effectively instant). */
+  .page-enter { animation: pageEnter 380ms var(--qs-ease-out, ease-out) both; }
+  @keyframes pageEnter {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .page-enter { animation: none; opacity: 1; }
+  }
+  body.motion-reduced .page-enter,
+  body.motion-calm-always .page-enter { animation: none; opacity: 1; }
+
   /* ── Calm entrance & hover system ──────────────────────────── */
   @keyframes rise-in {
     from { opacity: 0; transform: translateY(10px); }
