@@ -544,14 +544,25 @@
   body[data-room="grief"] .sky-panel * { animation-play-state: paused !important; }
   body[data-room="grief"] .nib-line { animation-play-state: paused !important; }
 
-  /* panic — motion stops dead. Breath timers are JS-driven (requestAnimation-
-     Frame), so they alone keep moving: the one allowed exception. */
+  /* panic — motion stops dead, so nothing pulls at someone in crisis. The ONE
+     exception is the breath pacer. It is CSS-animation-driven (NOT rAF, despite
+     an earlier note here), so this blanket freeze would stop it too — exactly
+     when it must keep guiding the breath. It is explicitly re-exempted below. */
   body[data-room="panic"] *,
   body[data-room="panic"] *::before,
   body[data-room="panic"] *::after {
     animation-duration: 0.001s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001s !important;
+  }
+  /* Essential motion: the breath pacer keeps breathing through the freeze.
+     Restores the paced duration + infinite loop (more specific than the `*`
+     rule above, so it wins). Under reduced motion the animation-name is already
+     the gentler qs-pace-gentle, which this preserves — it only touches timing. */
+  body[data-room="panic"] .qs-pacer,
+  body[data-room="panic"] .qs-pacer--aura {
+    animation-duration: calc(var(--qs-pace-in, 4s) + var(--qs-pace-out, 6s)) !important;
+    animation-iteration-count: infinite !important;
   }
   body[data-room="panic"] { --mist: transparent; }
 
