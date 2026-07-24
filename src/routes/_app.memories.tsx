@@ -826,12 +826,13 @@ function LettersShelf() {
 
   return (
     <div className="space-y-4">
-      {letters.map((l) => {
+      {letters.map((l, i) => {
         const date = new Date(l.week_start + "T00:00:00").toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "long", day: "numeric", year: "numeric" });
         const preview = l.body.split(/\n\n+/)[1]?.slice(0, 160) ?? l.body.slice(0, 160);
         return (
           <Link key={l.id} to="/letter/$id" params={{ id: l.id }} className="block">
-            <TactileCard className="transition hover:-translate-y-0.5">
+            {/* stagger the shelf: each kept letter rises in a beat after the last */}
+            <TactileCard className="transition hover:-translate-y-0.5" style={{ animationDelay: `${Math.min(i, 10) * 40}ms` }}>
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">{lang === "hi" ? `${date} का हफ़्ता` : `Week of ${date}`}</p>
               <p className="mt-2 font-serif text-lg leading-snug">{tx(lang, "A quiet letter")}</p>
               <p className="mt-2 text-sm italic leading-relaxed text-muted-foreground line-clamp-3">{preview}…</p>

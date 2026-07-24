@@ -769,6 +769,22 @@
 
   .rise-in { animation: rise-in 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 
+  /* Staggered list entrance — each item rises in a beat after the last, so a
+     list settles into place instead of popping in all at once. Reuses the
+     rise-in motion; the caller sets --stagger-i per item (0-based, already
+     clamped so long lists never crawl — max 400ms of cascade). Honoured by the
+     reduced-motion guards below (OS setting + the in-app toggle), and the panic
+     room's freeze makes it instant. */
+  .stagger-item {
+    animation: rise-in 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    animation-delay: calc(var(--stagger-i, 0) * 40ms);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stagger-item { animation: none; }
+  }
+  body.motion-reduced .stagger-item,
+  body.motion-calm-always .stagger-item { animation: none; }
+
   /* Tactile cards: a gentle entrance, soft hover lift */
   .tactile {
     animation: rise-in 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;

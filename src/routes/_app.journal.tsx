@@ -474,13 +474,13 @@ function Journal() {
                 <li key={month} className="space-y-1">
                   <p className="font-serif italic text-sm text-muted-foreground">{month}</p>
                   <ul>
-                    {items!.map(e => {
+                    {items!.map((e, i) => {
                       const mode = detectMode(e.title);
                       return (
                         <li
                           key={e.id}
-                          className="flex items-start gap-3 border-t py-3.5"
-                          style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)" }}
+                          className="stagger-item flex items-start gap-3 border-t py-3.5"
+                          style={{ borderColor: "color-mix(in oklab, var(--paper-shadow) 10%, transparent)", ["--stagger-i" as string]: Math.min(i, 10) }}
                         >
                           <span className="w-12 shrink-0 pt-0.5 text-right text-[11px] tabular-nums text-muted-foreground">
                             {new Date(e.created_at).toLocaleDateString(lang === "hi" ? "hi-IN" : undefined, { month: "short", day: "numeric" })}

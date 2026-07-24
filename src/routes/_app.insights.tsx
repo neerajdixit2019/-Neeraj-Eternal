@@ -273,7 +273,7 @@ function Insights() {
             {topSignals.slice(0, 3).map((s, i) => {
               const mix = describeMix(sourceMixFor(periodEvents, s.label), lang);
               return (
-                <Link key={s.label} to="/pattern/$tag" params={{ tag: s.label }} className="group flex gap-3">
+                <Link key={s.label} to="/pattern/$tag" params={{ tag: s.label }} className="stagger-item group flex gap-3" style={{ ["--stagger-i" as string]: i }}>
                   <span
                     aria-hidden
                     className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full motion-safe:animate-[qs-twinkle_4s_ease-in-out_infinite]"
