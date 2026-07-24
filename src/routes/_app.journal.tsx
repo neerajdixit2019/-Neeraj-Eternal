@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { listJournal, saveJournal, deleteJournal } from "@/lib/data.functions";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { LampSkeletonList } from "@/components/LampSkeleton";
 import { Trash2, Feather, Shuffle, Mic } from "lucide-react";
 import { usePrivacyMode } from "@/hooks/use-privacy";
 import { useDictation, DICTATION_LANGUAGES } from "@/hooks/use-dictation";
@@ -119,7 +120,7 @@ function Journal() {
   const list = useServerFn(listJournal);
   const save = useServerFn(saveJournal);
   const del = useServerFn(deleteJournal);
-  const { data: entries } = useQuery({ queryKey: ["journal"], queryFn: () => list() });
+  const { data: entries, isLoading } = useQuery({ queryKey: ["journal"], queryFn: () => list() });
 
   const [editing, setEditing] = useState<{ id: string | null; title: string; body: string; mode: JournalMode } | null>(null);
   const { enabled: privacy } = usePrivacyMode();
@@ -464,7 +465,14 @@ function Journal() {
       </p>
 
       <div className="mt-10">
-        {entries?.length ? (
+        {isLoading ? (
+          <>
+            {/* the lamp warming up while the pages load — no misleading
+                "no pages yet" during the fetch */}
+            <p className="qs-section-label">{tx(lang, "pages you've kept")}</p>
+            <LampSkeletonList rows={4} rowClassName="h-14 w-full rounded-md" className="mt-4" />
+          </>
+        ) : entries?.length ? (
           <>
             <p className="qs-section-label">{tx(lang, "pages you've kept")}</p>
             {/* THE LEDGER — ruled rows, date hung in the margin, "let it go"

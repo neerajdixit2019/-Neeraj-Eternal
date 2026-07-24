@@ -54,7 +54,7 @@ function Morning() {
         ref={(el) => el?.focus()}
         tabIndex={-1}
         role="status"
-        className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-5 py-14 text-center outline-none"
+        className="fade-in mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-5 py-14 text-center outline-none"
       >
         <Sunrise className="h-6 w-6" strokeWidth={1.6} style={{ color: "var(--lamp)" }} aria-hidden="true" />
         <p className="mt-5 max-w-md font-serif text-[26px] font-light leading-snug">{tx(lang, chosen)}</p>
@@ -70,7 +70,7 @@ function Morning() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-5 py-12 sm:py-16">
+    <div className="fade-in mx-auto max-w-xl px-5 py-12 sm:py-16">
       <Link to="/home" className="inline-flex min-h-11 items-center gap-1.5 text-[13px] text-muted-foreground transition hover:text-foreground">
         {tx(lang, "not now")}
       </Link>

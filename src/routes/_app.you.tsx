@@ -68,7 +68,7 @@ function YouPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14">
+    <div className="fade-in mx-auto max-w-2xl px-5 py-10 sm:px-8 sm:py-14">
       {/* The flyleaf — the reader's name, inscribed */}
       <p className="qs-section-label">{tx(lang, "the flyleaf")}</p>
       <h1 className="mt-3 font-serif text-[2.6rem] font-light leading-[1.08] tracking-tight sm:text-[3.1rem]" style={{ textWrap: "balance" }}>

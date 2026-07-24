@@ -63,7 +63,7 @@ function PathDetail() {
   const completed = new Set(data.progress?.completed_steps ?? []);
 
   return (
-    <div className="motion-calm mx-auto max-w-2xl px-5 py-8 sm:px-8">
+    <div className="motion-calm fade-in mx-auto max-w-2xl px-5 py-8 sm:px-8">
       <Link to="/heal" className="text-sm text-muted-foreground transition hover:text-foreground">← {tx(lang, "all paths")}</Link>
       <p className="qs-section-label mt-8">{tx(lang, "gentle guided paths")}</p>
       <h1 className="mt-3 font-serif text-3xl font-light leading-tight tracking-tight sm:text-4xl">{tx(lang, data.path.title)}</h1>

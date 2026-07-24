@@ -129,7 +129,7 @@ function LoginPage() {
   };
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center px-6 py-16 sm:py-24">
+    <main className="fade-in relative flex min-h-screen flex-col items-center justify-center px-6 py-16 sm:py-24">
       <div className="mx-auto w-full max-w-md">
         {reason === "session-expired" && (
           <div

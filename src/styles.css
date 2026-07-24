@@ -457,6 +457,10 @@
       50%      { opacity: 1; }
     }
   }
+  /* Honour the in-app reduce-motion toggle too (the OS media query above covers
+     the system setting); the placeholder then rests as a still warm block. */
+  body.motion-reduced .lamp-skeleton::after,
+  body.motion-calm-always .lamp-skeleton::after { animation: none; }
 
   /* THE MOTION CONSTITUTION — tokens for every new transition. Calibrated to
      the calm end of Material's ranges: micro-feedback 90ms, state changes

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TactileCard } from "@/components/TactileCard";
+import { LampSkeletonList } from "@/components/LampSkeleton";
 import { toast } from "sonner";
 import { listMemories, saveMemory, setMemoryReadable, deleteMemory, updateMemory } from "@/lib/data.functions";
 import { listKeptLetters } from "@/lib/letters.functions";
@@ -814,7 +815,7 @@ function LettersShelf() {
     queryFn: () => listFn() as Promise<LetterRow[]>,
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">…</p>;
+  if (isLoading) return <LampSkeletonList rows={2} rowClassName="h-28 w-full rounded-2xl" />;
   if (!letters || letters.length === 0) {
     return (
       <TactileCard>

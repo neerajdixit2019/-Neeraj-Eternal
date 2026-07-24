@@ -1056,6 +1056,7 @@ export const HI_TEXT: Record<string, string> = {
   "Keep this entry and the reflection in your personal space so you can return to them later.": "इस लिखे और चिंतन को अपनी निजी जगह में रखें, ताकि आप बाद में उन पर लौट सकें।",
   "Receive a Quiet Reflection": "एक शांत चिंतन पाएँ",
   "Creating a quiet reflection…": "एक शांत चिंतन तैयार हो रहा है…",
+  "Loading…": "लोड हो रहा है…",
   "This usually takes a few seconds.": "इसमें आम तौर पर कुछ सेकंड लगते हैं।",
   "Something interrupted the reflection.": "चिंतन में कुछ रुकावट आई।",
   "Your writing has not been lost. Please try again in a moment.": "आपका लिखा खोया नहीं है। कृपया एक पल में फिर कोशिश करें।",
